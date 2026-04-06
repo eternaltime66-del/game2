@@ -1,0 +1,84 @@
+# 合约全量检测配置 - BSC主网版
+# 适配AIFI/USDT众筹交易体系，包含3组Work测试参数
+contract:
+  # 1. BSC主网基础配置
+  rpc:
+    url: "https://bsc-dataseed1.binance.org:443"  # BSC主网官方RPC
+    chainId: 56                                   # BSC主网ChainID（固定）
+    timeout: 30000                                # RPC超时时间（ms）
+
+  # 2. 管理员钱包（BSC主网账户，需持有BNB支付Gas）
+  admin:
+    privateKey: "你的BSC主网管理员私钥（不带0x前缀）"
+    address: "0x你的BSC主网管理员地址"
+
+  # 3. Gas配置（BSC主网标准）
+  gas:
+    gasLimit: 8000000        # 覆盖复杂合约操作（BSC Gas上限宽松）
+    gasPriceGwei: 5          # BSC主网常规Gas价（5 Gwei）
+    maxPriorityFeePerGasGwei: 1  # BSC EIP-1559优先级费（可选）
+
+  # 4. 代币小数配置（核心：BSC USDT=18位，AIFI=18位）
+  decimal:
+    usdt: 18                 # BSC主网USDT为18位小数（区别于以太坊6位）
+    aifi: 18
+    lpToken: 18
+    workToken: 18
+
+  # 5. 核心合约地址（BSC主网部署后手动录入）
+  contractAddress:
+    # 根合约地址
+    memeTokenFactory: "0x0000000000000000000000000000000000000000"  # 核心工厂合约
+    workRegistry: "0x0000000000000000000000000000000000000000"      # 注册合约
+    aifiToken: "0x0000000000000000000000000000000000000000"         # AIFI代币主合约（全局唯一）
+    memeAifiUsdtAMM: "0x0000000000000000000000000000000000000000"   # 全局AIFI/USDT AMM
+    workTokenFactory: "0x0000000000000000000000000000000000000000"   # WorkToken工厂
+    workFundingPoolFactory: "0x0000000000000000000000000000000000000000" # FundingPool工厂
+    # BSC主网标准代币地址（固定）
+    memeUsdt: "0x55d398326f99059fF775485246999027B3197955"           # BSC主网USDT官方地址
+
+  # 6. 初始化参数（3组Work测试参数+核心配置）
+  init:
+    # 6.1 全局AIFI/USDT AMM初始注入
+    aifiUsdtAmm:
+      aifiInitAmount: "1000000000000000000000"  # 1000 AIFI（18位小数）
+      usdtInitAmount: "1000000000000000000000"  # 1000 USDT（BSC 18位小数）
+    # 6.2 Work创建参数（3组测试用例）
+    workList:
+      # 第1组：USDT众筹
+      - workId: "bsc_work_001"
+        workTokenName: "BSCWorkToken001"
+        workTokenSymbol: "BWT001"
+        fundTokenType: "USDT"                     # 众筹代币：USDT
+        maxFundingAmount: "1000000000000000000000" # 最大众筹额：1000 USDT（18位）
+        durationSeconds: 86400                    # 众筹时长：1天
+      # 第2组：AIFI众筹
+      - workId: "bsc_work_002"
+        workTokenName: "BSCWorkToken002"
+        workTokenSymbol: "BWT002"
+        fundTokenType: "AIFI"                     # 众筹代币：AIFI
+        maxFundingAmount: "5000000000000000000000" # 最大众筹额：5000 AIFI（18位）
+        durationSeconds: 172800                   # 众筹时长：2天
+      # 第3组：USDT众筹（高额度）
+      - workId: "bsc_work_003"
+        workTokenName: "BSCWorkToken003"
+        workTokenSymbol: "BWT003"
+        fundTokenType: "USDT"                     # 众筹代币：USDT
+        maxFundingAmount: "10000000000000000000000" # 最大众筹额：10000 USDT（18位）
+        durationSeconds: 259200                   # 众筹时长：3天
+    # 6.3 AIFI代币分发配置（BSC主网）
+    aifiToken:
+      isMainnet: true                           # BSC主网模式
+      distributeInterval: 86400                 # 分发间隔：1天
+    # 6.4 付费凭证默认金额（BSC USDT 18位）
+    paymentProof:
+      defaultPayAmount: "1000000000000000000"   # 1 USDT（BSC 18位小数）
+
+  # 7. 子合约查询配置
+  subContract:
+    # 需查询的WorkID列表（对应3组测试Work）
+    workIdList:
+      - "bsc_work_001"
+      - "bsc_work_002"
+      - "bsc_work_003"
+    queryTimeout: 5000

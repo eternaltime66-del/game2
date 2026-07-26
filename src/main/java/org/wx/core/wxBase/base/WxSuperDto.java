@@ -7,8 +7,11 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.wx.core.wxBase.unit.HttpServletUnit;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -70,8 +73,11 @@ public class WxSuperDto<E extends WxBaseEntity<E>> {
     @JsonIgnore
     private final Map<String, Object> dynamicFields = new HashMap<>(16); // 动态字段容器
 
-    // ========== 子类需覆写的核心方法（唯一需要手动的部分） ==========
+    @JsonIgnore
+    @TableField(exist = false)
+    public Boolean bodyPost = false;
 
+    // ========== 子类需覆写的核心方法（唯一需要手动的部分） ==========
 
     // ========== 核心修复：保证1级数据全量接收 ==========
     /**
@@ -81,6 +87,7 @@ public class WxSuperDto<E extends WxBaseEntity<E>> {
     @JsonAnySetter
     public void setDynamicField(String key, Object value) {
         // 1. 空值过滤（宽松版：仅过滤null和纯空白字符串）
+        bodyPost = true;
         if (value == null) return;
         Object actualValue = value;
 
@@ -105,7 +112,9 @@ public class WxSuperDto<E extends WxBaseEntity<E>> {
     // 构建查询条件（核心方法）
     public QueryWrapper<E> buildQueryWrapper() {
         QueryWrapper<E> wrapper = new QueryWrapper<E>();
-
+        if (!bodyPost){
+            this.setRequestParams(HttpServletUnit.request());
+        }
         initFieldWhitelist();
 
         // 解析动态查询条件
@@ -205,7 +214,6 @@ public class WxSuperDto<E extends WxBaseEntity<E>> {
                     }
                     whitelist.put(camel, dbField);
                 }
-                System.out.println(JSONObject.toJSONString(whitelist));
                 fieldWhitelist = Collections.unmodifiableMap(whitelist);
             }
         }
@@ -238,6 +246,15 @@ public class WxSuperDto<E extends WxBaseEntity<E>> {
             }
         }
         return val + suffix;
+    }
+
+    public void setRequestParams(HttpServletRequest request) {
+        request.getParameterMap().forEach((key, values) -> {
+            if(values != null && values.length > 0){
+                setDynamicField(key, values[0]);
+            }
+        });
+
     }
 
 

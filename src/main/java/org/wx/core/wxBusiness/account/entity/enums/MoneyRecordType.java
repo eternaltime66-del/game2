@@ -10,14 +10,12 @@ import com.alibaba.fastjson2.JSONObject;
 
 
 public enum MoneyRecordType {
-    //充值AiFi点数
-    BUY_AGENT("购买节点"),
-
-    BUY_AGENT_REWARD("下级购买节点直推奖"),
     SUB_WITHDRAW("提交提现"),
     FAIL_WITHDRAW("提现失败"),
     SUCCESS_WITHDRAW("提现成功"),
-    //系统减少
+    TRS_OUT("转出"),
+    TRS_INTO("转入"),
+    WEB3_RECHARGE("链上充值"),
     Other("其他");
 
     final String msg;
@@ -29,18 +27,16 @@ public enum MoneyRecordType {
         return this.msg;
     }
 
-
-    public static void x(){
+    /** 手动执行，输出枚举 JSON 供前端使用 */
+    public static void jsonOut() {
         JSONObject json = new JSONObject();
-        for (MoneyRecordType type:MoneyRecordType.values()){
-            json.put(type.toString(),type.getMsg());
+        for (MoneyRecordType type : MoneyRecordType.values()) {
+            json.put(type.toString(), type.getMsg());
         }
         System.err.println(json);
     }
 
     public static void main(String[] args) {
-        x();
+        jsonOut();
     }
-
-
 }

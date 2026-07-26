@@ -34,6 +34,16 @@ public class WxQuickFunction {
         }
         return true;
     }
+
+    public static String formatDay(Date date) {
+        ZoneId zone = ZoneId.of("Asia/Shanghai"); // 东八区
+        LocalDateTime time = date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+
+        return time.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
     public static String futureBySecond(long seconds) {
         ZoneId zone = ZoneId.of("Asia/Shanghai"); // 东八区
 

@@ -8,10 +8,9 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
-import org.wx.core.wxBase.base.Wx;
 import org.wx.core.wxBusiness.log.annotation.WxMethodLog;
 import org.wx.core.wxBusiness.log.entity.WxLogMethod;
-import org.wx.core.wxBusiness.log.service.WxLogMethodService;
+import org.wx.core.wxBusiness.log.service.WxLogAsyncService;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -28,7 +27,7 @@ import java.util.UUID;
 public class WxMethodLogAspect {
 
     @Resource
-    public WxLogMethodService wxLogMethodService;
+    private WxLogAsyncService logAsyncService;
 
     /**
      * 环绕通知：拦截所有标记@WxMethodLog的方法
@@ -117,12 +116,7 @@ public class WxMethodLogAspect {
                 logEntity.setExceptionMsg("无异常");
             }
 
-            // 10. 保存日志到数据库
-            try {
-                wxLogMethodService.save(logEntity);
-            } catch (Exception e) {
-
-            }
+            logAsyncService.saveMethodLog(logEntity);
         }
     }
 }

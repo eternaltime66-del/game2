@@ -2,7 +2,6 @@ package org.wx.core.wxBusiness.common.service;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.convert.ConvertException;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.wx.core.wxBase.base.WxServiceImpl;
 import org.wx.core.wxBusiness.common.entity.WxSuperParam;
@@ -69,7 +68,7 @@ public class WxSuperParamService extends WxServiceImpl<WxSuperParamMapper, WxSup
     public void setVal(String key,Object val){
         this.update(
                 new LambdaUpdateWrapper<WxSuperParam>()
-                        .eq(WxSuperParam::getParamKey,key)
+                        .eq(WxSuperParam::getId,key)
                         .set(WxSuperParam::getParamValue,val)
         );
     }
@@ -84,6 +83,10 @@ public class WxSuperParamService extends WxServiceImpl<WxSuperParamMapper, WxSup
     public BigDecimal getBigDecimal(String key, String def){
         WxSuperParam param = this.getById(key);
         if (param==null){
+            WxSuperParam wxSuperParam = new WxSuperParam();
+            wxSuperParam.setId(key);
+            wxSuperParam.setParamValue(def);
+            this.save(wxSuperParam);
             return new BigDecimal(def);
         }
         return this.getVal(key,BigDecimal.class);

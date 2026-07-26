@@ -1,7 +1,9 @@
 package org.wx.core.wxBusiness.account.service;
 
 import com.alibaba.fastjson2.JSONObject;
+import org.wx.core.wxBase.annotation.RedisLock;
 import org.wx.core.wxBase.base.WxServiceImpl;
+import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBusiness.account.entity.Web3Coin;
 import org.wx.core.wxBusiness.account.entity.Web3Recharge;
 import org.wx.core.wxBusiness.account.entity.enums.RechargeCallbackEnum;
@@ -19,10 +21,10 @@ import java.math.BigDecimal;
 @Service
 public class Web3RechargeService extends WxServiceImpl<Web3RechargeMapper, Web3Recharge> {
 
-
     /**
      * 创建充值订单（带泛型校验）
      */
+    @RedisLock(key = "hash")
     public <T> Web3Recharge createRechargeOrder(
             String uid,
             String fromAddress,
@@ -33,7 +35,8 @@ public class Web3RechargeService extends WxServiceImpl<Web3RechargeMapper, Web3R
             RechargeCallbackEnum callbackEnum,
             T callbackData   // 泛型 DTO
     ) {
-
+        long count = this.find().eq(Web3Recharge::getHash, hash).count();
+        ErrorFactory.throwError(count>0,"hash 重复提交");
         // ① 泛型 DTO 校验（核心!!!）
         if (callbackEnum != null && callbackData != null) {
             Class<?> required = callbackEnum.getDtoClass();
@@ -67,4 +70,5 @@ public class Web3RechargeService extends WxServiceImpl<Web3RechargeMapper, Web3R
         this.save(recharge);
         return recharge;
     }
+
 }

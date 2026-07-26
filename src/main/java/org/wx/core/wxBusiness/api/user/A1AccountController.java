@@ -48,8 +48,4 @@ public class A1AccountController {
     ) {
         return WxResult.success(Wx.MemberService.getAccount(address, signature, code));
     }
-
-
-
-
 }

@@ -6,12 +6,15 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.SneakyThrows;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.lang.reflect.Field;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * 基础实体类（通用审计+逻辑删除）
@@ -56,5 +59,6 @@ public class WxBaseEntity<E extends WxBaseEntity<E>> extends WxSuperDto<E>{
     public void vo(){
 
     }
+
 
 }

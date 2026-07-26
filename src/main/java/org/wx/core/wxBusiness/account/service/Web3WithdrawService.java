@@ -16,7 +16,6 @@ import org.wx.core.wxBusiness.account.mapper.Web3WithdrawMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
  * Web3Withdraw Service实现类
@@ -29,6 +28,9 @@ public class Web3WithdrawService extends WxServiceImpl<Web3WithdrawMapper, Web3W
     @RedisLock(key = "uid")
     @Transactional(rollbackFor = Exception.class)
     public Web3Withdraw submitWithdraw(String uid, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("提现金额错误");
+        }
         Member member = Wx.MemberService.getById(uid);
         String orderId = Wx.MoneyRecordService.changePoint(
                 uid,
@@ -39,12 +41,8 @@ public class Web3WithdrawService extends WxServiceImpl<Web3WithdrawMapper, Web3W
         );
         JSONObject json = new JSONObject();
 
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("提现金额错误");
-        }
-
         Web3Withdraw withdraw = new Web3Withdraw();
-
+        BigDecimal withdrawFeeRatio = Wx.SuperParamService.getBigDecimal("WithdrawFeeRatio", "0");
         withdraw.setUid(uid);
         withdraw.setAmount(amount);
 
@@ -56,10 +54,10 @@ public class Web3WithdrawService extends WxServiceImpl<Web3WithdrawMapper, Web3W
         withdraw.setState("待审核");
 
         // 手续费（可以自己算）
-        withdraw.setFee(BigDecimal.ZERO);
+        withdraw.setFee(amount.multiply(withdrawFeeRatio));
 
         // 实际到账
-        withdraw.setRealSend(amount.toPlainString());
+        withdraw.setRealSend(amount.subtract(withdraw.getFee()));
 
         // 链
         withdraw.setChain("BSC");
@@ -73,9 +71,11 @@ public class Web3WithdrawService extends WxServiceImpl<Web3WithdrawMapper, Web3W
 
     @Transactional(rollbackFor = Exception.class)
     @RedisLock(key = "id")
-    public void success(String id,String hash) {
+    public void success(String id, String hash) {
         Web3Withdraw w = this.getById(id);
-        ErrorFactory.throwError(!w.getState().equals("待审核"),"状态有误");
+        ErrorFactory.throwError(w == null, "提现记录不存在");
+        ErrorFactory.throwError(!w.getState().equals("待审核"), "状态有误");
+        ErrorFactory.throwError(Wx.isEmpty(hash), "链上交易哈希不能为空");
         w.setHash(hash);
         w.setState("已通过");
         Wx.MoneyRecordService.entityWeb3(

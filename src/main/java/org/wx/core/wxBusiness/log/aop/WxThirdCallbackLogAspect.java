@@ -12,7 +12,7 @@ import org.springframework.util.StringUtils;
 import org.wx.core.wxBase.unit.HttpServletUnit;
 import org.wx.core.wxBusiness.log.annotation.WxThirdCallbackLog;
 import org.wx.core.wxBusiness.log.entity.WxLogThirdCallback;
-import org.wx.core.wxBusiness.log.service.WxLogThirdCallbackService;
+import org.wx.core.wxBusiness.log.service.WxLogAsyncService;
 
 import java.time.LocalDateTime;
 import java.util.Enumeration;
@@ -32,7 +32,7 @@ import java.util.UUID;
 public class WxThirdCallbackLogAspect {
 
     @Resource
-    private  WxLogThirdCallbackService thirdCallbackLogService;
+    private WxLogAsyncService logAsyncService;
 
     /**
      * 环绕通知，拦截标记了@WxThirdCallbackLog的方法
@@ -104,12 +104,7 @@ public class WxThirdCallbackLogAspect {
                 logEntity.setErrorMsg(error.getMessage());
             }
             
-            // 6. 保存日志到数据库
-            try {
-                thirdCallbackLogService.save(logEntity);
-            } catch (Exception e) {
-                // 日志保存失败不影响主业务
-            }
+            logAsyncService.saveThirdCallback(logEntity);
         }
     }
 }

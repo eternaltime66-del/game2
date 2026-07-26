@@ -10,6 +10,7 @@ import org.wx.core.wxBusiness.account.entity.Web3Coin;
 import org.wx.core.wxBusiness.account.service.*;
 import org.wx.core.wxBusiness.common.service.WxMoreLangService;
 import org.wx.core.wxBusiness.common.service.WxSuperParamService;
+import org.wx.core.wxBusiness.log.service.WxLogAsyncService;
 import org.wx.core.wxBusiness.log.service.WxLogRequestDetailService;
 import org.wx.core.wxBusiness.log.service.WxLogThirdPartyService;
 
@@ -26,6 +27,8 @@ public class WxSuperServices {
     @Resource
     private WxLogRequestDetailService wxLogRequestDetailService;
     @Resource
+    private WxLogAsyncService wxLogAsyncService;
+    @Resource
     private Web3WalletService web3WalletService;
     @Resource
     private PointWalletService pointWalletService;
@@ -39,6 +42,9 @@ public class WxSuperServices {
     private WxMoreLangService wxMoreLangService;
     @Resource
     private WxSuperParamService wxSuperParamService;
+    @Resource
+    private Web3RechargeService web3RechargeService;
+
     @PostConstruct
     public void init() {
         Wx.init(this);

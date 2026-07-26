@@ -12,12 +12,9 @@ import org.wx.core.wxBase.unit.WordUnit;
 import org.wx.core.wxBusiness.account.entity.enums.MemberKycState;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
 /**
  * Member 实体类
+ *
  * @author 无心
  * @date 2026-01-16
  */
@@ -77,6 +74,10 @@ public class Member extends WxBaseEntity<Member> {
      */
     private String address;
 
+    /**
+     * 充值地址
+     */
+    private String toAddress;
 
 
     public void setMnemonicEncrypted(String mnemonicPlain) {
@@ -91,22 +92,22 @@ public class Member extends WxBaseEntity<Member> {
      * 对助记词进行加密（用于导入钱包时校验）
      * 必须与 setMnemonicEncrypted 保持一致
      */
-    public static String encodeMnemonic( String mnemonicPlain) {
+    public static String encodeMnemonic(String mnemonicPlain) {
         return AesUtil.encrypt(mnemonicPlain, "WXMAX");
     }
 
-    public static Member commonMember(){
+    public static Member commonMember() {
         Member member = new Member();
         member.id = WordUnit.randomKey(10, 1);
-        member.memberRole =MemberRole.USER;
+        member.memberRole = MemberRole.USER;
         member.salt = WordUnit.randomKey(12, 2);
         member.upSort = 0;
-        member.inviteCode = WordUnit.randomKey(8,2).toUpperCase();
+        member.inviteCode = WordUnit.randomKey(8, 2).toUpperCase();
         return member;
     }
 
     public void verifyPsd(String password) {
-        ErrorFactory.throwError(!this.password.equals(psdEncode(password)),"密码有误");
+        ErrorFactory.throwError(!this.password.equals(psdEncode(password)), "密码有误");
     }
 
     public String psdEncode(String password) {
@@ -118,25 +119,22 @@ public class Member extends WxBaseEntity<Member> {
     }
 
     public static void main(String[] args) {
-        String string = WordUnit.md5("9527" + "123456" + "jrwJ");
-        System.out.println(WordUnit.md5(string + "9527" ));
+        String string = WordUnit.md5("SuperAdmin" + "llsw1229@" + "jrwJ");
+        System.out.println(WordUnit.md5(string + "SuperAdmin"));
     }
 
     public static String creteToken() {
         return WordUnit.randomKey(12, 2).toUpperCase();
     }
 
-    public void info(){
+    public void info() {
         this.salt = null;
         this.password = null;
         this.mnemonic = null;
     }
 
     @Data
-    public static class UserMore{
-        public MemberKycState kycState;
-        public Long ztNum;
-        public Long tdNum;
+    public static class UserMore {
     }
 
     /**
@@ -184,7 +182,10 @@ public class Member extends WxBaseEntity<Member> {
     private Boolean agent;
 
     /**
-     * 邀请码
+     * 层级排序
      */
-    private BigDecimal ztRatio;
+    private Integer level;
+
+    @TableField(value = "`lock`")
+    private Boolean lock;
 }

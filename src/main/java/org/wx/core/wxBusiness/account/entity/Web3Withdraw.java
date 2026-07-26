@@ -51,7 +51,7 @@ public class Web3Withdraw extends WxBaseEntity<Web3Withdraw> {
     /**
      * 实际到账
      */
-    private String realSend;
+    private BigDecimal realSend;
 
     /**
      * 币种 Web3Coin

@@ -21,9 +21,11 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
+import org.wx.core.wxBase.context.ReqContextHolder;
 import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBase.factory.PageFactory;
 import org.wx.core.wxBase.unit.HttpServletUnit;
+import org.wx.core.wxBusiness.log.entity.WxLogRequest;
 import org.wx.core.wxBusiness.log.entity.WxLogRequestDetail;
 import org.wx.core.wxBusiness.log.service.WxLogRequestDetailService;
 
@@ -72,6 +74,7 @@ public abstract class WxServiceImpl<M extends BaseMapper<T>, T extends WxBaseEnt
             throw new IllegalArgumentException("查询实体不能为空！");
         }
         entity.clearEmptyString();
+
         Page<T> page = PageFactory.defaultPage();
 
         // 3. 构建查询条件
@@ -159,10 +162,12 @@ public abstract class WxServiceImpl<M extends BaseMapper<T>, T extends WxBaseEnt
         // ========== 3. 获取请求上下文 ==========
         HttpServletRequest request = HttpServletUnit.request();
         boolean needLog = request != null && Boolean.TRUE.equals(request.getAttribute("ReqLogChange"));
-        needLog = needLog && !(e.getClass()==WxLogRequestDetail.class);
+        needLog = needLog && !(e.getClass() == WxLogRequestDetail.class) && !(e.getClass() == WxLogRequest.class);
         String reqLogId = request != null ? (String) request.getAttribute("ReqLogId") : UUID.randomUUID().toString().replace("-", "");
-        // 默认操作人ID（可从请求上下文/登录态获取，这里先给默认值）
         String operatorId = request != null ? (String) request.getAttribute("ReqUserId") : "";
+        if (!StringUtils.hasText(operatorId)) {
+            operatorId = ReqContextHolder.quickGet("uid");
+        }
 
         // ========== 4. 查询更新前数据（仅记录变动字段） ==========
         JSONObject beforeJson = new JSONObject();
@@ -208,13 +213,9 @@ public abstract class WxServiceImpl<M extends BaseMapper<T>, T extends WxBaseEnt
             logEntity.setBeforeData(change.get("before")); // 变更前（仅ID+变动字段）
             logEntity.setAfterData(change.get("after")); // 变更后（仅ID+变动字段）
             logEntity.setChangeData(change.get("change"));
-            logEntity.setOperatorId(operatorId); // 操作人ID
-            // 保存日志（使用静态调用方式，适配你的项目规范）
-            try {
-                Wx.WxLogRequestDetailService.save(logEntity);
-                log.info("更新日志记录成功，请求ID：{}，表名：{}，ID：{}", reqLogId, tableName, id);
-            } catch (Exception ex) {
-                log.error("保存更新日志失败，请求ID：{}", reqLogId, ex);
+            logEntity.setOperatorId(operatorId);
+            if (Wx.LogAsyncService != null) {
+                Wx.LogAsyncService.saveRequestDetail(logEntity);
             }
         }
         return result;

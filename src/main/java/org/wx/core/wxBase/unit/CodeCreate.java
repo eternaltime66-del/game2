@@ -20,11 +20,11 @@ public class CodeCreate {
 
     // ===================== 配置项 =====================
     private String host = "localhost";
-    private String database = "web3luoji";
+    private String database = "mnls";
     private String username = "root";
     private String password = "123456";
-    private String tableName = "wx_super_param";
-    private String packName = ".wxBusiness.common";
+    private String tableName = "app_level_config";
+    private String packName = ".wxBusiness.account";
     private String tablePrefix = "app_";
     private String createUserName = "无心";
     private IdType idType = IdType.AUTO;

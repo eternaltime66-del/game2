@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
 *@msg 备注
 *@demo ${NAME}
 */
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface NeedHeader {
     /** 是否需要登录 token */

@@ -2,6 +2,7 @@ package org.wx.core.wxBusiness.api.unit;
 
 
 import cn.hutool.core.date.DateUtil;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import jakarta.servlet.ServletInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -9,12 +10,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.wx.core.wxBase.annotation.NeedHeader;
 import org.wx.core.wxBase.annotation.ParamCheck;
 import org.wx.core.wxBase.base.Wx;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBase.factory.ErrorFactory;
+import org.wx.core.wxBase.unit.HttpRequestUnit;
+import org.wx.core.wxBase.unit.HttpServletUnit;
 import org.wx.core.wxBase.unit.WordUnit;
+import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 import org.wx.core.wxBusiness.code.CodeEnum;
+import org.wx.core.wxBusiness.common.entity.WxSuperParam;
+import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -33,6 +40,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/unit")
 public class SysUtilController {
+
+
 
     private String filepathWin ="D:\\File\\Work\\Java\\";
     public static String filepathLinux = "/www/wx/file/";
@@ -124,6 +133,20 @@ public class SysUtilController {
     public static Boolean isWinOs() {
         String os = System.getProperty("os.name");
         return os.toLowerCase().startsWith("win");
+    }
+
+    /**
+     * 获取系统参数
+     */
+    @PostMapping("/config/list")
+    @WxRequestLog
+    @NeedHeader(roles = {MemberRole.USER})
+    public WxResult<List<WxSuperParam>> levelList(
+            WxSuperParam entity
+    ){
+
+        IPage<WxSuperParam> iPage = Wx.SuperParamService.pageQuery(entity);
+        return WxResult.page(iPage);
     }
 }
 

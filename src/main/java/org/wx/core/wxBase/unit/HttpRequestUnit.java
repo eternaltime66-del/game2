@@ -208,12 +208,11 @@ public class HttpRequestUnit {
             logEntity.setFinishTime(LocalDateTime.now());
             logEntity.setUseTimeMs((int) (System.currentTimeMillis() - startTimeMs));
             try {
-                if (Wx.WxLogThirdPartyService != null) {
-                    Wx.WxLogThirdPartyService.save(logEntity);
+                if (Wx.LogAsyncService != null) {
+                    Wx.LogAsyncService.saveThirdParty(logEntity);
                 }
             } catch (Exception e) {
-                // 日志保存失败不影响主流程
-                log.error("【三方日志保存】traceId: {} | 日志保存失败: {}", traceId, e.getMessage(), e);
+                log.error("【三方日志保存】traceId: {} | 提交异步日志失败: {}", traceId, e.getMessage(), e);
             }
         }
     }

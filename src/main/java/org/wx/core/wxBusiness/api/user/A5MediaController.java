@@ -22,8 +22,6 @@ import org.wx.core.wxBusiness.common.service.ArticleService;
 import org.wx.core.wxBusiness.common.service.BannerService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
 import org.wx.core.wxBusiness.log.annotation.WxThirdCallbackLog;
-import org.wx.core.wxBusiness.media.entity.HzCrowdFundingContent;
-import org.wx.core.wxBusiness.media.service.HzCrowdFundingContentService;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

@@ -5,12 +5,15 @@ import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.http.HttpService;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Web3Config - 改为完全支持 read-only 模式
  */
 @Data
 public class Web3Config {
-
+    private static final Map<Link, Web3j> web3jInstances = new ConcurrentHashMap<>();
     private String privateKey;   // 可为 null（read-only 模式）
     private Web3j web3j;
     private String nodeUrl;
@@ -24,7 +27,9 @@ public class Web3Config {
         cfg.privateKey = (privateKey == null || privateKey.isEmpty()) ? null : privateKey;
         cfg.chainId = 56;
         cfg.nodeUrl = "https://bsc-dataseed1.binance.org/";
-        cfg.web3j = Web3j.build(new HttpService(cfg.nodeUrl));
+        cfg.web3j = web3jInstances.computeIfAbsent(Link.BSC,
+                k -> Web3j.build(new HttpService(cfg.nodeUrl))
+        );
         return cfg;
     }
 

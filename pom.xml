@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.wx</groupId>
-    <artifactId>Wbe3LuoJi</artifactId>
-    <name>Web3</name>
-    <description>Web3</description>
+    <artifactId>000_Work_Demo</artifactId>
+    <name>000_Work_Demo</name>
+    <description>000_Work_Demo</description>
     <url/>
     <licenses>
         <license/>

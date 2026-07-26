@@ -5,8 +5,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.wx.core.wxBase.annotation.NeedHeader;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.MemberKyc;
+import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 import org.wx.core.wxBusiness.account.service.MemberService;
 import org.wx.core.wxBusiness.api.vo.CommonIdVo;
 import org.wx.core.wxBusiness.common.entity.Article;
@@ -33,6 +35,7 @@ public class B4MediaController {
      */
     @PostMapping("/article/list")
     @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
     public WxResult<List<Article>> articleList(
             @RequestBody Article entity
     ) {
@@ -44,6 +47,7 @@ public class B4MediaController {
      */
     @PostMapping("/article/remove/byId")
     @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
     public WxResult<List<MemberKyc>> articleRemoveById(
             @RequestBody CommonIdVo vo
     ) {
@@ -56,6 +60,7 @@ public class B4MediaController {
      */
     @PostMapping("/article/saveOrUpdate")
     @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
     public WxResult<Object> saveOrUpdate(
             @RequestBody Article entity
     ) {

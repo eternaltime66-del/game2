@@ -173,6 +173,15 @@ public class MemberService extends WxServiceImpl<MemberMapper, Member> {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public String superToken(String uid) {
+        Member member = getById(uid);
+        ErrorFactory.throwError(member == null, "用户不存在");
+        member.setToken(Member.creteToken());
+        Wx.RedisFactory.setBuyDay(member.getToken(), member.getId(), 7);
+        return member.getToken();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public String signInAdminForPsd(
             String email,
             String password
@@ -205,6 +214,8 @@ public class MemberService extends WxServiceImpl<MemberMapper, Member> {
 
         if (member == null) {
             member = addUser(address, null, null, null, null, null);
+        }else {
+            ErrorFactory.throwError(member.getLock()!=null && member.getLock(),"lock...");
         }
         member.setToken(Member.creteToken());
         Wx.RedisFactory.setBuyDay(member.getToken(), member.getId(), 7);
@@ -269,54 +280,5 @@ public class MemberService extends WxServiceImpl<MemberMapper, Member> {
 
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void buyAgent(String uid,String hash) {
-        Integer maxAgentNum = Wx.SuperParamService.getInteger("MaxAgentNum", 3000);
-        Integer finishAgentNum = Wx.SuperParamService.getInteger("FinishAgentNum", 0);
-        ErrorFactory.throwError(finishAgentNum>=maxAgentNum,"已达上限");
-
-        Member member = Wx.MemberService.getById(uid);
-        ErrorFactory.throwError(member.getAgent(),"你已是节点用户");
-        Wx.MoneyRecordService.findHash(hash);
-        BigDecimal price = Wx.SuperParamService.getBigDecimal("AgentPrice", "0.005");
-        Web3HashCheckResult web3HashCheckResult = Web3Tool.checkHash(
-                Web3Coin.BSC_USDT,
-                hash,
-                "",
-                Wx.TO_ADDRESS,
-                price
-
-        );
-        JSONObject json = new JSONObject();
-        json.put("fUid",uid);
-        json.put("fUpUid",member.getSourceInviteIdL1());
-        json.put("amount",price);
-        json.put("hash",hash);
-        ErrorFactory.throwError(!web3HashCheckResult.isSuccess(),web3HashCheckResult.getFailMsg());
-        String orderId1 = Wx.MoneyRecordService.entityWeb3(
-                uid,
-                MoneyDirectionType.Reduce,
-                price,
-                MoneyRecordType.BUY_AGENT,
-                Web3Coin.BSC_USDT,
-                hash
-        );
-        if (Wx.notEmpty(member.getSourceInviteIdL1())){
-            String orderId2 = Wx.MoneyRecordService.changePoint(
-                    member.getSourceInviteIdL1(),
-                    MoneyDirectionType.Increase,
-                    price.multiply(new BigDecimal("0.1")),
-                    MoneyRecordType.BUY_AGENT_REWARD,
-                    Wx.PointWalletService.getSysPointWallet(member.getSourceInviteIdL1(), PointCoin.USDT)
-            );
-            Wx.MoneyRecordService.setMoreData(orderId2,json);
-        }
-        Wx.MoneyRecordService.setMoreData(orderId1,json);
-        Wx.SuperParamService.setVal("FinishAgentNum",finishAgentNum+1);
-
-        member.setAgent(true);
-        wxUpdateById(member,Member::getAgent);
-
-    }
 
 }

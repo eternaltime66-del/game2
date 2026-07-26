@@ -21,12 +21,17 @@ import java.math.BigDecimal;
 public class PointWalletService extends WxServiceImpl<PointWalletMapper, PointWallet> {
     @Transactional(rollbackFor = Exception.class)
     public void init(String uid) {
-        PointWallet pointWallet = new PointWallet();
-        pointWallet.setUid(uid);
-        pointWallet.setCoin(PointCoin.USDT);
-        pointWallet.setBalance(BigDecimal.ZERO);
-        pointWallet.setId(WordUnit.nowId(4, 1));
-        this.save(pointWallet);
+         for (int i = 0; i < PointCoin.values().length; i++) {
+             PointCoin[] values = PointCoin.values();
+             PointCoin value = values[i];
+             getSysPointWallet(uid,value);
+         }
+//        PointWallet pointWallet = new PointWallet();
+//        pointWallet.setUid(uid);
+//        pointWallet.setCoin(PointCoin.USDT);
+//        pointWallet.setBalance(BigDecimal.ZERO);
+//        pointWallet.setId(WordUnit.nowId(4, 1));
+//        this.save(pointWallet);
     }
 
     @Transactional(rollbackFor = Exception.class)

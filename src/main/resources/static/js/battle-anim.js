@@ -13,7 +13,19 @@
     });
   }
 
-  function findAttacker(oldMap, newUnits) {
+  function findAttacker(oldMap, newUnits, newBattle) {
+    var logs = (newBattle && newBattle.logs) || [];
+    var i;
+    for (i = logs.length - 1; i >= 0; i--) {
+      var log = logs[i];
+      if (log.type !== 'ACTION' || !log.actorName) continue;
+      var matched = null;
+      newUnits.forEach(function (u) {
+        if (u.name === log.actorName) matched = u;
+      });
+      if (matched) return matched;
+    }
+
     var candidate = null;
     newUnits.forEach(function (u) {
       var old = oldMap[u.unitId];
@@ -32,6 +44,20 @@
     });
   }
 
+  function findActionDamage(newBattle, target, oldUnit) {
+    var logs = newBattle.logs || [];
+    for (var i = logs.length - 1; i >= 0; i--) {
+      var log = logs[i];
+      if (log.type === 'ACTION' && log.targetName === target.name && log.damage != null) {
+        return String(log.damage);
+      }
+    }
+    if (oldUnit && target.hp != null) {
+      return String(Math.max(0, oldUnit.hp - target.hp));
+    }
+    return '0';
+  }
+
   window.BattleAnim = {
     TICK_MS: TICK_MS,
 
@@ -42,7 +68,7 @@
         oldMap[u.unitId] = u;
       });
 
-      var attacker = findAttacker(oldMap, newBattle.units);
+      var attacker = findAttacker(oldMap, newBattle.units, newBattle);
       var hpDrops = findHpDrops(oldMap, newBattle.units);
 
       var display = newBattle.units.map(function (u) {
@@ -115,6 +141,9 @@
             if (!displayUnit || !old) return Promise.resolve();
 
             vm.hitUnitId = target.unitId;
+            if (vm.spawnDamageFloat) {
+              vm.spawnDamageFloat(target.unitId, findActionDamage(newBattle, target, old));
+            }
             return animateHp(displayUnit, old.hp, target.hp).then(function () {
               displayUnit.hp = target.hp;
               displayUnit.alive = target.alive;

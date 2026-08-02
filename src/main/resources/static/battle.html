@@ -42,68 +42,84 @@
         <div
           v-for="unit in monsterUnits"
           :key="unit.unitId"
-          class="battle-unit monster compact"
-          :class="unitClasses(unit)"
+          class="battle-unit-wrap"
         >
-          <div class="unit-head">
-            <span class="unit-name">{{ unit.name }}</span>
-            <span class="unit-side">怪物</span>
+          <div
+            class="battle-unit monster compact"
+            :class="unitClasses(unit)"
+          >
+            <div class="unit-head">
+              <span class="unit-name">{{ unit.name }}</span>
+              <span class="unit-side">怪物</span>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">
+                <span>生命</span>
+                <span>{{ unit.hp }}/{{ unit.maxHp }}</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">
+                <span>行动条</span>
+                <span>{{ Math.round(unit.actionBar) }}/{{ unit.actionValue }}</span>
+              </div>
+              <div class="bar-track action-track">
+                <div
+                  class="bar-fill action"
+                  :class="actionBarClasses(unit)"
+                  :style="{ width: actionPercent(unit) + '%' }"
+                ></div>
+              </div>
+            </div>
           </div>
-          <div class="bar-row">
-            <div class="bar-label">
-              <span>生命</span>
-              <span>{{ unit.hp }}/{{ unit.maxHp }}</span>
-            </div>
-            <div class="bar-track">
-              <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
-            </div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-label">
-              <span>行动条</span>
-              <span>{{ Math.round(unit.actionBar) }}/{{ unit.actionValue }}</span>
-            </div>
-            <div class="bar-track action-track">
-              <div
-                class="bar-fill action"
-                :class="actionBarClasses(unit)"
-                :style="{ width: actionPercent(unit) + '%' }"
-              ></div>
-            </div>
-          </div>
+          <div
+            v-for="df in floatsForUnit(unit.unitId)"
+            :key="df.id"
+            class="damage-float"
+          >-{{ df.text }}</div>
         </div>
       </div>
 
       <div class="scene-spacer"></div>
 
       <div class="hero-slot" v-if="heroUnit">
-        <div class="battle-unit hero" :class="unitClasses(heroUnit)">
-          <div class="unit-head">
-            <span class="unit-name">{{ heroUnit.name }}</span>
-            <span class="unit-side">主角</span>
+        <div class="battle-unit-wrap">
+          <div class="battle-unit hero" :class="unitClasses(heroUnit)">
+            <div class="unit-head">
+              <span class="unit-name">{{ heroUnit.name }}</span>
+              <span class="unit-side">主角</span>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">
+                <span>生命</span>
+                <span>{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">
+                <span>行动条</span>
+                <span>{{ Math.round(heroUnit.actionBar) }}/{{ heroUnit.actionValue }}</span>
+              </div>
+              <div class="bar-track action-track">
+                <div
+                  class="bar-fill action"
+                  :class="actionBarClasses(heroUnit)"
+                  :style="{ width: actionPercent(heroUnit) + '%' }"
+                ></div>
+              </div>
+            </div>
           </div>
-          <div class="bar-row">
-            <div class="bar-label">
-              <span>生命</span>
-              <span>{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
-            </div>
-            <div class="bar-track">
-              <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
-            </div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-label">
-              <span>行动条</span>
-              <span>{{ Math.round(heroUnit.actionBar) }}/{{ heroUnit.actionValue }}</span>
-            </div>
-            <div class="bar-track action-track">
-              <div
-                class="bar-fill action"
-                :class="actionBarClasses(heroUnit)"
-                :style="{ width: actionPercent(heroUnit) + '%' }"
-              ></div>
-            </div>
-          </div>
+          <div
+            v-for="df in floatsForUnit(heroUnit.unitId)"
+            :key="df.id"
+            class="damage-float"
+          >-{{ df.text }}</div>
         </div>
       </div>
     </div>
@@ -120,24 +136,15 @@
       </button>
     </div>
 
-    <div class="log-ticker" @click="showLogFull = true">
-      <div class="log-ticker-label">战斗记录 · 点击查看全部</div>
-      <div class="log-ticker-viewport">
-        <div
-          v-if="tickerLogs.length"
-          class="log-ticker-slider"
-          :class="{ 'no-transition': logScrollNoTransition }"
-          :style="{ transform: 'translateY(-' + logScrollOffset + 'px)' }"
-        >
-          <div
-            v-for="(log, idx) in tickerLogs"
-            :key="'ticker-' + idx + '-' + log.text"
-            class="log-ticker-line"
-            :class="logClass(log.type)"
-          >{{ log.text }}</div>
-        </div>
-        <div v-else class="log-ticker-empty">暂无记录</div>
-      </div>
+    <div class="log-bar" @click="showLogFull = true">
+      <div class="log-bar-label">战斗记录 · 点击查看全部</div>
+      <div
+        v-if="latestLog"
+        class="log-bar-line"
+        :class="logClass(latestLog.type)"
+        v-html="formatLogHtml(latestLog)"
+      ></div>
+      <div v-else class="log-bar-empty">暂无记录</div>
     </div>
   </template>
 
@@ -153,8 +160,9 @@
           :key="idx"
           class="log-item"
           :class="logClass(log.type)"
-        >{{ log.text }}</div>
-        <div v-if="!allLogs.length" class="log-ticker-empty">暂无记录</div>
+          v-html="formatLogHtml(log)"
+        ></div>
+        <div v-if="!allLogs.length" class="log-bar-empty">暂无记录</div>
       </div>
     </div>
   </div>
@@ -165,6 +173,7 @@
 <script src="/js/config.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/battle-anim.js"></script>
+<script src="/js/battle-log-fmt.js"></script>
 <script>
 const { createApp } = Vue;
 
@@ -186,10 +195,7 @@ createApp({
       autoRunning: false,
       autoTimer: null,
       showLogFull: false,
-      logScrollIndex: 0,
-      logScrollTimer: null,
-      logScrollNoTransition: false,
-      logLineHeight: 20,
+      damageFloats: [],
       toast: { show: false, text: '', type: 'error' }
     };
   },
@@ -227,20 +233,6 @@ createApp({
       if (!this.battle || !this.battle.logs || !this.battle.logs.length) return null;
       return this.battle.logs[this.battle.logs.length - 1];
     },
-    tickerLogs() {
-      if (!this.battle || !this.battle.logs) return [];
-      var logs = this.battle.logs;
-      var actions = logs.filter(function (log) {
-        return log.type !== 'WAVE';
-      });
-      if (actions.length) {
-        return actions.slice(-8);
-      }
-      return logs.length ? [logs[logs.length - 1]] : [];
-    },
-    logScrollOffset() {
-      return this.logScrollIndex * this.logLineHeight;
-    },
     allLogs() {
       if (!this.battle || !this.battle.logs) return [];
       return this.battle.logs.slice().reverse();
@@ -258,16 +250,9 @@ createApp({
       return;
     }
     this.startBattle(stageId);
-    this.startLogScroll();
   },
   beforeUnmount() {
     this.stopAuto();
-    this.stopLogScroll();
-  },
-  watch: {
-    'battle.logs.length': function () {
-      this.syncLogScrollToLatest();
-    }
   },
   methods: {
     showToast(text, type) {
@@ -302,12 +287,25 @@ createApp({
       if (type === 'RESULT') return 'result';
       return '';
     },
+    formatLogHtml(log) {
+      return BattleLogFmt.html(log);
+    },
+    floatsForUnit(unitId) {
+      return this.damageFloats.filter(function (f) { return f.unitId === unitId; });
+    },
+    spawnDamageFloat(unitId, damage) {
+      var id = 'df-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+      this.damageFloats.push({ id: id, unitId: unitId, text: String(damage) });
+      var self = this;
+      setTimeout(function () {
+        self.damageFloats = self.damageFloats.filter(function (f) { return f.id !== id; });
+      }, 900);
+    },
     applyBattle(data, animateFrom) {
       var self = this;
       if (!animateFrom) {
         self.battle = data;
         self.renderUnits = (data.units || []).map(function (u) { return Object.assign({}, u); });
-        self.syncLogScrollToLatest(true);
         return Promise.resolve();
       }
       return BattleAnim.playStep(self, animateFrom, data);
@@ -388,57 +386,7 @@ createApp({
     },
     goHome() {
       this.stopAuto();
-      this.stopLogScroll();
       location.href = APP_CONFIG.homePage;
-    },
-    startLogScroll() {
-      var self = this;
-      self.stopLogScroll();
-      self.syncLogScrollToLatest(false);
-      self.logScrollTimer = setInterval(function () {
-        self.stepLogScroll();
-      }, 2600);
-    },
-    stepLogScroll() {
-      var logs = this.tickerLogs;
-      if (logs.length <= 1) {
-        this.syncLogScrollToLatest(false);
-        return;
-      }
-      var maxIndex = logs.length - 1;
-      if (this.logScrollIndex <= 0) {
-        this.logScrollNoTransition = true;
-        this.logScrollIndex = maxIndex;
-        var self = this;
-        setTimeout(function () {
-          self.logScrollNoTransition = false;
-        }, 50);
-      } else {
-        this.logScrollIndex--;
-      }
-    },
-    stopLogScroll() {
-      if (this.logScrollTimer) {
-        clearInterval(this.logScrollTimer);
-        this.logScrollTimer = null;
-      }
-    },
-    syncLogScrollToLatest(snap) {
-      if (snap === undefined) snap = true;
-      if (!this.tickerLogs.length) {
-        this.logScrollIndex = 0;
-        return;
-      }
-      if (snap) {
-        this.logScrollNoTransition = true;
-      }
-      this.logScrollIndex = this.tickerLogs.length - 1;
-      if (snap) {
-        var self = this;
-        setTimeout(function () {
-          self.logScrollNoTransition = false;
-        }, 50);
-      }
     }
   }
 }).mount('#app');

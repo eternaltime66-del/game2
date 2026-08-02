@@ -115,12 +115,8 @@ public class BattleEngine {
         applyDamage(target, damage);
         resetActionBar(actor);
 
-        String text = actor.getName() + " 攻击 " + target.getName()
-                + " 造成 " + damage.stripTrailingZeros().toPlainString() + " 伤害";
-        if (!target.isAlive()) {
-            text += "，" + target.getName() + " 死亡";
-        }
-        return BattleLog.of(BattleLog.TYPE_ACTION, text);
+        String damageText = damage.stripTrailingZeros().toPlainString();
+        return BattleLog.action(actor.getName(), target.getName(), damageText, !target.isAlive());
     }
 
     public static void refreshAliveState(BattleState state) {

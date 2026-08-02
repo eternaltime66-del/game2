@@ -40,6 +40,10 @@ build/
 target/
 logs/
 
+# Tooling deps
+tools/node_modules/
+tools/package-lock.json
+
 # Log file
 *.log
 

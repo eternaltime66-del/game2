@@ -1,0 +1,44 @@
+[
+  {
+    "file": "img/weapons/weapon-sword-short.png",
+    "name": "weapon-sword-short",
+    "width": 419,
+    "height": 469
+  },
+  {
+    "file": "img/weapons/weapon-bow.png",
+    "name": "weapon-bow",
+    "width": 431,
+    "height": 460
+  },
+  {
+    "file": "img/weapons/weapon-dagger-dark.png",
+    "name": "weapon-dagger-dark",
+    "width": 395,
+    "height": 464
+  },
+  {
+    "file": "img/weapons/weapon-shield.png",
+    "name": "weapon-shield",
+    "width": 419,
+    "height": 497
+  },
+  {
+    "file": "img/weapons/item-scroll.png",
+    "name": "item-scroll",
+    "width": 390,
+    "height": 467
+  },
+  {
+    "file": "img/weapons/prop-shrine.png",
+    "name": "prop-shrine",
+    "width": 418,
+    "height": 392
+  },
+  {
+    "file": "img/weapons/item-compass.png",
+    "name": "item-compass",
+    "width": 421,
+    "height": 461
+  }
+]

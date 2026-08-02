@@ -11,6 +11,8 @@ import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 import org.wx.core.wxBusiness.game.entity.GameHero;
 import org.wx.core.wxBusiness.game.entity.GameStage;
+import org.wx.core.wxBusiness.game.entity.GameStageSelectVo;
+import org.wx.core.wxBusiness.game.service.GameBattleService;
 import org.wx.core.wxBusiness.game.service.GameHeroService;
 import org.wx.core.wxBusiness.game.service.GameLevelService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
@@ -26,6 +28,8 @@ public class A3GameController {
     private GameHeroService gameHeroService;
     @Resource
     private GameLevelService gameLevelService;
+    @Resource
+    private GameBattleService gameBattleService;
 
     /**
      * 主角详情
@@ -57,5 +61,20 @@ public class A3GameController {
             @ParamCheck(msg = "大关卡ID") String chapterId
     ) {
         return WxResult.success(gameLevelService.listStagesByChapterId(chapterId));
+    }
+
+    /**
+     * 选关列表（仅小关，不含波次）
+     */
+    @PostMapping("/level/stage/select/list")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<java.util.List<GameStageSelectVo>> stageSelectList(
+            @ParamCheck(msg = "大关卡ID", notNull = false) String chapterId
+    ) {
+        if (chapterId == null || chapterId.isBlank()) {
+            chapterId = "chapter_main";
+        }
+        return WxResult.success(gameBattleService.listSelectableStages(chapterId));
     }
 }

@@ -30,6 +30,26 @@
     </div>
   </div>
 
+  <div class="stage-panel" v-if="!loading">
+    <div class="stage-panel-head">
+      <h2>选关</h2>
+      <span class="muted" v-if="selectedStage">已选 {{ selectedStage.displayCode }}</span>
+    </div>
+    <div class="stage-grid">
+      <button
+        v-for="stage in stages"
+        :key="stage.id"
+        class="stage-chip"
+        :class="{ active: selectedStageId === stage.id }"
+        @click="selectStage(stage)"
+      >
+        <span class="stage-chip-code">{{ stage.displayCode }}</span>
+        <span class="stage-chip-name">{{ stage.name }}</span>
+        <span class="stage-chip-waves">{{ stage.waveCount }} 波</span>
+      </button>
+    </div>
+  </div>
+
   <div v-if="showDetail && hero" class="modal-mask" @click.self="showDetail = false">
     <div class="modal-card">
       <h2 class="modal-title">{{ hero.name }}</h2>
@@ -57,6 +77,8 @@ createApp({
       loading: true,
       showDetail: false,
       hero: null,
+      stages: [],
+      selectedStageId: localStorage.getItem(APP_CONFIG.selectedStageKey) || '',
       toast: { show: false, text: '', type: 'error' }
     };
   },
@@ -68,6 +90,9 @@ createApp({
         { label: '生命值', value: this.hero.hp + '/' + this.hero.maxHp },
         { label: '行动值', value: String(this.hero.actionValue) }
       ];
+    },
+    selectedStage() {
+      return this.stages.find((s) => s.id === this.selectedStageId) || null;
     }
   },
   mounted() {
@@ -76,6 +101,7 @@ createApp({
       return;
     }
     this.loadHero();
+    this.loadStages();
   },
   methods: {
     showToast(text, type) {
@@ -89,6 +115,24 @@ createApp({
         })
         .catch((err) => this.showToast(err.message))
         .finally(() => { this.loading = false; });
+    },
+    loadStages() {
+      GameApi.getStageSelectList('chapter_main')
+        .then((res) => {
+          this.stages = res.data || [];
+          if (!this.selectedStageId && this.stages.length) {
+            this.selectStage(this.stages[0], false);
+          }
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    selectStage(stage, showTip) {
+      if (showTip === undefined) showTip = true;
+      this.selectedStageId = stage.id;
+      localStorage.setItem(APP_CONFIG.selectedStageKey, stage.id);
+      if (showTip) {
+        this.showToast('已选择 ' + stage.displayCode, 'success');
+      }
     },
     logout() {
       GameApi.clearToken();

@@ -86,6 +86,25 @@
     },
     saveStage: function (body) {
       return request('/back/game/level/stage/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    monsterList: function (query) {
+      return request('/back/game/battle/monster/list', {
+        json: true,
+        body: {},
+        query: query || { current: 1, size: 50 }
+      }).then(ensureSuccess);
+    },
+    saveMonster: function (body) {
+      return request('/back/game/battle/monster/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    saveWave: function (body) {
+      return request('/back/game/battle/wave/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    saveWaveMonster: function (body) {
+      return request('/back/game/battle/wave-monster/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    stageBattleDetail: function (stageId) {
+      return request('/back/game/battle/stage/detail', { body: { stageId: stageId } }).then(ensureSuccess);
     }
   };
 })(window);

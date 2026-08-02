@@ -84,6 +84,11 @@
     },
     getHeroInfo: function () {
       return request('/api/game/hero/info', {}).then(ensureSuccess);
+    },
+    getStageSelectList: function (chapterId) {
+      return request('/api/game/level/stage/select/list', {
+        chapterId: chapterId || 'chapter_main'
+      }).then(ensureSuccess);
     }
   };
 })(window);

@@ -42,6 +42,7 @@
     <div class="admin-tabs">
       <button class="admin-tab" :class="{ active: tab === 'member' }" @click="tab='member'">用户管理</button>
       <button class="admin-tab" :class="{ active: tab === 'level' }" @click="switchLevel">关卡管理</button>
+      <button class="admin-tab" :class="{ active: tab === 'battle' }" @click="switchBattle">波次/怪物</button>
     </div>
 
     <div v-if="tab === 'member'" class="admin-card">
@@ -111,6 +112,64 @@
         <p class="muted" style="margin-top:10px">默认数据：sg_1(1-x)、sg_2(2-x)，大关卡 chapter_main，模式组 mode_core</p>
       </div>
     </div>
+
+    <div v-if="tab === 'battle'">
+      <div class="admin-card">
+        <h3>怪物列表</h3>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>行动值</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in monsters" :key="m.id">
+                <td>{{ m.code }}</td>
+                <td>{{ m.name }}</td>
+                <td>{{ m.hp }}/{{ m.maxHp }}</td>
+                <td>{{ m.attack }}</td>
+                <td>{{ m.actionValue }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>小关波次详情</h3>
+        <div class="form-grid">
+          <div class="field full">
+            <label>小关卡 ID</label>
+            <input v-model="battleStageId" placeholder="st_1_2">
+          </div>
+        </div>
+        <button class="btn-primary" style="margin-top:12px" @click="loadStageBattle">加载</button>
+        <div v-if="stageBattle.stage" class="level-tree" style="margin-top:14px">
+          <div class="title">{{ stageBattle.stage.displayCode || stageBattle.stage.name }}</div>
+          <div class="level-block" v-for="wave in stageBattle.waves" :key="wave.wave.id">
+            <div class="sub">[{{ wave.wave.name }}] waveNo={{ wave.wave.waveNo }}</div>
+            <div class="stage-tags">
+              <span class="stage-tag" v-for="item in wave.monsters" :key="item.id">
+                {{ item.monsterName }} x{{ item.quantity }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>快速配置</h3>
+        <div class="form-grid">
+          <div class="field full"><label>新增波次 stageId</label><input v-model="waveForm.stageId"></div>
+          <div class="field"><label>waveNo</label><input v-model.number="waveForm.waveNo" type="number"></div>
+          <div class="field"><label>名称</label><input v-model="waveForm.name"></div>
+          <div class="field full"><label>波次怪物 waveId</label><input v-model="waveMonsterForm.waveId"></div>
+          <div class="field"><label>monsterId</label><input v-model="waveMonsterForm.monsterId"></div>
+          <div class="field"><label>数量</label><input v-model.number="waveMonsterForm.quantity" type="number"></div>
+        </div>
+        <button class="btn-primary" style="margin-top:12px;margin-right:8px" @click="saveWave">保存波次</button>
+        <button class="btn-primary" style="margin-top:12px" @click="saveWaveMonster">保存波次怪物</button>
+      </div>
+    </div>
   </template>
 
   <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
@@ -132,6 +191,11 @@ createApp({
       pager: null,
       levelTree: { modeGroups: [] },
       stageForm: { stageGroupId: 'sg_1', stageNo: 3, sort: 3, name: '1-3 新关卡', enabled: 1 },
+      monsters: [],
+      battleStageId: 'st_1_2',
+      stageBattle: { stage: null, waves: [] },
+      waveForm: { stageId: 'st_1_2', waveNo: 4, name: '第4波', sort: 4, enabled: 1 },
+      waveMonsterForm: { waveId: 'wave_1_2_1', monsterId: 'mon_goblin', quantity: 1, sort: 1 },
       toast: { show: false, text: '', type: 'error' }
     };
   },
@@ -190,6 +254,28 @@ createApp({
           this.showToast('保存成功', 'success');
           this.switchLevel();
         })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchBattle() {
+      this.tab = 'battle';
+      AdminApi.monsterList({ current: 1, size: 50 })
+        .then((res) => { this.monsters = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+      this.loadStageBattle();
+    },
+    loadStageBattle() {
+      AdminApi.stageBattleDetail(this.battleStageId)
+        .then((res) => { this.stageBattle = res.data || { stage: null, waves: [] }; })
+        .catch((err) => this.showToast(err.message));
+    },
+    saveWave() {
+      AdminApi.saveWave(this.waveForm)
+        .then(() => { this.showToast('波次已保存', 'success'); this.loadStageBattle(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    saveWaveMonster() {
+      AdminApi.saveWaveMonster(this.waveMonsterForm)
+        .then(() => { this.showToast('波次怪物已保存', 'success'); this.loadStageBattle(); })
         .catch((err) => this.showToast(err.message));
     }
   }

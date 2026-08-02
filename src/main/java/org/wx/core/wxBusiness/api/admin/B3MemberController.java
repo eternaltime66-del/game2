@@ -63,23 +63,6 @@ public class B3MemberController {
         return WxResult.success();
     }
 
-    /**
-     * 整条线设置 锁定登录
-     */
-    @PostMapping("/set/lock")
-    @WxRequestLog()
-    @NeedHeader(roles = {MemberRole.ADMIN})
-    public WxResult<List<Member>> setLock(
-            @RequestBody Member entity
-    ) {
-        LambdaUpdateWrapper<Member> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.like(Member::getSourceInviteIds,entity.getSourceInviteIdL1());
-        wrapper.set(Member::getLock,entity.getLock());
-        Wx.MemberService.update(wrapper);
-        return WxResult.success();
-    }
-
-
 
 
     /**

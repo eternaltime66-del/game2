@@ -48,6 +48,14 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- 开发热更新：静态资源 LiveReload -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
         <!-- ===================== Servlet适配（Spring Boot 3.x用Jakarta替代javax） ===================== -->
         <dependency>
             <groupId>jakarta.servlet</groupId>

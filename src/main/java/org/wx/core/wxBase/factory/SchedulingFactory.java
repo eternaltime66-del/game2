@@ -3,6 +3,7 @@ package org.wx.core.wxBase.factory;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.wx.core.web3unit.Web3HashCheckResult;
@@ -21,6 +22,7 @@ import org.wx.core.wxBusiness.account.service.Web3RechargeService;
 
 @Slf4j
 @Service("SchedulingFactory")
+@ConditionalOnProperty(prefix = "wx.recharge-watch", name = "enabled", havingValue = "true")
 public class SchedulingFactory {
 
     @Resource

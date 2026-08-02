@@ -1,6 +1,7 @@
 package org.wx.core.wxBusiness.account.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.transaction.annotation.Transactional;
@@ -141,6 +142,7 @@ public class Member extends WxBaseEntity<Member> {
      * 地址
      */
     @TableField(exist = false)
+    @JsonIgnore
     private UserMore more = new UserMore();
 
     @TableField(exist = false)
@@ -177,15 +179,7 @@ public class Member extends WxBaseEntity<Member> {
     private String inviteCode;
 
     /**
-     * 是否为节点用户
-     */
-    private Boolean agent;
-
-    /**
      * 层级排序
      */
     private Integer level;
-
-    @TableField(value = "`lock`")
-    private Boolean lock;
 }

@@ -78,10 +78,6 @@ public final class Wx extends WxQuickFunction {
 
         Member member = MemberService.getById(uid);
         ErrorFactory.throwError(member==null,"403","登录超时");
-        if (member != null && member.getLock() != null && member.getLock()) {
-            Wx.RedisFactory.setBuySeconds(token, null, 1);
-            ErrorFactory.throwError("登录超时");
-        }
         ReqContextHolder.quickSet("uid",member.getId());
         return member;
     }

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>首页</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <script src="/js/dev-live.js"></script>
+  <style>
+    .home-card {
+      text-align: center;
+      padding: 28px 20px;
+    }
+    .home-card h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+    .home-card p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+      word-break: break-all;
+    }
+    .btn-outline {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="brand">
+    <div class="brand-badge">G</div>
+    <h1>Game</h1>
+    <p>登录成功，游戏主页占位</p>
+  </div>
+
+  <div class="card home-card">
+    <h2>已登录</h2>
+    <p id="tokenText">Token 加载中...</p>
+    <button class="btn-primary" onclick="location.href='/login.html'">返回登录页</button>
+    <button class="btn-outline" onclick="logout()">退出登录</button>
+  </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+  var token = GameApi.getToken();
+  if (!token) {
+    location.href = APP_CONFIG.loginPage;
+  } else {
+    document.getElementById('tokenText').textContent = 'Token: ' + token.slice(0, 16) + '...';
+  }
+
+  function logout() {
+    GameApi.clearToken();
+    location.href = APP_CONFIG.loginPage;
+  }
+</script>
+</body>
+</html>

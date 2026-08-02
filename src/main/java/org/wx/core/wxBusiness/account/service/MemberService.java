@@ -214,8 +214,6 @@ public class MemberService extends WxServiceImpl<MemberMapper, Member> {
 
         if (member == null) {
             member = addUser(address, null, null, null, null, null);
-        }else {
-            ErrorFactory.throwError(member.getLock()!=null && member.getLock(),"lock...");
         }
         member.setToken(Member.creteToken());
         Wx.RedisFactory.setBuyDay(member.getToken(), member.getId(), 7);

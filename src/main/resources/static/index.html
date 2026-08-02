@@ -22,9 +22,7 @@
   <div class="home-scene">
     <div v-if="loading" class="loading-text">加载中...</div>
     <div v-else class="hero-actor" @click="showDetail = true">
-      <div class="hero-body">
-        <div class="hero-head"></div>
-      </div>
+      <img class="hero-sprite" src="/img/hero-protagonist.png" :alt="hero.name || '主角'">
       <div class="hero-label">{{ hero.name || '主角' }}</div>
       <div class="hero-tip">点击查看详情</div>
     </div>
@@ -32,6 +30,7 @@
 
   <div v-if="showDetail && hero" class="modal-mask" @click.self="showDetail = false">
     <div class="modal-card">
+      <img class="modal-hero" src="/img/hero-protagonist.png" :alt="hero.name">
       <h2 class="modal-title">{{ hero.name }}</h2>
       <div class="stat-list">
         <div class="stat-row" v-for="item in statRows" :key="item.label">

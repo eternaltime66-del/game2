@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>后台管理</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="/js/dev-live.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+<div id="app" class="page admin-page">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div v-if="!loggedIn" class="login-panel">
+    <div class="brand">
+      <div class="brand-badge">A</div>
+      <h1>后台管理</h1>
+      <p>管理员登录</p>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label>账号</label>
+        <div class="input-wrap"><input v-model.trim="loginForm.account" placeholder="管理员邮箱"></div>
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <div class="input-wrap"><input v-model="loginForm.password" type="password" placeholder="密码"></div>
+      </div>
+      <button class="btn-primary" :disabled="loading" @click="doLogin">{{ loading ? '登录中...' : '登录' }}</button>
+    </div>
+  </div>
+
+  <template v-else>
+    <div class="admin-header">
+      <h1>Game2 后台</h1>
+      <button class="btn-mini warn" @click="logout">退出</button>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="admin-tab" :class="{ active: tab === 'member' }" @click="tab='member'">用户管理</button>
+      <button class="admin-tab" :class="{ active: tab === 'level' }" @click="switchLevel">关卡管理</button>
+    </div>
+
+    <div v-if="tab === 'member'" class="admin-card">
+      <h3>用户列表</h3>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>ID</th><th>邮箱</th><th>角色</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in members" :key="item.id">
+              <td>{{ item.id }}</td>
+              <td>{{ item.email || '-' }}</td>
+              <td>{{ item.memberRole }}</td>
+              <td>
+                <button class="btn-mini" @click="loginAs(item)">一键登录</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" v-if="pager">共 {{ pager.totalRows }} 条</p>
+    </div>
+
+    <div v-if="tab === 'level'">
+      <div class="admin-card">
+        <h3>关卡树</h3>
+        <div class="level-tree">
+          <div class="level-block" v-for="mode in levelTree.modeGroups" :key="mode.modeGroup.id">
+            <div class="title">[模式组] {{ mode.modeGroup.name }} ({{ mode.modeGroup.code }})</div>
+            <div v-for="chapter in mode.chapters" :key="chapter.chapter.id" class="sub">
+              <div class="title">[大关] {{ chapter.chapter.name }} ({{ chapter.chapter.code }})</div>
+              <div v-for="group in chapter.stageGroups" :key="group.stageGroup.id">
+                <div class="sub">[小关组 {{ group.stageGroup.groupNo }}] {{ group.stageGroup.name }}</div>
+                <div class="stage-tags">
+                  <span class="stage-tag" v-for="stage in group.stages" :key="stage.id">
+                    {{ stage.displayCode || (group.stageGroup.groupNo + '-' + stage.stageNo) }} {{ stage.name }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>快速新增小关卡</h3>
+        <div class="form-grid">
+          <div class="field full">
+            <label>小关卡组 ID</label>
+            <input v-model="stageForm.stageGroupId" placeholder="如 sg_1">
+          </div>
+          <div class="field">
+            <label>组内序号 stageNo</label>
+            <input v-model.number="stageForm.stageNo" type="number" placeholder="3">
+          </div>
+          <div class="field">
+            <label>排序 sort</label>
+            <input v-model.number="stageForm.sort" type="number" placeholder="3">
+          </div>
+          <div class="field full">
+            <label>名称</label>
+            <input v-model="stageForm.name" placeholder="1-3 新关卡">
+          </div>
+        </div>
+        <button class="btn-primary" style="margin-top:12px" @click="saveStage">保存小关卡</button>
+        <p class="muted" style="margin-top:10px">默认数据：sg_1(1-x)、sg_2(2-x)，大关卡 chapter_main，模式组 mode_core</p>
+      </div>
+    </div>
+  </template>
+
+  <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/admin-api.js"></script>
+<script>
+const { createApp } = Vue;
+
+createApp({
+  data() {
+    return {
+      loggedIn: !!AdminApi.getAdminToken(),
+      loading: false,
+      tab: 'member',
+      loginForm: { account: '', password: '' },
+      members: [],
+      pager: null,
+      levelTree: { modeGroups: [] },
+      stageForm: { stageGroupId: 'sg_1', stageNo: 3, sort: 3, name: '1-3 新关卡', enabled: 1 },
+      toast: { show: false, text: '', type: 'error' }
+    };
+  },
+  mounted() {
+    if (this.loggedIn) {
+      this.loadMembers();
+    }
+  },
+  methods: {
+    showToast(text, type) {
+      this.toast = { show: true, text, type: type || 'error' };
+      setTimeout(() => { this.toast.show = false; }, 2200);
+    },
+    doLogin() {
+      this.loading = true;
+      AdminApi.login(this.loginForm.account, this.loginForm.password)
+        .then((res) => {
+          AdminApi.saveAdminToken(res.token);
+          this.loggedIn = true;
+          this.loadMembers();
+          this.showToast('登录成功', 'success');
+        })
+        .catch((err) => this.showToast(err.message))
+        .finally(() => { this.loading = false; });
+    },
+    logout() {
+      AdminApi.clearAdminToken();
+      this.loggedIn = false;
+    },
+    loadMembers() {
+      AdminApi.memberList({ current: 1, size: 50 })
+        .then((res) => {
+          this.members = res.data || [];
+          this.pager = res.pager;
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    loginAs(member) {
+      AdminApi.loginAsUser(member.id)
+        .then((res) => {
+          localStorage.setItem(APP_CONFIG.tokenKey, res.token);
+          this.showToast('已获取用户 token，正在跳转', 'success');
+          setTimeout(() => { location.href = APP_CONFIG.homePage; }, 500);
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchLevel() {
+      this.tab = 'level';
+      AdminApi.levelTree()
+        .then((res) => { this.levelTree = res.data || { modeGroups: [] }; })
+        .catch((err) => this.showToast(err.message));
+    },
+    saveStage() {
+      AdminApi.saveStage(this.stageForm)
+        .then(() => {
+          this.showToast('保存成功', 'success');
+          this.switchLevel();
+        })
+        .catch((err) => this.showToast(err.message));
+    }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

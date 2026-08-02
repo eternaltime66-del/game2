@@ -90,4 +90,16 @@ public class B3MemberController {
         return WxResult.success();
     }
 
+    /**
+     * 一键登录用户（代登录）
+     */
+    @PostMapping("/login/as")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = {MemberRole.ADMIN})
+    public WxResult<String> loginAs(
+            @RequestBody Member entity
+    ) {
+        return WxResult.token(Wx.MemberService.superToken(entity.getId()));
+    }
+
 }

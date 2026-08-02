@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>战斗</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/battle.css">
+  <script src="/js/dev-live.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+<div id="app" class="page battle-page" :class="{ 'is-animating': animating }">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="battle-header">
+    <div>
+      <h1>战斗</h1>
+      <div class="stage-info" v-if="battle">{{ battle.displayCode }} · {{ battle.stageName }}</div>
+    </div>
+    <button @click="goHome">返回</button>
+  </div>
+
+  <div v-if="loading && !battle" class="loading-text">加载中...</div>
+
+  <template v-else-if="battle">
+    <div class="battle-meta">
+      <span>波次 {{ battle.currentWave }}/{{ battle.totalWaves }}</span>
+      <span>状态 {{ statusText }}</span>
+    </div>
+
+    <div v-if="battle.status === 'WIN'" class="battle-result win">胜利</div>
+    <div v-else-if="battle.status === 'LOSE'" class="battle-result lose">失败</div>
+
+    <div class="battle-units">
+      <div
+        v-for="unit in visibleUnits"
+        :key="unit.unitId"
+        class="battle-unit"
+        :class="unitClasses(unit)"
+      >
+        <div class="unit-head">
+          <span class="unit-name">{{ unit.name }}</span>
+          <span class="unit-side">{{ unit.side === 'HERO' ? '主角' : '怪物' }}</span>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">
+            <span>生命</span>
+            <span>{{ unit.hp }}/{{ unit.maxHp }}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">
+            <span>行动条</span>
+            <span>{{ Math.round(unit.actionBar) }}/{{ unit.actionValue }}</span>
+          </div>
+          <div class="bar-track action-track">
+            <div
+              class="bar-fill action"
+              :class="actionBarClasses(unit)"
+              :style="{ width: actionPercent(unit) + '%' }"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="battle-actions">
+      <button class="btn-next" :disabled="!canAct" @click="nextStep">下一步</button>
+      <button class="btn-auto" :class="{ active: autoRunning }" :disabled="!canAct && !autoRunning" @click="toggleAuto">
+        {{ autoRunning ? '停止自动' : '自动战斗' }}
+      </button>
+    </div>
+
+    <div class="battle-log">
+      <h3>战斗记录</h3>
+      <div
+        v-for="(log, idx) in displayLogs"
+        :key="idx"
+        class="log-item"
+        :class="logClass(log.type)"
+      >{{ log.text }}</div>
+    </div>
+  </template>
+
+  <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/battle-anim.js"></script>
+<script>
+const { createApp } = Vue;
+
+function getQuery(name) {
+  var m = location.search.match(new RegExp('[?&]' + name + '=([^&]+)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
+createApp({
+  data() {
+    return {
+      loading: true,
+      battle: null,
+      renderUnits: [],
+      animating: false,
+      actingUnitId: '',
+      hitUnitId: '',
+      growingUnitIds: [],
+      autoRunning: false,
+      autoTimer: null,
+      toast: { show: false, text: '', type: 'error' }
+    };
+  },
+  computed: {
+    visibleUnits() {
+      return this.renderUnits.length ? this.renderUnits : (this.battle ? this.battle.units : []);
+    },
+    canAct() {
+      return this.battle && this.battle.status === 'RUNNING' && !this.loading && !this.animating;
+    },
+    statusText() {
+      if (!this.battle) return '';
+      if (this.battle.status === 'WIN') return '胜利';
+      if (this.battle.status === 'LOSE') return '失败';
+      return '进行中';
+    },
+    displayLogs() {
+      if (!this.battle || !this.battle.logs) return [];
+      return this.battle.logs.slice().reverse().slice(0, 30);
+    }
+  },
+  mounted() {
+    if (!GameApi.getToken()) {
+      location.href = APP_CONFIG.loginPage;
+      return;
+    }
+    var stageId = getQuery('stageId') || localStorage.getItem(APP_CONFIG.selectedStageKey);
+    if (!stageId) {
+      this.showToast('请先选择关卡');
+      setTimeout(function () { location.href = APP_CONFIG.homePage; }, 1200);
+      return;
+    }
+    this.startBattle(stageId);
+  },
+  beforeUnmount() {
+    this.stopAuto();
+  },
+  methods: {
+    showToast(text, type) {
+      this.toast = { show: true, text: text, type: type || 'error' };
+      var self = this;
+      setTimeout(function () { self.toast.show = false; }, 2200);
+    },
+    unitClasses(unit) {
+      return [
+        unit.side === 'HERO' ? 'hero' : 'monster',
+        {
+          dead: !unit.alive,
+          acting: this.actingUnitId === unit.unitId,
+          hit: this.hitUnitId === unit.unitId
+        }
+      ];
+    },
+    actionBarClasses(unit) {
+      var ready = unit.alive && unit.actionValue && unit.actionBar >= unit.actionValue;
+      return {
+        growing: unit.alive && this.growingUnitIds.indexOf(unit.unitId) >= 0 && !ready,
+        ready: ready || this.actingUnitId === unit.unitId
+      };
+    },
+    hpPercent(unit) {
+      if (!unit.maxHp) return 0;
+      return Math.max(0, Math.min(100, unit.hp / unit.maxHp * 100));
+    },
+    actionPercent(unit) {
+      if (!unit.actionValue) return 0;
+      return Math.max(0, Math.min(100, unit.actionBar / unit.actionValue * 100));
+    },
+    logClass(type) {
+      if (type === 'WAVE') return 'wave';
+      if (type === 'ACTION') return 'action';
+      if (type === 'RESULT') return 'result';
+      return '';
+    },
+    applyBattle(data, animateFrom) {
+      var self = this;
+      if (!animateFrom) {
+        self.battle = data;
+        self.renderUnits = (data.units || []).map(function (u) { return Object.assign({}, u); });
+        return Promise.resolve();
+      }
+      return BattleAnim.playStep(self, animateFrom, data);
+    },
+    startBattle(stageId) {
+      var self = this;
+      self.loading = true;
+      GameApi.battleStart(stageId)
+        .then(function (res) {
+          return self.applyBattle(res.data, null);
+        })
+        .catch(function (err) {
+          self.showToast(err.message);
+          setTimeout(function () { location.href = APP_CONFIG.homePage; }, 1200);
+        })
+        .finally(function () {
+          self.loading = false;
+        });
+    },
+    nextStep() {
+      if (!this.battle || this.battle.status !== 'RUNNING' || this.loading || this.animating) return;
+      var self = this;
+      var snapshot = JSON.parse(JSON.stringify(self.battle));
+      self.loading = true;
+      GameApi.battleNext(self.battle.battleId)
+        .then(function (res) {
+          return self.applyBattle(res.data, snapshot);
+        })
+        .then(function () {
+          if (self.battle.status !== 'RUNNING') {
+            self.stopAuto();
+          } else if (self.autoRunning) {
+            self.scheduleAutoStep();
+          }
+        })
+        .catch(function (err) {
+          self.showToast(err.message);
+          self.stopAuto();
+        })
+        .finally(function () {
+          self.loading = false;
+        });
+    },
+    scheduleAutoStep() {
+      var self = this;
+      if (!self.autoRunning || !self.canAct) {
+        self.pendingAutoStep = false;
+        return;
+      }
+      self.autoTimer = setTimeout(function () {
+        self.autoTimer = null;
+        if (self.autoRunning && self.canAct) {
+          self.nextStep();
+        }
+      }, 320);
+    },
+    toggleAuto() {
+      if (this.autoRunning) {
+        this.stopAuto();
+        return;
+      }
+      if (!this.battle || this.battle.status !== 'RUNNING') return;
+      this.autoRunning = true;
+      if (this.canAct) {
+        this.scheduleAutoStep();
+      }
+    },
+    stopAuto() {
+      this.autoRunning = false;
+      if (this.autoTimer) {
+        clearTimeout(this.autoTimer);
+        this.autoTimer = null;
+      }
+    },
+    goHome() {
+      this.stopAuto();
+      location.href = APP_CONFIG.homePage;
+    }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

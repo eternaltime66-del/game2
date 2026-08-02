@@ -12,9 +12,11 @@ import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 import org.wx.core.wxBusiness.game.entity.GameHero;
 import org.wx.core.wxBusiness.game.entity.GameStage;
 import org.wx.core.wxBusiness.game.entity.GameStageSelectVo;
+import org.wx.core.wxBusiness.game.entity.BattleState;
 import org.wx.core.wxBusiness.game.service.GameBattleService;
 import org.wx.core.wxBusiness.game.service.GameHeroService;
 import org.wx.core.wxBusiness.game.service.GameLevelService;
+import org.wx.core.wxBusiness.game.service.PveBattleService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
 
 /**
@@ -30,6 +32,8 @@ public class A3GameController {
     private GameLevelService gameLevelService;
     @Resource
     private GameBattleService gameBattleService;
+    @Resource
+    private PveBattleService pveBattleService;
 
     /**
      * 主角详情
@@ -76,5 +80,41 @@ public class A3GameController {
             chapterId = "chapter_main";
         }
         return WxResult.success(gameBattleService.listSelectableStages(chapterId));
+    }
+
+    /**
+     * 开始战斗
+     */
+    @PostMapping("/battle/start")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<BattleState> battleStart(
+            @ParamCheck(msg = "小关卡ID") String stageId
+    ) {
+        return WxResult.success(pveBattleService.startBattle(Wx.memberId(), stageId));
+    }
+
+    /**
+     * 战斗下一步（行动条推进至可出手并执行一次攻击）
+     */
+    @PostMapping("/battle/next")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<BattleState> battleNext(
+            @ParamCheck(msg = "战斗ID") String battleId
+    ) {
+        return WxResult.success(pveBattleService.nextStep(Wx.memberId(), battleId));
+    }
+
+    /**
+     * 战斗状态
+     */
+    @PostMapping("/battle/state")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<BattleState> battleState(
+            @ParamCheck(msg = "战斗ID") String battleId
+    ) {
+        return WxResult.success(pveBattleService.getBattle(Wx.memberId(), battleId));
     }
 }

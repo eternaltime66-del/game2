@@ -2,10 +2,12 @@ spring:
   devtools:
     livereload:
       enabled: true
+      port: 35729
     restart:
       enabled: true
-      additional-paths:
-        - src/main/resources/static
+      poll-interval: 1s
+      quiet-period: 400ms
+      log-condition: delta-time
   web:
     resources:
       static-locations:

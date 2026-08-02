@@ -261,3 +261,21 @@
   font-size: 11px;
   color: rgba(53, 215, 255, 0.95);
 }
+
+.battle-start-btn {
+  width: 100%;
+  margin-top: 14px;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #7c5cff, #35d7ff);
+}
+
+.battle-start-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

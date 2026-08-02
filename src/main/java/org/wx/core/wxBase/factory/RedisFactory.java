@@ -33,6 +33,18 @@ public class RedisFactory {
         setBuySeconds(key,value,time*60);
     }
 
+    public void setStrBuySeconds(String key, String value, long time) {
+        if (time > 0) {
+            stringRedisTemplate.opsForValue().set(key, value, time, TimeUnit.SECONDS);
+        } else {
+            stringRedisTemplate.opsForValue().set(key, value);
+        }
+    }
+
+    public void setStrBuyHour(String key, String value, long hours) {
+        setStrBuySeconds(key, value, hours * 3600);
+    }
+
     public Boolean autoValidation(String key, Integer max) {
         Integer value = this.get(key, Integer.class);
         if(value==null){

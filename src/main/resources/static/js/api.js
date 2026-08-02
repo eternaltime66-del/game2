@@ -89,6 +89,21 @@
       return request('/api/game/level/stage/select/list', {
         chapterId: chapterId || 'chapter_main'
       }).then(ensureSuccess);
+    },
+    battleStart: function (stageId) {
+      return request('/api/game/battle/start', {
+        stageId: stageId
+      }).then(ensureSuccess);
+    },
+    battleNext: function (battleId) {
+      return request('/api/game/battle/next', {
+        battleId: battleId
+      }).then(ensureSuccess);
+    },
+    battleState: function (battleId) {
+      return request('/api/game/battle/state', {
+        battleId: battleId
+      }).then(ensureSuccess);
     }
   };
 })(window);

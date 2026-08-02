@@ -1,0 +1,260 @@
+.battle-page {
+  min-height: 100vh;
+  padding: 16px 16px 24px;
+  box-sizing: border-box;
+}
+
+.battle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.battle-header h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.battle-header .stage-info {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.battle-header button {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.battle-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.battle-units {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.battle-unit {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.battle-unit.hero {
+  border-color: rgba(120, 200, 255, 0.35);
+}
+
+.battle-unit.monster {
+  border-color: rgba(255, 120, 120, 0.25);
+}
+
+.battle-unit.dead {
+  opacity: 0.45;
+}
+
+.battle-unit.acting {
+  box-shadow: 0 0 0 2px rgba(255, 212, 59, 0.55), 0 0 18px rgba(255, 212, 59, 0.25);
+  transform: scale(1.01);
+}
+
+.battle-unit.hit {
+  animation: unit-hit 0.45s ease;
+}
+
+@keyframes unit-hit {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+.unit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.unit-name {
+  font-weight: 600;
+}
+
+.unit-side {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.bar-row {
+  margin-top: 6px;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+
+.bar-track {
+  position: relative;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-track.action-track {
+  height: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  will-change: width;
+}
+
+.bar-fill.hp {
+  transition: width 0.35s ease-out;
+  background: linear-gradient(90deg, #ff6b6b, #ff8787);
+}
+
+.bar-fill.action {
+  position: relative;
+  background: linear-gradient(90deg, #228be6, #4dabf7 45%, #74c0fc);
+  box-shadow: 0 0 8px rgba(77, 171, 247, 0.45);
+}
+
+.bar-fill.action::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 40%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(255, 255, 255, 0.15) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: none;
+}
+
+.bar-fill.action.growing::after {
+  animation: action-shimmer 0.9s linear infinite;
+}
+
+.bar-fill.action.ready {
+  background: linear-gradient(90deg, #ffd43b, #ffe066);
+  box-shadow: 0 0 12px rgba(255, 212, 59, 0.65);
+}
+
+@keyframes action-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.battle-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.battle-actions button {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;
+  color: #fff;
+}
+
+.btn-next {
+  background: linear-gradient(135deg, #339af0, #228be6);
+}
+
+.btn-auto {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-auto.active {
+  background: linear-gradient(135deg, #51cf66, #37b24d);
+}
+
+.btn-next:disabled,
+.btn-auto:disabled {
+  opacity: 0.45;
+}
+
+.battle-result {
+  text-align: center;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.battle-result.win {
+  background: rgba(81, 207, 102, 0.15);
+  color: #8ce99a;
+}
+
+.battle-result.lose {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ffa8a8;
+}
+
+.battle-log {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.battle-log h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.log-item {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.log-item.wave {
+  color: #74c0fc;
+}
+
+.log-item.action {
+  color: #ffd43b;
+}
+
+.log-item.result {
+  color: #ff8787;
+  font-weight: 600;
+}
+
+.battle-page.is-animating .btn-next,
+.battle-page.is-animating .btn-auto {
+  pointer-events: none;
+  opacity: 0.55;
+}

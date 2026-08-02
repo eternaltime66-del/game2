@@ -48,6 +48,11 @@
         <span class="stage-chip-waves">{{ stage.waveCount }} 波</span>
       </button>
     </div>
+    <button
+      class="battle-start-btn"
+      :disabled="!selectedStageId"
+      @click="startBattle"
+    >开始战斗</button>
   </div>
 
   <div v-if="showDetail && hero" class="modal-mask" @click.self="showDetail = false">
@@ -133,6 +138,13 @@ createApp({
       if (showTip) {
         this.showToast('已选择 ' + stage.displayCode, 'success');
       }
+    },
+    startBattle() {
+      if (!this.selectedStageId) {
+        this.showToast('请先选择关卡');
+        return;
+      }
+      location.href = APP_CONFIG.battlePage + '?stageId=' + encodeURIComponent(this.selectedStageId);
     },
     logout() {
       GameApi.clearToken();

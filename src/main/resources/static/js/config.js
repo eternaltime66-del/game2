@@ -3,6 +3,7 @@ window.APP_CONFIG = {
   tokenKey: 'token',
   selectedStageKey: 'selectedStageId',
   homePage: '/index.html',
+  battlePage: '/battle.html',
   loginPage: '/login.html',
   codeType: 'AccountCheckForEmail'
 };

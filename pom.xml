@@ -234,8 +234,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <!-- 打包优化：排除不必要依赖，减小包体积 -->
                 <configuration>
+                    <!-- devtools 自动重启需要独立进程 -->
+                    <fork>true</fork>
+                    <addResources>true</addResources>
+                    <excludeDevtools>false</excludeDevtools>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS `app_game_hero` (
+  `id` varchar(32) NOT NULL COMMENT 'ID',
+  `uid` varchar(32) NOT NULL COMMENT '用户ID',
+  `name` varchar(32) NOT NULL COMMENT '角色名',
+  `hp` int NOT NULL DEFAULT 200 COMMENT '当前生命',
+  `max_hp` int NOT NULL DEFAULT 200 COMMENT '最大生命',
+  `attack` int NOT NULL DEFAULT 10 COMMENT '攻击力',
+  `action_value` int NOT NULL DEFAULT 100 COMMENT '行动值',
+  `CREATE_TIME` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UPDATE_TIME` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_uid` (`uid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='PVE主角';

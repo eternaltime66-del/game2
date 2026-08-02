@@ -3,71 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>首页</title>
+  <title>游戏首页</title>
   <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/home.css">
   <script src="/js/dev-live.js"></script>
-  <style>
-    .home-card {
-      text-align: center;
-      padding: 28px 20px;
-    }
-    .home-card h2 {
-      margin: 0 0 10px;
-      font-size: 22px;
-    }
-    .home-card p {
-      margin: 0 0 20px;
-      color: var(--muted);
-      font-size: 14px;
-      word-break: break-all;
-    }
-    .btn-outline {
-      width: 100%;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 16px;
-      padding: 14px;
-      margin-top: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.04);
-      cursor: pointer;
-    }
-  </style>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
 <body>
-<div class="page">
+<div id="app" class="page home-page">
   <div class="bg-glow bg-glow-1"></div>
   <div class="bg-glow bg-glow-2"></div>
 
-  <div class="brand">
-    <div class="brand-badge">G</div>
-    <h1>Game</h1>
-    <p>登录成功，游戏主页占位</p>
+  <div class="home-header">
+    <h1>PVE</h1>
+    <button @click="logout">退出</button>
   </div>
 
-  <div class="card home-card">
-    <h2>已登录</h2>
-    <p id="tokenText">Token 加载中...</p>
-    <button class="btn-primary" onclick="location.href='/login.html'">返回登录页</button>
-    <button class="btn-outline" onclick="logout()">退出登录</button>
+  <div class="home-scene">
+    <div v-if="loading" class="loading-text">加载中...</div>
+    <div v-else class="hero-actor" @click="showDetail = true">
+      <div class="hero-body">
+        <div class="hero-head"></div>
+      </div>
+      <div class="hero-label">{{ hero.name || '主角' }}</div>
+      <div class="hero-tip">点击查看详情</div>
+    </div>
   </div>
+
+  <div v-if="showDetail && hero" class="modal-mask" @click.self="showDetail = false">
+    <div class="modal-card">
+      <h2 class="modal-title">{{ hero.name }}</h2>
+      <div class="stat-list">
+        <div class="stat-row" v-for="item in statRows" :key="item.label">
+          <span>{{ item.label }}</span>
+          <span>{{ item.value }}</span>
+        </div>
+      </div>
+      <button class="modal-close" @click="showDetail = false">关闭</button>
+    </div>
+  </div>
+
+  <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
 </div>
 
 <script src="/js/config.js"></script>
 <script src="/js/api.js"></script>
 <script>
-  var token = GameApi.getToken();
-  if (!token) {
-    location.href = APP_CONFIG.loginPage;
-  } else {
-    document.getElementById('tokenText').textContent = 'Token: ' + token.slice(0, 16) + '...';
-  }
+const { createApp } = Vue;
 
-  function logout() {
-    GameApi.clearToken();
-    location.href = APP_CONFIG.loginPage;
+createApp({
+  data() {
+    return {
+      loading: true,
+      showDetail: false,
+      hero: null,
+      toast: { show: false, text: '', type: 'error' }
+    };
+  },
+  computed: {
+    statRows() {
+      if (!this.hero) return [];
+      return [
+        { label: '攻击力', value: String(this.hero.attack) },
+        { label: '生命值', value: this.hero.hp + '/' + this.hero.maxHp },
+        { label: '行动值', value: String(this.hero.actionValue) }
+      ];
+    }
+  },
+  mounted() {
+    if (!GameApi.getToken()) {
+      location.href = APP_CONFIG.loginPage;
+      return;
+    }
+    this.loadHero();
+  },
+  methods: {
+    showToast(text, type) {
+      this.toast = { show: true, text, type: type || 'error' };
+      setTimeout(() => { this.toast.show = false; }, 2200);
+    },
+    loadHero() {
+      GameApi.getHeroInfo()
+        .then((res) => {
+          this.hero = res.data;
+        })
+        .catch((err) => this.showToast(err.message))
+        .finally(() => { this.loading = false; });
+    },
+    logout() {
+      GameApi.clearToken();
+      location.href = APP_CONFIG.loginPage;
+    }
   }
+}).mount('#app');
 </script>
 </body>
 </html>

@@ -81,6 +81,9 @@
         psd: psd,
         psdAgain: psdAgain
       }).then(ensureSuccess);
+    },
+    getHeroInfo: function () {
+      return request('/api/game/hero/info', {}).then(ensureSuccess);
     }
   };
 })(window);

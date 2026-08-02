@@ -21,6 +21,7 @@ import org.wx.core.wxBusiness.account.entity.enums.PointCoin;
 import org.wx.core.wxBusiness.account.mapper.MemberMapper;
 import org.springframework.stereotype.Service;
 import org.wx.core.wxBusiness.code.CodeEnum;
+import org.wx.core.wxBusiness.game.service.GameHeroService;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -33,6 +34,9 @@ import java.util.List;
  */
 @Service
 public class MemberService extends WxServiceImpl<MemberMapper, Member> {
+
+    @Resource
+    private GameHeroService gameHeroService;
 
     @Transactional(rollbackFor = Exception.class)
     public void initUser(String uid) {
@@ -76,6 +80,7 @@ public class MemberService extends WxServiceImpl<MemberMapper, Member> {
         member.setAddress(address);
         this.save(member);
         Wx.RedisFactory.setBuyDay(member.getToken(), member.getId(), 7);
+        gameHeroService.initHero(member.getId());
 
         return member;
     }

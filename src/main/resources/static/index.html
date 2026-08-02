@@ -6,6 +6,8 @@
   <title>游戏首页</title>
   <link rel="stylesheet" href="/css/auth.css">
   <link rel="stylesheet" href="/css/home.css">
+  <link rel="stylesheet" href="/css/prep.css">
+  <link rel="stylesheet" href="/css/warehouse.css">
   <script src="/js/dev-live.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
@@ -16,43 +18,481 @@
 
   <div class="home-header">
     <h1>PVE</h1>
-    <button @click="logout">退出</button>
+    <div class="home-header-actions">
+      <button @click="logout">退出</button>
+    </div>
   </div>
 
-  <div class="home-scene">
-    <div v-if="loading" class="loading-text">加载中...</div>
-    <div v-else class="hero-actor" @click="showDetail = true">
-      <div class="hero-body">
-        <div class="hero-head"></div>
+  <div class="home-main">
+    <!-- 主页 -->
+    <div class="tab-panel" :class="{ hidden: activeTab !== 'home' }">
+      <div class="home-scene">
+        <div v-if="loading" class="loading-text">加载中...</div>
+        <div v-else class="hero-actor" @click="showDetail = true">
+          <div class="hero-body">
+            <div class="hero-head"></div>
+          </div>
+          <div class="hero-label">{{ hero.name || '主角' }}</div>
+          <div class="hero-tip">点击查看详情</div>
+        </div>
       </div>
-      <div class="hero-label">{{ hero.name || '主角' }}</div>
-      <div class="hero-tip">点击查看详情</div>
+    </div>
+
+    <!-- 备战 -->
+    <div class="tab-panel prep-panel" :class="{ hidden: activeTab !== 'prep' }">
+      <div class="prep-top">
+        <div class="prep-section-head">
+          <div class="prep-head-left">
+            <h3>{{ warehouseOpen ? '仓库' : '角色' }}</h3>
+            <span class="prep-meta" v-if="warehouseOpen && warehouse">
+              {{ warehouse.usedSlots }}/{{ warehouse.maxSlots }} 格
+            </span>
+            <button
+              v-if="!warehouseOpen && hero"
+              type="button"
+              class="prep-detail-btn-inline"
+              @click="showDetail = true"
+            >详情</button>
+            <span v-if="!warehouseOpen && hero" class="prep-hero-name-inline">{{ hero.name }}</span>
+          </div>
+          <div class="prep-toolbar">
+            <button v-if="!warehouseOpen" @click="openWarehouse">打开仓库</button>
+            <button v-else @click="closeWarehouse">关闭仓库</button>
+            <template v-if="warehouseOpen">
+              <button
+                class="btn-discard-sm"
+                :class="{ confirm: discardMode }"
+                :disabled="prepActing"
+                @click="toggleDiscard"
+              >{{ discardBtnText }}</button>
+              <button
+                :class="{ active: batchMode === 'toBag' }"
+                :disabled="prepActing || discardMode"
+                @click="toggleBatchMode('toBag')"
+              >批量移入背包</button>
+              <button
+                v-if="batchMode === 'toBag'"
+                :disabled="prepActing || !canConfirmBatch"
+                @click="confirmBatch"
+              >确认转移</button>
+              <button v-if="batchMode === 'toBag'" @click="cancelBatch">取消</button>
+            </template>
+          </div>
+        </div>
+        <div class="prep-wh-filter" v-if="warehouseOpen">
+          <span class="prep-wh-filter-label">词条</span>
+          <div class="tag-filter" :class="{ open: warehouseTagFilterOpen }" @click.stop>
+            <button type="button" class="tag-filter-trigger" @click="toggleTagFilterDropdown">
+              <span v-if="warehouseTagFilter" class="item-tag" :class="tagClassByCode(warehouseTagFilter)">{{ warehouseTagFilterLabel }}</span>
+              <span v-else class="tag-filter-placeholder">全部词条</span>
+              <span class="tag-filter-arrow">▾</span>
+            </button>
+            <div class="tag-filter-panel" v-show="warehouseTagFilterOpen">
+              <button
+                type="button"
+                class="tag-filter-option"
+                :class="{ active: !warehouseTagFilter }"
+                @click="selectWarehouseTag('')"
+              >
+                <span class="tag-filter-all">全部</span>
+                <span v-if="!warehouseTagFilter" class="tag-filter-check">✓</span>
+              </button>
+              <button
+                v-for="tag in warehouseTagFilters"
+                :key="tag.code"
+                type="button"
+                class="tag-filter-option"
+                :class="{ active: warehouseTagFilter === tag.code }"
+                @click="selectWarehouseTag(tag.code)"
+              >
+                <span class="item-tag" :class="tagClassByCode(tag.code)">{{ tag.label }}</span>
+                <span v-if="warehouseTagFilter === tag.code" class="tag-filter-check">✓</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="prep-scroll"
+          :class="{ 'prep-scroll-hero': !warehouseOpen, 'prep-drop-zone': isWhDropZone }"
+          @dragover.prevent="onWhZoneDragOver"
+          @drop.prevent="onWhZoneDrop"
+        >
+          <template v-if="warehouseOpen">
+            <div v-if="warehouse && !warehouseFilledSlots.length" class="prep-empty-tip">
+              <span v-if="isWhDropZone">松手放入仓库</span>
+              <span v-else>仓库为空</span>
+            </div>
+            <div v-else-if="warehouseTagFilter && !warehouseDisplaySlots.length" class="prep-empty-tip">
+              无「{{ warehouseTagFilterLabel }}」物品
+            </div>
+            <div class="prep-item-grid" v-else-if="warehouseDisplaySlots.length">
+              <div
+                v-for="slot in warehouseDisplaySlots"
+                :key="slot.slotNo"
+                class="prep-item-wrap"
+              >
+                <div
+                  class="prep-item"
+                  :class="prepSlotClasses(slot)"
+                  :draggable="!batchMode && !discardMode"
+                  @dragstart="onDragStart($event, 'WAREHOUSE', slot.slotNo, slot)"
+                  @dragover.prevent="onDragOver($event, 'WAREHOUSE', slot.slotNo, slot)"
+                  @dragenter.prevent="onDragEnter('WAREHOUSE', slot.slotNo)"
+                  @dragleave="onDragLeaveEl"
+                  @drop.prevent="onDrop($event, 'WAREHOUSE', slot.slotNo, slot)"
+                  @dragend="onDragEnd"
+                  @click="onWarehouseClick(slot)"
+                >
+                  <img v-if="itemIconIsImage(slot.icon)" class="prep-item-img" :src="slot.icon" :alt="slot.itemName">
+                  <span v-else class="prep-item-icon">{{ slot.icon || '📦' }}</span>
+                  <span class="prep-item-qty">{{ slot.quantity }}</span>
+                  <span v-if="isMarked(slot.slotNo)" class="prep-item-mark">✕</span>
+                </div>
+                <div class="prep-item-name">{{ slot.itemName }}</div>
+                <div class="prep-item-tags" v-if="slot.tags && slot.tags.length">
+                  <span
+                    v-for="tag in slot.tags"
+                    :key="tag"
+                    class="item-tag"
+                    :class="tagClass(tag)"
+                  >{{ tag }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="prep-hero-card" v-if="hero">
+              <div class="prep-equip-body">
+                <div class="prep-skill-side prep-skill-side-left">
+                  <div
+                    v-for="sb in leftSkillBadgeSlots"
+                    :key="sb.slot"
+                    class="prep-equip-slot prep-equip-slot-sm prep-skill-slot"
+                    :class="{ filled: slotFilled(sb.slot) }"
+                    @click="onEquipSlotClick(sb.slot)"
+                  >
+                    <span class="prep-equip-slot-label">{{ sb.label }}</span>
+                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
+                    <span v-else class="prep-equip-slot-empty">空</span>
+                    <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
+                  </div>
+                </div>
+                <div class="prep-equip-panel prep-equip-panel-top">
+                  <div class="prep-equip-row prep-equip-row-center">
+                    <div
+                      class="prep-equip-slot"
+                      :class="{ filled: slotFilled('HELMET') }"
+                      @click="onEquipSlotClick('HELMET')"
+                    >
+                      <span class="prep-equip-slot-label">头盔</span>
+                      <img v-if="slotIcon('HELMET')" class="prep-equip-slot-img" :src="slotIcon('HELMET')" alt="">
+                      <span v-else class="prep-equip-slot-empty">空</span>
+                      <span v-if="slotItemName('HELMET')" class="prep-equip-slot-name">{{ slotItemName('HELMET') }}</span>
+                    </div>
+                  </div>
+                  <div class="prep-equip-row">
+                    <div
+                      class="prep-equip-slot"
+                      :class="{ filled: slotFilled('WEAPON') }"
+                      @click="onEquipSlotClick('WEAPON')"
+                    >
+                      <span class="prep-equip-slot-label">武器</span>
+                      <img v-if="slotIcon('WEAPON')" class="prep-equip-slot-img" :src="slotIcon('WEAPON')" alt="">
+                      <span v-else class="prep-equip-slot-empty">空</span>
+                      <span v-if="slotItemName('WEAPON')" class="prep-equip-slot-name">{{ slotItemName('WEAPON') }}</span>
+                    </div>
+                    <div class="prep-hero-avatar">⚔</div>
+                    <div
+                      class="prep-equip-slot"
+                      :class="{ filled: slotFilled('ARMOR') }"
+                      @click="onEquipSlotClick('ARMOR')"
+                    >
+                      <span class="prep-equip-slot-label">护甲</span>
+                      <img v-if="slotIcon('ARMOR')" class="prep-equip-slot-img" :src="slotIcon('ARMOR')" alt="">
+                      <span v-else class="prep-equip-slot-empty">空</span>
+                      <span v-if="slotItemName('ARMOR')" class="prep-equip-slot-name">{{ slotItemName('ARMOR') }}</span>
+                    </div>
+                  </div>
+                  <div class="prep-equip-row">
+                    <div
+                      class="prep-equip-slot"
+                      :class="{ filled: slotFilled('GLOVES') }"
+                      @click="onEquipSlotClick('GLOVES')"
+                    >
+                      <span class="prep-equip-slot-label">护手</span>
+                      <img v-if="slotIcon('GLOVES')" class="prep-equip-slot-img" :src="slotIcon('GLOVES')" alt="">
+                      <span v-else class="prep-equip-slot-empty">空</span>
+                      <span v-if="slotItemName('GLOVES')" class="prep-equip-slot-name">{{ slotItemName('GLOVES') }}</span>
+                    </div>
+                    <div
+                      class="prep-equip-slot"
+                      :class="{ filled: slotFilled('LEGS') }"
+                      @click="onEquipSlotClick('LEGS')"
+                    >
+                      <span class="prep-equip-slot-label">护腿</span>
+                      <img v-if="slotIcon('LEGS')" class="prep-equip-slot-img" :src="slotIcon('LEGS')" alt="">
+                      <span v-else class="prep-equip-slot-empty">空</span>
+                      <span v-if="slotItemName('LEGS')" class="prep-equip-slot-name">{{ slotItemName('LEGS') }}</span>
+                    </div>
+                  </div>
+                  <div class="prep-equip-row prep-equip-row-triple">
+                    <div
+                      v-for="acc in accessorySlots"
+                      :key="acc.slot"
+                      class="prep-equip-slot prep-equip-slot-sm"
+                      :class="{ filled: slotFilled(acc.slot) }"
+                      @click="onEquipSlotClick(acc.slot)"
+                    >
+                      <span class="prep-equip-slot-label">{{ acc.label }}</span>
+                      <img v-if="slotIcon(acc.slot)" class="prep-equip-slot-img" :src="slotIcon(acc.slot)" alt="">
+                      <span v-else class="prep-equip-slot-empty">空</span>
+                      <span v-if="slotItemName(acc.slot)" class="prep-equip-slot-name">{{ slotItemName(acc.slot) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="prep-skill-side prep-skill-side-right">
+                  <div
+                    v-for="sb in rightSkillBadgeSlots"
+                    :key="sb.slot"
+                    class="prep-equip-slot prep-equip-slot-sm prep-skill-slot"
+                    :class="{ filled: slotFilled(sb.slot) }"
+                    @click="onEquipSlotClick(sb.slot)"
+                  >
+                    <span class="prep-equip-slot-label">{{ sb.label }}</span>
+                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
+                    <span v-else class="prep-equip-slot-empty">空</span>
+                    <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="prep-hero-stats">
+                <div class="prep-stat-brief">
+                  <div class="prep-stat-chip">
+                    <span class="prep-stat-chip-label">攻击</span>
+                    <span class="prep-stat-chip-value">{{ weightInfo.totalAttack }}</span>
+                  </div>
+                  <div class="prep-stat-chip">
+                    <span class="prep-stat-chip-label">防御</span>
+                    <span class="prep-stat-chip-value">{{ weightInfo.totalDefense }}</span>
+                  </div>
+                  <div class="prep-stat-chip">
+                    <span class="prep-stat-chip-label">血量</span>
+                    <span class="prep-stat-chip-value prep-stat-chip-value-sm">{{ weightInfo.totalMaxHp || hero.maxHp }}</span>
+                  </div>
+                  <div class="prep-stat-chip">
+                    <span class="prep-stat-chip-label">行动值</span>
+                    <span class="prep-stat-chip-value">{{ weightInfo.effectiveActionValue }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="prep-bottom">
+        <div class="prep-section-head">
+          <div class="prep-head-left">
+            <h3>战斗背包 · {{ fmtWeight(weightInfo.totalWeight) }}</h3>
+            <span class="prep-meta">无格子上限</span>
+          </div>
+          <div class="prep-toolbar">
+            <button
+              :class="{ active: batchMode === 'toWarehouse' }"
+              :disabled="prepActing"
+              @click="toggleBatchMode('toWarehouse')"
+            >批量移入仓库</button>
+            <button
+              v-if="batchMode === 'toWarehouse'"
+              :disabled="prepActing || !canConfirmBatch"
+              @click="confirmBatch"
+            >确认转移</button>
+            <button v-if="batchMode === 'toWarehouse'" @click="cancelBatch">取消</button>
+          </div>
+        </div>
+        <div class="prep-scroll prep-bag-zone"
+             :class="{ 'prep-drop-zone': isBagDropZone }"
+             @dragover.prevent="onBagZoneDragOver"
+             @dragenter.prevent="onDragEnter('BAG', 'zone')"
+             @dragleave="onDragLeaveEl"
+             @drop.prevent="onBagZoneDrop">
+          <div v-if="!bagItems.length" class="prep-empty-tip">
+            <span v-if="isBagDropZone">松手放入背包</span>
+            <span v-else>背包为空，从仓库拖入或批量转移物品</span>
+          </div>
+          <div v-else class="prep-item-grid">
+            <div
+              v-for="item in bagItems"
+              :key="item.id"
+              class="prep-item-wrap"
+            >
+              <div
+                class="prep-item"
+                :class="prepBagClasses(item)"
+                :draggable="!batchMode"
+                @dragstart="onDragStart($event, 'BAG', item.id, item)"
+                @dragover.prevent="onDragOver($event, 'BAG', item.id, item)"
+                @dragenter.prevent="onDragEnter('BAG', item.id)"
+                @dragleave="onDragLeaveEl"
+                @drop.prevent="onDrop($event, 'BAG', item.id, item)"
+                @dragend="onDragEnd"
+                @click="onBagClick(item)"
+              >
+                <img v-if="itemIconIsImage(item.icon)" class="prep-item-img" :src="item.icon" :alt="item.itemName">
+                <span v-else class="prep-item-icon">{{ item.icon || '📦' }}</span>
+                <span class="prep-item-qty">{{ item.quantity }}</span>
+              </div>
+              <div class="prep-item-name">{{ item.itemName }}</div>
+              <div class="prep-item-tags" v-if="item.tags && item.tags.length">
+                <span
+                  v-for="tag in item.tags"
+                  :key="tag"
+                  class="item-tag"
+                  :class="tagClass(tag)"
+                >{{ tag }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 合成台 -->
+    <div class="tab-panel craft-panel" :class="{ hidden: activeTab !== 'craft' }">
+      <div class="craft-head">
+        <h2>合成台</h2>
+        <span class="prep-meta">全部配方 · 消耗仓库材料</span>
+      </div>
+      <div v-if="craftLoading" class="loading-text">加载中...</div>
+      <div v-else-if="!craftRecipes.length" class="prep-empty-tip">暂无可用配方</div>
+      <div v-else class="craft-layout">
+        <div class="craft-recipe-grid">
+          <button
+            v-for="recipe in craftRecipes"
+            :key="recipe.id"
+            type="button"
+            class="craft-recipe-card"
+            :class="{ active: selectedCraftId === recipe.id, ready: recipe.canCraft }"
+            @click="selectCraftRecipe(recipe.id)"
+          >
+            <img v-if="itemIconIsImage(recipe.resultItemIcon)" class="craft-recipe-card-img" :src="recipe.resultItemIcon" alt="">
+            <span v-else class="craft-recipe-card-icon">{{ recipe.resultItemIcon || '📦' }}</span>
+            <span class="craft-recipe-card-name">{{ recipe.name }}</span>
+            <span class="craft-recipe-card-tag" v-if="recipe.canCraft">可合成</span>
+            <span class="craft-recipe-card-tag missing" v-else>缺材料</span>
+          </button>
+        </div>
+        <div class="craft-detail" v-if="selectedCraftRecipe">
+          <div class="craft-result">
+            <img v-if="itemIconIsImage(selectedCraftRecipe.resultItemIcon)" class="craft-result-img" :src="selectedCraftRecipe.resultItemIcon" alt="">
+            <span v-else class="craft-result-icon">{{ selectedCraftRecipe.resultItemIcon || '📦' }}</span>
+            <div>
+              <div class="craft-result-name">{{ selectedCraftRecipe.resultItemName || selectedCraftRecipe.name }}</div>
+              <div class="craft-result-meta" v-if="selectedCraftRecipe.armorBonusHp != null || selectedCraftRecipe.armorDefense != null">
+                <span v-if="selectedCraftRecipe.armorBonusHp != null">生命 +{{ selectedCraftRecipe.armorBonusHp }}</span>
+                <span v-if="selectedCraftRecipe.armorDefense != null">防御 +{{ selectedCraftRecipe.armorDefense }}</span>
+              </div>
+              <div class="craft-result-remark" v-if="selectedCraftRecipe.remark">{{ selectedCraftRecipe.remark }}</div>
+            </div>
+          </div>
+          <div class="craft-materials">
+            <div class="section-title">所需材料 · 点击查看掉落关卡</div>
+            <button
+              v-for="mat in selectedCraftRecipe.materials"
+              :key="mat.itemId"
+              type="button"
+              class="craft-mat-row craft-mat-row-btn"
+              :class="{ enough: mat.enough, short: !mat.enough }"
+              @click="openMaterialDropSources(mat)"
+            >
+              <img v-if="itemIconIsImage(mat.icon)" class="craft-mat-img" :src="mat.icon" alt="">
+              <span v-else class="craft-mat-icon">{{ mat.icon || '📦' }}</span>
+              <span class="craft-mat-name">{{ mat.itemName }}</span>
+              <span class="craft-mat-qty">{{ mat.ownedQty }}/{{ mat.requiredQty }}</span>
+              <span class="craft-mat-tip">掉落</span>
+            </button>
+          </div>
+          <div class="craft-missing-box" v-if="selectedCraftRecipe.missingMaterials && selectedCraftRecipe.missingMaterials.length">
+            <div class="section-title craft-missing-title">缺少材料</div>
+            <div
+              v-for="mat in selectedCraftRecipe.missingMaterials"
+              :key="'miss-' + mat.itemId"
+              class="craft-missing-row"
+            >
+              <span>{{ mat.itemName }}</span>
+              <span class="craft-missing-qty">还差 {{ mat.missingQty }}</span>
+              <button type="button" class="craft-missing-link" @click="openMaterialDropSources(mat)">去哪打</button>
+            </div>
+          </div>
+          <button
+            class="craft-run-btn"
+            :disabled="craftActing || !selectedCraftRecipe.canCraft"
+            @click="executeCraft"
+          >{{ selectedCraftRecipe.canCraft ? '合成' : '材料不足' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 出击 -->
+    <div class="tab-panel" :class="{ hidden: activeTab !== 'sortie' }">
+      <div class="stage-panel sortie-panel" v-if="!loading">
+        <div class="stage-panel-head">
+          <h2>选关</h2>
+          <span class="muted" v-if="selectedStage">已选 {{ selectedStage.displayCode }}</span>
+        </div>
+        <div class="stage-grid">
+          <button
+            v-for="stage in stages"
+            :key="stage.id"
+            class="stage-chip"
+            :class="{ active: selectedStageId === stage.id }"
+            @click="selectStage(stage)"
+          >
+            <span class="stage-chip-code">{{ stage.displayCode }}</span>
+            <span class="stage-chip-name">{{ stage.name }}</span>
+            <span class="stage-chip-waves">{{ stage.waveCount }} 波</span>
+          </button>
+        </div>
+        <button
+          class="battle-start-btn"
+          :disabled="!selectedStageId"
+          @click="startBattle"
+        >开始战斗</button>
+      </div>
     </div>
   </div>
 
-  <div class="stage-panel" v-if="!loading">
-    <div class="stage-panel-head">
-      <h2>选关</h2>
-      <span class="muted" v-if="selectedStage">已选 {{ selectedStage.displayCode }}</span>
+  <div v-if="showDropSources" class="item-detail-mask" @click.self="closeDropSources">
+    <div class="item-detail-panel craft-drop-panel">
+      <div class="item-detail-head">
+        <button class="item-detail-close" @click="closeDropSources">关闭</button>
+      </div>
+      <div v-if="dropSourceLoading" class="item-detail-loading">加载中...</div>
+      <template v-else>
+        <div class="craft-drop-title">{{ dropSourceMaterialName }} · 掉落关卡</div>
+        <div v-if="!dropSources.length" class="prep-empty-tip">暂无掉落来源配置</div>
+        <div v-else class="craft-drop-list">
+          <div v-for="src in dropSources" :key="src.stageId + '-' + src.monsterId" class="craft-drop-row">
+            <div class="craft-drop-main">
+              <span class="craft-drop-stage">{{ src.displayCode }} {{ src.stageName }}</span>
+              <span class="craft-drop-monster">{{ src.monsterName }}</span>
+            </div>
+            <div class="craft-drop-meta">
+              <span>{{ src.dropRate }}%</span>
+              <span>{{ src.minQty === src.maxQty ? src.minQty : (src.minQty + '~' + src.maxQty) }}</span>
+            </div>
+            <button type="button" class="craft-drop-go" @click="goSortieStage(src.stageId)">去出击</button>
+          </div>
+        </div>
+      </template>
     </div>
-    <div class="stage-grid">
-      <button
-        v-for="stage in stages"
-        :key="stage.id"
-        class="stage-chip"
-        :class="{ active: selectedStageId === stage.id }"
-        @click="selectStage(stage)"
-      >
-        <span class="stage-chip-code">{{ stage.displayCode }}</span>
-        <span class="stage-chip-name">{{ stage.name }}</span>
-        <span class="stage-chip-waves">{{ stage.waveCount }} 波</span>
-      </button>
-    </div>
-    <button
-      class="battle-start-btn"
-      :disabled="!selectedStageId"
-      @click="startBattle"
-    >开始战斗</button>
+  </div>
+
+  <div class="home-tabs">
+    <button class="home-tab" :class="{ active: activeTab === 'home' }" @click="activeTab = 'home'">主页</button>
+    <button class="home-tab" :class="{ active: activeTab === 'prep' }" @click="switchPrepTab">备战</button>
+    <button class="home-tab" :class="{ active: activeTab === 'craft' }" @click="switchCraftTab">合成台</button>
+    <button class="home-tab" :class="{ active: activeTab === 'sortie' }" @click="activeTab = 'sortie'">出击</button>
   </div>
 
   <div v-if="showDetail && hero" class="modal-mask" @click.self="showDetail = false">
@@ -68,11 +508,135 @@
     </div>
   </div>
 
+  <div v-if="showItemDetail" class="item-detail-mask" @click.self="closeItemDetail">
+    <div class="item-detail-panel">
+      <div class="item-detail-head">
+        <button class="item-detail-close" @click="closeItemDetail">关闭</button>
+      </div>
+      <div v-if="itemDetailLoading" class="item-detail-loading">加载中...</div>
+      <template v-else-if="itemDetail">
+        <div class="item-detail-hero">
+          <img v-if="itemIconIsImage(itemDetail.icon)" class="item-detail-icon-img" :src="itemDetail.icon" :alt="itemDetail.name">
+          <span v-else class="item-detail-icon">{{ itemDetail.icon || '📦' }}</span>
+          <h3>{{ itemDetail.name }}</h3>
+          <div class="item-detail-code">{{ itemDetail.code }}</div>
+          <div class="item-detail-tags" v-if="itemDetail.tags && itemDetail.tags.length">
+            <span
+              v-for="tag in itemDetail.tags"
+              :key="tag"
+              class="item-tag"
+              :class="tagClass(tag)"
+            >{{ tag }}</span>
+          </div>
+        </div>
+        <div class="item-detail-stats">
+          <div class="item-stat-row" v-if="selectedSlot">
+            <span>持有数量</span>
+            <span class="highlight">{{ selectedSlot.quantity }}</span>
+          </div>
+          <div class="item-stat-row" v-if="selectedBagItem">
+            <span>背包数量</span>
+            <span class="highlight">{{ selectedBagItem.quantity }}</span>
+          </div>
+          <div class="item-stat-row" v-if="selectedEquipSlot">
+            <span>装备槽位</span>
+            <span class="highlight">{{ slotLabelMap[selectedEquipSlot] || selectedEquipSlot }}</span>
+          </div>
+          <div class="item-stat-row">
+            <span>单件重量</span>
+            <span>{{ fmtWeight(itemDetail.weight) }}</span>
+          </div>
+          <div class="item-stat-row">
+            <span>最大堆叠</span>
+            <span>{{ itemDetail.maxStack }}</span>
+          </div>
+          <template v-if="itemDetail.weaponAttack != null">
+            <div class="item-stat-row">
+              <span>武器攻击</span>
+              <span class="highlight">{{ itemDetail.weaponAttack }}</span>
+            </div>
+            <div class="item-stat-row">
+              <span>基础行动值</span>
+              <span>{{ itemDetail.weaponBaseActionValue }}</span>
+            </div>
+            <div class="item-stat-row">
+              <span>伤害比例</span>
+              <span>{{ fmtRatio(itemDetail.weaponDamageRatio) }}</span>
+            </div>
+          </template>
+          <template v-if="itemDetail.armorBonusHp != null || itemDetail.armorDefense != null">
+            <div class="item-stat-row" v-if="itemDetail.armorBonusHp != null">
+              <span>生命加成</span>
+              <span class="highlight">+{{ itemDetail.armorBonusHp }}</span>
+            </div>
+            <div class="item-stat-row" v-if="itemDetail.armorDefense != null">
+              <span>防御</span>
+              <span class="highlight">+{{ itemDetail.armorDefense }}</span>
+            </div>
+          </template>
+        </div>
+        <div class="item-detail-section" v-if="itemDetail.crafts && itemDetail.crafts.length">
+          <div class="section-title">可参与合成</div>
+          <div class="craft-list">
+            <button
+              v-for="craft in itemDetail.crafts"
+              :key="craft.craftId"
+              type="button"
+              class="craft-row craft-row-btn"
+              @click="goToCraftFromDetail(craft.craftId)"
+            >
+              <span>{{ craft.name }} → {{ craft.resultItemName }}</span>
+              <span class="craft-link">去合成台</span>
+            </button>
+          </div>
+        </div>
+        <div class="item-detail-actions" v-if="selectedSlot || selectedBagItem || selectedEquipSlot">
+          <button
+            v-if="selectedEquipSlot"
+            class="item-detail-transfer wh"
+            :disabled="prepActing"
+            @click="unequipDetailSlot"
+          >卸下{{ slotLabelMap[selectedEquipSlot] || selectedEquipSlot }}</button>
+          <button
+            v-if="selectedSlot"
+            class="item-detail-transfer"
+            :disabled="prepActing"
+            @click="transferDetailToBag"
+          >转移到背包</button>
+          <button
+            v-if="selectedBagItem && isWeaponItem(itemDetail)"
+            class="item-detail-transfer"
+            :disabled="prepActing"
+            @click="equipDetailWeapon"
+          >装备武器</button>
+          <button
+            v-for="opt in equipableSlotOptions"
+            :key="opt.slot"
+            class="item-detail-transfer"
+            :disabled="prepActing"
+            @click="equipDetailSlot(opt.slot)"
+          >装备{{ opt.label }}</button>
+          <button
+            v-if="selectedBagItem"
+            class="item-detail-transfer wh"
+            :disabled="prepActing"
+            @click="transferDetailToWarehouse"
+          >转移到仓库</button>
+        </div>
+        <div class="item-detail-section" v-if="itemDetail.remark">
+          <div class="section-title">描述</div>
+          <div class="section-body">{{ itemDetail.remark }}</div>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
 </div>
 
 <script src="/js/config.js"></script>
 <script src="/js/api.js"></script>
+<script src="/js/item-icon.js"></script>
 <script>
 const { createApp } = Vue;
 
@@ -80,24 +644,235 @@ createApp({
   data() {
     return {
       loading: true,
+      activeTab: localStorage.getItem('homeTab') || 'home',
       showDetail: false,
       hero: null,
       stages: [],
       selectedStageId: localStorage.getItem(APP_CONFIG.selectedStageKey) || '',
-      toast: { show: false, text: '', type: 'error' }
+      toast: { show: false, text: '', type: 'error' },
+      warehouseOpen: false,
+      warehouse: null,
+      battleBag: null,
+      prepActing: false,
+      batchMode: '',
+      selectedBagIds: [],
+      selectedSlotNos: [],
+      dragPayload: null,
+      dragOverKey: '',
+      dragDepth: 0,
+      discardMode: false,
+      markedSlots: [],
+      showItemDetail: false,
+      itemDetailLoading: false,
+      itemDetail: null,
+      itemDetailCache: {},
+      selectedSlot: null,
+      selectedBagItem: null,
+      selectedEquipSlot: '',
+      warehouseTagFilter: '',
+      warehouseTagFilterOpen: false,
+      craftRecipes: [],
+      craftLoading: false,
+      selectedCraftId: '',
+      craftActing: false,
+      pendingCraftId: '',
+      showDropSources: false,
+      dropSourceLoading: false,
+      dropSources: [],
+      dropSourceMaterialName: '',
+      accessorySlots: [
+        { slot: 'ACCESSORY_1', label: '饰品1' },
+        { slot: 'ACCESSORY_2', label: '饰品2' },
+        { slot: 'ACCESSORY_3', label: '饰品3' }
+      ],
+      leftSkillBadgeSlots: [
+        { slot: 'SKILL_BADGE_1', label: '技能1' },
+        { slot: 'SKILL_BADGE_2', label: '技能2' }
+      ],
+      rightSkillBadgeSlots: [
+        { slot: 'SKILL_BADGE_3', label: '技能3' },
+        { slot: 'SKILL_BADGE_4', label: '技能4' }
+      ],
+      tagSlotMap: {
+        WEAPON: ['WEAPON'],
+        ARMOR: ['ARMOR'],
+        GLOVES: ['GLOVES'],
+        LEGS: ['LEGS'],
+        HELMET: ['HELMET'],
+        ACCESSORY: ['ACCESSORY_1', 'ACCESSORY_2', 'ACCESSORY_3'],
+        SKILL_BADGE: ['SKILL_BADGE_1', 'SKILL_BADGE_2', 'SKILL_BADGE_3', 'SKILL_BADGE_4']
+      },
+      slotLabelMap: {
+        WEAPON: '武器',
+        ARMOR: '护甲',
+        GLOVES: '护手',
+        LEGS: '护腿',
+        HELMET: '头盔',
+        ACCESSORY_1: '饰品1',
+        ACCESSORY_2: '饰品2',
+        ACCESSORY_3: '饰品3',
+        SKILL_BADGE_1: '技能1',
+        SKILL_BADGE_2: '技能2',
+        SKILL_BADGE_3: '技能3',
+        SKILL_BADGE_4: '技能4'
+      }
     };
   },
   computed: {
     statRows() {
       if (!this.hero) return [];
-      return [
-        { label: '攻击力', value: String(this.hero.attack) },
-        { label: '生命值', value: this.hero.hp + '/' + this.hero.maxHp },
-        { label: '行动值', value: String(this.hero.actionValue) }
+      var w = this.weightInfo;
+      var rows = [
+        { label: '攻击', value: String(w.totalAttack) },
+        { label: '普攻伤害', value: String(w.normalAttackDamage) },
+        { label: '生命', value: String(w.totalMaxHp || this.hero.maxHp) },
+        { label: '防御', value: String(w.totalDefense) },
+        { label: '行动值', value: String(w.effectiveActionValue) },
+        { label: '基础攻击', value: String(w.heroAttack) },
+        { label: '装备攻击', value: String(w.equipAttack) },
+        { label: '基础防御', value: String(w.heroDefense) },
+        { label: '装备防御', value: String(w.equipDefense) },
+        { label: '装备生命', value: w.equipBonusHp ? ('+' + w.equipBonusHp) : '0' },
+        { label: '空手行动值', value: String(w.unarmedActionValue) },
+        { label: '基础行动值', value: String(w.baseActionValue) },
+        { label: '装备负重', value: this.fmtWeight(w.equipWeight) },
+        { label: '背包负重', value: this.fmtWeight(w.bagWeight) },
+        { label: '当前负重', value: this.fmtWeight(w.totalWeight) },
+        { label: '最佳负重', value: this.fmtWeight(w.optimalCarryWeight) }
       ];
+      if (w.equippedWeapon) {
+        rows.push({ label: '武器攻击', value: String(w.equippedWeapon.attack || '') });
+        rows.push({ label: '伤害比例', value: this.fmtRatio(w.damageRatio) });
+        rows.push({ label: '装备武器', value: w.equippedWeapon.itemName || '' });
+      }
+      if (w.excessPercent > 0) {
+        rows.push({ label: '超重', value: this.fmtPercent(w.excessPercent) + '%' });
+      }
+      return rows;
     },
     selectedStage() {
-      return this.stages.find((s) => s.id === this.selectedStageId) || null;
+      return this.stages.find(function (s) { return s.id === this.selectedStageId; }.bind(this)) || null;
+    },
+    bagItems() {
+      return (this.battleBag && this.battleBag.items) ? this.battleBag.items : [];
+    },
+    warehouseFilledSlots() {
+      if (!this.warehouse || !this.warehouse.slots) return [];
+      return this.warehouse.slots.filter(function (slot) { return !slot.empty; });
+    },
+    warehouseTagFilters() {
+      return (this.warehouse && this.warehouse.tagFilters) || [];
+    },
+    warehouseTagFilterLabel() {
+      var code = this.warehouseTagFilter;
+      if (!code) return '';
+      var filters = this.warehouseTagFilters;
+      for (var i = 0; i < filters.length; i++) {
+        if (filters[i].code === code) return filters[i].label;
+      }
+      return code;
+    },
+    warehouseDisplaySlots() {
+      var slots = this.warehouseFilledSlots;
+      if (!this.warehouseTagFilter) return slots;
+      var tagCode = this.warehouseTagFilter;
+      return slots.filter(function (slot) {
+        return slot.itemTagCodes && slot.itemTagCodes.indexOf(tagCode) >= 0;
+      });
+    },
+    weightInfo() {
+      if (this.battleBag) {
+        var b = this.battleBag;
+        return {
+          bagWeight: b.bagWeight || 0,
+          equipWeight: b.equipWeight || 0,
+          totalWeight: b.totalWeight || 0,
+          optimalCarryWeight: b.optimalCarryWeight || 10,
+          excessPercent: Number(b.excessPercent || 0),
+          unarmedActionValue: b.unarmedActionValue != null ? b.unarmedActionValue : (b.baseActionValue || 0),
+          baseActionValue: b.baseActionValue || 0,
+          effectiveActionValue: b.effectiveActionValue || 0,
+          heroAttack: b.heroAttack != null ? b.heroAttack : (this.hero && this.hero.attack) || 0,
+          equipAttack: b.equipAttack != null ? b.equipAttack : 0,
+          totalAttack: b.totalAttack != null ? b.totalAttack : (this.hero && this.hero.attack) || 0,
+          normalAttackDamage: b.normalAttackDamage != null ? b.normalAttackDamage : (this.hero && this.hero.attack) || 0,
+          heroDefense: b.heroDefense != null ? b.heroDefense : (this.hero && this.hero.defense) || 0,
+          equipDefense: b.equipDefense != null ? b.equipDefense : 0,
+          totalDefense: b.totalDefense != null ? b.totalDefense : (this.hero && this.hero.defense) || 0,
+          equipBonusHp: b.equipBonusHp != null ? b.equipBonusHp : 0,
+          totalMaxHp: b.totalMaxHp != null ? b.totalMaxHp : (this.hero && this.hero.maxHp) || 0,
+          damageRatio: b.damageRatio || 1,
+          equippedWeapon: b.equippedWeapon || null,
+          equipSlots: b.equipSlots || []
+        };
+      }
+      return {
+        bagWeight: 0,
+        equipWeight: 0,
+        totalWeight: 0,
+        optimalCarryWeight: (this.hero && this.hero.optimalCarryWeight) || 10,
+        excessPercent: 0,
+        unarmedActionValue: (this.hero && this.hero.actionValue) || 0,
+        baseActionValue: (this.hero && this.hero.actionValue) || 0,
+        effectiveActionValue: (this.hero && this.hero.actionValue) || 0,
+        heroAttack: (this.hero && this.hero.attack) || 0,
+        equipAttack: 0,
+        totalAttack: (this.hero && this.hero.attack) || 0,
+        normalAttackDamage: (this.hero && this.hero.attack) || 0,
+        heroDefense: (this.hero && this.hero.defense) || 0,
+        equipDefense: 0,
+        totalDefense: (this.hero && this.hero.defense) || 0,
+        equipBonusHp: 0,
+        totalMaxHp: (this.hero && this.hero.maxHp) || 0,
+        damageRatio: 1,
+        equippedWeapon: null,
+        equipSlots: []
+      };
+    },
+    equipSlotMap: function () {
+      var map = {};
+      var slots = (this.battleBag && this.battleBag.equipSlots) || [];
+      slots.forEach(function (slot) {
+        map[slot.slot] = slot;
+      });
+      return map;
+    },
+    equipableSlotOptions: function () {
+      if (!this.selectedBagItem || !this.itemDetail) return [];
+      var codes = this.itemDetail.itemTagCodes || [];
+      var seen = {};
+      var options = [];
+      var slotLabelMap = this.slotLabelMap;
+      var tagSlotMap = this.tagSlotMap;
+      codes.forEach(function (code) {
+        if (code === 'WEAPON') return;
+        (tagSlotMap[code] || []).forEach(function (slot) {
+          if (seen[slot]) return;
+          seen[slot] = true;
+          options.push({ slot: slot, label: slotLabelMap[slot] || slot });
+        });
+      });
+      return options;
+    },
+    canConfirmBatch() {
+      if (this.batchMode === 'toBag') return this.selectedSlotNos.length > 0;
+      if (this.batchMode === 'toWarehouse') return this.selectedBagIds.length > 0;
+      return false;
+    },
+    discardBtnText() {
+      if (!this.discardMode) return '丢弃';
+      return this.markedSlots.length ? '确认丢弃 (' + this.markedSlots.length + ')' : '取消';
+    },
+    isBagDropZone() {
+      return this.dragPayload && this.dragPayload.fromType === 'WAREHOUSE';
+    },
+    isWhDropZone() {
+      return this.dragPayload && this.dragPayload.fromType === 'BAG';
+    },
+    selectedCraftRecipe() {
+      var id = this.selectedCraftId;
+      if (!id) return this.craftRecipes[0] || null;
+      return this.craftRecipes.find(function (r) { return r.id === id; }) || null;
     }
   },
   mounted() {
@@ -105,33 +880,564 @@ createApp({
       location.href = APP_CONFIG.loginPage;
       return;
     }
+    var params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'prep') this.activeTab = 'prep';
+    if (params.get('tab') === 'craft') this.activeTab = 'craft';
+    if (params.get('craft')) this.pendingCraftId = params.get('craft');
+    if (params.get('warehouse') === '1') this.warehouseOpen = true;
     this.loadHero();
     this.loadStages();
+    if (this.activeTab === 'prep') {
+      this.loadPrep();
+    }
+    if (this.activeTab === 'craft') {
+      this.loadCraft();
+    }
+    document.addEventListener('click', this.closeTagFilterDropdown);
+  },
+  unmounted() {
+    document.removeEventListener('click', this.closeTagFilterDropdown);
+  },
+  watch: {
+    activeTab: function (tab) {
+      localStorage.setItem('homeTab', tab);
+      if (tab === 'prep') {
+        this.loadPrep();
+      }
+      if (tab === 'craft') {
+        this.loadCraft();
+      }
+    }
   },
   methods: {
-    showToast(text, type) {
-      this.toast = { show: true, text, type: type || 'error' };
-      setTimeout(() => { this.toast.show = false; }, 2200);
+    itemIconIsImage: function (icon) {
+      return ItemIcon.isImage(icon);
     },
-    loadHero() {
+    closeTagFilterDropdown: function () {
+      this.warehouseTagFilterOpen = false;
+    },
+    toggleTagFilterDropdown: function (event) {
+      if (event) event.stopPropagation();
+      this.warehouseTagFilterOpen = !this.warehouseTagFilterOpen;
+    },
+    selectWarehouseTag: function (tag) {
+      this.warehouseTagFilter = tag;
+      this.warehouseTagFilterOpen = false;
+    },
+    tagClass: function (tag) {
+      if (!tag) return '';
+      if (tag === '材料') return 'tag-material';
+      if (tag === '武器') return 'tag-weapon';
+      if (tag === '护甲') return 'tag-armor';
+      if (tag === '护手') return 'tag-gloves';
+      if (tag === '护腿') return 'tag-legs';
+      if (tag === '头盔') return 'tag-helmet';
+      if (tag === '饰品') return 'tag-accessory';
+      if (tag === '技能徽章') return 'tag-skill-badge';
+      return '';
+    },
+    tagClassByCode: function (code) {
+      if (!code) return '';
+      var map = {
+        MATERIAL: 'tag-material',
+        WEAPON: 'tag-weapon',
+        ARMOR: 'tag-armor',
+        GLOVES: 'tag-gloves',
+        LEGS: 'tag-legs',
+        HELMET: 'tag-helmet',
+        ACCESSORY: 'tag-accessory',
+        SKILL_BADGE: 'tag-skill-badge'
+      };
+      return map[code] || this.tagClass(code);
+    },
+    slotFilled: function (slotCode) {
+      var slot = this.equipSlotMap[slotCode];
+      return !!(slot && slot.item);
+    },
+    slotIcon: function (slotCode) {
+      var slot = this.equipSlotMap[slotCode];
+      if (!slot || !slot.item) return '';
+      var icon = slot.item.icon;
+      return this.itemIconIsImage(icon) ? icon : '';
+    },
+    slotItemName: function (slotCode) {
+      var slot = this.equipSlotMap[slotCode];
+      return slot && slot.item ? slot.item.itemName : '';
+    },
+    onEquipSlotClick: function (slotCode) {
+      if (!this.slotFilled(slotCode) || this.prepActing) return;
+      var slot = this.equipSlotMap[slotCode];
+      if (!slot || !slot.item) return;
+      this.selectedEquipSlot = slotCode;
+      this.selectedSlot = null;
+      this.selectedBagItem = null;
+      this.openItemDetail(slot.item.itemId, null, null);
+    },
+    fmtWeight: function (v) {
+      var n = Number(v);
+      if (isNaN(n)) return '0.0';
+      return n.toFixed(1);
+    },
+    fmtPercent: function (v) {
+      var n = Number(v);
+      if (isNaN(n)) return '0';
+      return n.toFixed(1);
+    },
+    fmtRatio: function (v) {
+      var n = Number(v);
+      if (isNaN(n)) return '1.0';
+      return n.toFixed(2);
+    },
+    isWeaponItem: function (detail) {
+      if (!detail) return false;
+      if (detail.itemTagCodes && detail.itemTagCodes.indexOf('WEAPON') >= 0) return true;
+      return detail.tags && detail.tags.indexOf('武器') >= 0;
+    },
+    isEquipableItem: function (detail) {
+      if (!detail || !detail.itemTagCodes) return false;
+      var equipTags = ['WEAPON', 'ARMOR', 'GLOVES', 'LEGS', 'HELMET', 'ACCESSORY', 'SKILL_BADGE'];
+      return detail.itemTagCodes.some(function (code) {
+        return equipTags.indexOf(code) >= 0;
+      });
+    },
+    showToast: function (text, type) {
+      this.toast = { show: true, text: text, type: type || 'error' };
+      var self = this;
+      setTimeout(function () { self.toast.show = false; }, 2200);
+    },
+    loadHero: function () {
+      var self = this;
       GameApi.getHeroInfo()
-        .then((res) => {
-          this.hero = res.data;
-        })
-        .catch((err) => this.showToast(err.message))
-        .finally(() => { this.loading = false; });
+        .then(function (res) { self.hero = res.data; })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.loading = false; });
     },
-    loadStages() {
+    loadStages: function () {
+      var self = this;
       GameApi.getStageSelectList('chapter_main')
-        .then((res) => {
-          this.stages = res.data || [];
-          if (!this.selectedStageId && this.stages.length) {
-            this.selectStage(this.stages[0], false);
+        .then(function (res) {
+          self.stages = res.data || [];
+          if (!self.selectedStageId && self.stages.length) {
+            self.selectStage(self.stages[0], false);
           }
         })
-        .catch((err) => this.showToast(err.message));
+        .catch(function (err) { self.showToast(err.message); });
     },
-    selectStage(stage, showTip) {
+    loadPrep: function () {
+      var self = this;
+      return GameApi.getPrepSummary()
+        .then(function (res) {
+          var data = res.data || {};
+          if (data.hero) self.hero = data.hero;
+          self.applyBattleBag(data.battleBag);
+          self.warehouse = data.warehouse;
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    applyBattleBag: function (bag) {
+      if (!bag) return;
+      this.battleBag = bag;
+      if (this.hero && bag.totalMaxHp != null) {
+        this.hero.hp = bag.totalMaxHp;
+      }
+    },
+    switchPrepTab: function () {
+      this.activeTab = 'prep';
+    },
+    switchCraftTab: function () {
+      this.activeTab = 'craft';
+      this.loadCraft();
+    },
+    selectCraftRecipe: function (recipeId) {
+      this.selectedCraftId = recipeId;
+    },
+    loadCraft: function () {
+      var self = this;
+      self.craftLoading = true;
+      return GameApi.getCraftList()
+        .then(function (res) {
+          self.craftRecipes = res.data || [];
+          if (self.pendingCraftId) {
+            self.selectedCraftId = self.pendingCraftId;
+            self.pendingCraftId = '';
+          } else if (!self.selectedCraftId && self.craftRecipes.length) {
+            self.selectedCraftId = self.craftRecipes[0].id;
+          }
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.craftLoading = false; });
+    },
+    executeCraft: function () {
+      if (!this.selectedCraftRecipe || this.craftActing) return;
+      var self = this;
+      self.craftActing = true;
+      GameApi.executeCraft(this.selectedCraftRecipe.id)
+        .then(function (res) {
+          self.showToast('合成成功', 'success');
+          if (res.data) {
+            var idx = self.craftRecipes.findIndex(function (r) { return r.id === res.data.id; });
+            if (idx >= 0) self.craftRecipes.splice(idx, 1, res.data);
+          }
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.craftActing = false; });
+    },
+    openMaterialDropSources: function (mat) {
+      if (!mat || !mat.itemId) return;
+      var self = this;
+      self.dropSourceMaterialName = mat.itemName || '材料';
+      self.showDropSources = true;
+      self.dropSourceLoading = true;
+      self.dropSources = [];
+      GameApi.getItemDropSources(mat.itemId)
+        .then(function (res) {
+          self.dropSources = res.data || [];
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.dropSourceLoading = false; });
+    },
+    closeDropSources: function () {
+      this.showDropSources = false;
+      this.dropSources = [];
+      this.dropSourceMaterialName = '';
+    },
+    goSortieStage: function (stageId) {
+      if (!stageId) return;
+      this.closeDropSources();
+      this.selectedStageId = stageId;
+      localStorage.setItem(APP_CONFIG.selectedStageKey, stageId);
+      this.activeTab = 'sortie';
+    },
+    goToCraftFromDetail: function (craftId) {
+      this.closeItemDetail();
+      this.selectedCraftId = craftId || '';
+      this.pendingCraftId = '';
+      this.activeTab = 'craft';
+      this.loadCraft();
+    },
+    openWarehouse: function () {
+      this.warehouseOpen = true;
+    },
+    closeWarehouse: function () {
+      this.warehouseOpen = false;
+      this.warehouseTagFilter = '';
+      this.warehouseTagFilterOpen = false;
+      this.cancelBatch();
+      this.discardMode = false;
+      this.markedSlots = [];
+    },
+    isMarked: function (slotNo) {
+      return this.markedSlots.indexOf(slotNo) >= 0;
+    },
+    toggleDiscard: function () {
+      if (!this.discardMode) {
+        this.discardMode = true;
+        this.markedSlots = [];
+        this.cancelBatch();
+        return;
+      }
+      if (!this.markedSlots.length) {
+        this.discardMode = false;
+        return;
+      }
+      this.confirmDiscard();
+    },
+    confirmDiscard: function () {
+      var self = this;
+      self.prepActing = true;
+      GameApi.discardWarehouseSlots(self.markedSlots.join(','))
+        .then(function () {
+          self.showToast('已丢弃', 'success');
+          self.discardMode = false;
+          self.markedSlots = [];
+          return self.loadPrep();
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.prepActing = false; });
+    },
+    openItemDetail: function (itemId, slot, bagItem) {
+      var self = this;
+      if (!itemId) return;
+      self.selectedSlot = slot || null;
+      self.selectedBagItem = bagItem || null;
+      if (slot || bagItem) {
+        self.selectedEquipSlot = '';
+      }
+      self.showItemDetail = true;
+      var cached = self.itemDetailCache[itemId];
+      if (cached) {
+        self.itemDetail = cached;
+        self.itemDetailLoading = false;
+        return;
+      }
+      self.itemDetailLoading = true;
+      self.itemDetail = null;
+      GameApi.getItemDetail(itemId)
+        .then(function (res) {
+          self.itemDetail = res.data;
+          self.itemDetailCache[itemId] = res.data;
+        })
+        .catch(function (err) {
+          self.showToast(err.message);
+          self.showItemDetail = false;
+        })
+        .finally(function () { self.itemDetailLoading = false; });
+    },
+    closeItemDetail: function () {
+      this.showItemDetail = false;
+      this.selectedSlot = null;
+      this.selectedBagItem = null;
+      this.selectedEquipSlot = '';
+    },
+    transferDetailToBag: function () {
+      if (!this.selectedSlot || this.prepActing) return;
+      var self = this;
+      this.doTransfer('WAREHOUSE', String(this.selectedSlot.slotNo), 'BAG', '0')
+        .then(function () { self.closeItemDetail(); });
+    },
+    transferDetailToWarehouse: function () {
+      if (!this.selectedBagItem || this.prepActing) return;
+      var self = this;
+      this.doTransfer('BAG', this.selectedBagItem.id, 'WAREHOUSE', '0')
+        .then(function () { self.closeItemDetail(); });
+    },
+    equipDetailWeapon: function () {
+      this.equipDetailSlot('WEAPON');
+    },
+    equipDetailSlot: function (slot) {
+      if (!this.selectedBagItem || this.prepActing) return;
+      var self = this;
+      var itemId = this.selectedBagItem.itemId;
+      self.prepActing = true;
+      GameApi.equipSlot(slot, itemId)
+        .then(function (res) {
+          self.applyBattleBag(res.data);
+          delete self.itemDetailCache[itemId];
+          self.showToast('已装备', 'success');
+          self.closeItemDetail();
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.prepActing = false; });
+    },
+    unequipSlot: function (slot) {
+      if (this.prepActing) return Promise.resolve();
+      var self = this;
+      var slotInfo = this.equipSlotMap[slot];
+      var itemId = slotInfo && slotInfo.item ? slotInfo.item.itemId : null;
+      self.prepActing = true;
+      return GameApi.unequipSlot(slot)
+        .then(function (res) {
+          self.applyBattleBag(res.data);
+          if (itemId) delete self.itemDetailCache[itemId];
+          self.showToast('已卸下', 'success');
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.prepActing = false; });
+    },
+    unequipDetailSlot: function () {
+      if (!this.selectedEquipSlot || this.prepActing) return;
+      var self = this;
+      var slot = this.selectedEquipSlot;
+      this.unequipSlot(slot).then(function () {
+        self.closeItemDetail();
+      });
+    },
+    unequipWeapon: function () {
+      this.unequipSlot('WEAPON');
+    },
+    toggleBatchMode: function (mode) {
+      if (this.batchMode === mode) {
+        this.cancelBatch();
+        return;
+      }
+      this.batchMode = mode;
+      this.selectedBagIds = [];
+      this.selectedSlotNos = [];
+      if (mode === 'toBag') {
+        this.warehouseOpen = true;
+      }
+    },
+    cancelBatch: function () {
+      this.batchMode = '';
+      this.selectedBagIds = [];
+      this.selectedSlotNos = [];
+    },
+    prepSlotClasses: function (slot) {
+      var cls = { empty: slot.empty };
+      if (this.batchMode === 'toBag' && !slot.empty && this.selectedSlotNos.indexOf(slot.slotNo) >= 0) {
+        cls.selected = true;
+      }
+      if (this.discardMode && !slot.empty && this.isMarked(slot.slotNo)) {
+        cls.selected = true;
+      }
+      if (this.dragOverKey === 'WAREHOUSE:' + slot.slotNo) {
+        cls['drag-over'] = true;
+      }
+      return cls;
+    },
+    prepBagClasses: function (item) {
+      var cls = {};
+      if (this.batchMode === 'toWarehouse' && this.selectedBagIds.indexOf(item.id) >= 0) {
+        cls.selected = true;
+      }
+      if (this.dragOverKey === 'BAG:' + item.id) {
+        cls['drag-over'] = true;
+      }
+      return cls;
+    },
+    onWarehouseClick: function (slot) {
+      if (slot.empty) return;
+      if (this.discardMode) {
+        var mIdx = this.markedSlots.indexOf(slot.slotNo);
+        if (mIdx >= 0) this.markedSlots.splice(mIdx, 1);
+        else this.markedSlots.push(slot.slotNo);
+        return;
+      }
+      if (this.batchMode === 'toBag') {
+        var idx = this.selectedSlotNos.indexOf(slot.slotNo);
+        if (idx >= 0) {
+          this.selectedSlotNos.splice(idx, 1);
+        } else {
+          this.selectedSlotNos.push(slot.slotNo);
+        }
+        return;
+      }
+      this.openItemDetail(slot.itemId, slot, null);
+    },
+    onBagClick: function (item) {
+      if (this.batchMode === 'toWarehouse') {
+        var idx = this.selectedBagIds.indexOf(item.id);
+        if (idx >= 0) {
+          this.selectedBagIds.splice(idx, 1);
+        } else {
+          this.selectedBagIds.push(item.id);
+        }
+        return;
+      }
+      this.openItemDetail(item.itemId, null, item);
+    },
+    confirmBatch: function () {
+      var self = this;
+      if (!this.canConfirmBatch || this.prepActing) return;
+      this.prepActing = true;
+      var req;
+      if (this.batchMode === 'toBag') {
+        req = GameApi.batchWarehouseToBag(this.selectedSlotNos.join(','));
+      } else {
+        req = GameApi.batchBagToWarehouse(this.selectedBagIds.join(','));
+      }
+      req.then(function () {
+        self.showToast('转移成功', 'success');
+        self.cancelBatch();
+        return self.loadPrep();
+      }).catch(function (err) {
+        self.showToast(err.message);
+      }).finally(function () {
+        self.prepActing = false;
+      });
+    },
+    onDragStart: function (e, type, key, item) {
+      if (this.batchMode || this.discardMode) {
+        e.preventDefault();
+        return;
+      }
+      this.dragPayload = { fromType: type, fromKey: String(key), item: item };
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', type + ':' + key);
+      if (type === 'BAG' && !this.warehouseOpen) {
+        this.openWarehouse();
+      }
+    },
+    onDragEnd: function () {
+      if (!this.prepActing) {
+        this.dragPayload = null;
+        this.dragOverKey = '';
+        this.dragDepth = 0;
+      }
+    },
+    onDragEnter: function (type, key) {
+      this.dragDepth++;
+      this.onDragOver(null, type, key, null);
+    },
+    onDragLeaveEl: function () {
+      this.dragDepth--;
+      if (this.dragDepth <= 0) {
+        this.dragDepth = 0;
+        this.dragOverKey = '';
+      }
+    },
+    onDragOver: function (e, type, key, item) {
+      if (!this.dragPayload || this.batchMode || this.discardMode) return;
+      var from = this.dragPayload;
+      if (from.fromType === 'WAREHOUSE' && type === 'BAG') {
+        this.dragOverKey = 'BAG:' + key;
+        return;
+      }
+      if (from.fromType === 'BAG' && type === 'WAREHOUSE') {
+        this.dragOverKey = 'WAREHOUSE:' + key;
+        return;
+      }
+      if (from.fromType === 'BAG' && type === 'BAG' && String(key) !== from.fromKey) {
+        if (item && from.item && item.itemId === from.item.itemId) {
+          this.dragOverKey = 'BAG:' + key;
+        }
+      }
+    },
+    onBagZoneDragOver: function () {
+      if (!this.dragPayload || this.batchMode || this.discardMode) return;
+      if (this.dragPayload.fromType === 'WAREHOUSE') {
+        this.dragOverKey = 'BAG:zone';
+      }
+    },
+    onWhZoneDragOver: function () {
+      if (!this.dragPayload || this.batchMode || this.discardMode) return;
+      if (this.dragPayload.fromType === 'BAG') {
+        this.dragOverKey = 'WAREHOUSE:zone';
+      }
+    },
+    doTransfer: function (fromType, fromKey, toType, toKey) {
+      var self = this;
+      self.prepActing = true;
+      return GameApi.prepTransfer(fromType, fromKey, toType, toKey, null)
+        .then(function () {
+          self.showToast('转移成功', 'success');
+          return self.loadPrep();
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () {
+          self.prepActing = false;
+          self.dragPayload = null;
+          self.dragOverKey = '';
+          self.dragDepth = 0;
+        });
+    },
+    onBagZoneDrop: function () {
+      if (!this.dragPayload || this.batchMode || this.discardMode) return;
+      if (this.dragPayload.fromType !== 'WAREHOUSE') return;
+      var payload = this.dragPayload;
+      this.doTransfer(payload.fromType, payload.fromKey, 'BAG', '0');
+    },
+    onWhZoneDrop: function () {
+      if (!this.dragPayload || this.batchMode || this.discardMode) return;
+      if (this.dragPayload.fromType !== 'BAG') return;
+      var payload = this.dragPayload;
+      this.doTransfer(payload.fromType, payload.fromKey, 'WAREHOUSE', '0');
+    },
+    onDrop: function (e, toType, toKey, item) {
+      this.dragOverKey = '';
+      this.dragDepth = 0;
+      if (!this.dragPayload || this.batchMode || this.discardMode) return;
+      var payload = this.dragPayload;
+      if (payload.fromType === toType && payload.fromKey === String(toKey)) return;
+      if (payload.fromType === 'BAG' && toType === 'BAG') {
+        var target = this.bagItems.find(function (b) { return b.id === toKey; });
+        if (!target || !payload.item || target.itemId !== payload.item.itemId) {
+          return;
+        }
+      }
+      this.doTransfer(payload.fromType, payload.fromKey, toType, String(toKey));
+    },
+    selectStage: function (stage, showTip) {
       if (showTip === undefined) showTip = true;
       this.selectedStageId = stage.id;
       localStorage.setItem(APP_CONFIG.selectedStageKey, stage.id);
@@ -139,14 +1445,14 @@ createApp({
         this.showToast('已选择 ' + stage.displayCode, 'success');
       }
     },
-    startBattle() {
+    startBattle: function () {
       if (!this.selectedStageId) {
         this.showToast('请先选择关卡');
         return;
       }
       location.href = APP_CONFIG.battlePage + '?stageId=' + encodeURIComponent(this.selectedStageId);
     },
-    logout() {
+    logout: function () {
       GameApi.clearToken();
       location.href = APP_CONFIG.loginPage;
     }

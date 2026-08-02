@@ -104,6 +104,84 @@
       return request('/api/game/battle/state', {
         battleId: battleId
       }).then(ensureSuccess);
+    },
+    getWarehouseInfo: function () {
+      return request('/api/game/warehouse/info', {}).then(ensureSuccess);
+    },
+    discardWarehouseSlots: function (slotNos) {
+      return request('/api/game/warehouse/discard', {
+        slotNos: slotNos
+      }).then(ensureSuccess);
+    },
+    getItemLogList: function () {
+      return request('/api/game/warehouse/log/list', {}).then(ensureSuccess);
+    },
+    getMonsterDetail: function (monsterId) {
+      return request('/api/game/monster/detail', {
+        monsterId: monsterId
+      }).then(ensureSuccess);
+    },
+    getItemDetail: function (itemId) {
+      return request('/api/game/item/detail', {
+        itemId: itemId
+      }).then(ensureSuccess);
+    },
+    getPrepSummary: function () {
+      return request('/api/game/prep/summary', {}).then(ensureSuccess);
+    },
+    getBattleBagInfo: function () {
+      return request('/api/game/prep/bag/info', {}).then(ensureSuccess);
+    },
+    batchBagToWarehouse: function (bagIds) {
+      return request('/api/game/prep/bag/to-warehouse', {
+        bagIds: bagIds
+      }).then(ensureSuccess);
+    },
+    batchWarehouseToBag: function (slotNos) {
+      return request('/api/game/prep/warehouse/to-bag', {
+        slotNos: slotNos
+      }).then(ensureSuccess);
+    },
+    prepTransfer: function (fromType, fromKey, toType, toKey, quantity) {
+      return request('/api/game/prep/transfer', {
+        fromType: fromType,
+        fromKey: fromKey,
+        toType: toType,
+        toKey: toKey,
+        quantity: quantity
+      }).then(ensureSuccess);
+    },
+    equipWeapon: function (itemId) {
+      return request('/api/game/prep/equip/weapon', {
+        itemId: itemId
+      }).then(ensureSuccess);
+    },
+    unequipWeapon: function () {
+      return request('/api/game/prep/unequip/weapon', {}).then(ensureSuccess);
+    },
+    equipSlot: function (slot, itemId) {
+      return request('/api/game/prep/equip', {
+        slot: slot,
+        itemId: itemId
+      }).then(ensureSuccess);
+    },
+    unequipSlot: function (slot) {
+      return request('/api/game/prep/unequip', {
+        slot: slot
+      }).then(ensureSuccess);
+    },
+    getCraftList: function () {
+      return request('/api/game/craft/list', {}).then(ensureSuccess);
+    },
+    executeCraft: function (recipeId) {
+      return request('/api/game/craft/execute', {
+        recipeId: recipeId
+      }).then(ensureSuccess);
+    },
+    getItemDropSources: function (itemId) {
+      return request('/api/game/item/drop-sources', {
+        itemId: itemId
+      }).then(ensureSuccess);
     }
   };
 })(window);

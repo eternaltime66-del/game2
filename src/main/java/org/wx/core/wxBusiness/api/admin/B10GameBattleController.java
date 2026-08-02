@@ -10,6 +10,7 @@ import org.wx.core.wxBase.annotation.NeedHeader;
 import org.wx.core.wxBase.annotation.ParamCheck;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
+import org.wx.core.wxBusiness.api.vo.CommonIdVo;
 import org.wx.core.wxBusiness.game.entity.GameMonster;
 import org.wx.core.wxBusiness.game.entity.GameWave;
 import org.wx.core.wxBusiness.game.entity.GameWaveMonster;
@@ -55,6 +56,14 @@ public class B10GameBattleController {
         return WxResult.success();
     }
 
+    @PostMapping("/monster/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> monsterRemove(@RequestBody CommonIdVo vo) {
+        gameBattleService.deleteMonster(vo.stringId());
+        return WxResult.success();
+    }
+
     @PostMapping("/wave/list")
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.ADMIN)
@@ -70,6 +79,14 @@ public class B10GameBattleController {
     public WxResult<?> waveSave(@RequestBody GameWave entity) {
         entity.clearEmptyString();
         gameBattleService.saveWave(entity);
+        return WxResult.success();
+    }
+
+    @PostMapping("/wave/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> waveRemove(@RequestBody CommonIdVo vo) {
+        gameBattleService.deleteWave(vo.stringId());
         return WxResult.success();
     }
 
@@ -90,6 +107,14 @@ public class B10GameBattleController {
     @NeedHeader(roles = MemberRole.ADMIN)
     public WxResult<?> waveMonsterSave(@RequestBody GameWaveMonster entity) {
         gameBattleService.saveWaveMonster(entity);
+        return WxResult.success();
+    }
+
+    @PostMapping("/wave-monster/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> waveMonsterRemove(@RequestBody CommonIdVo vo) {
+        gameBattleService.deleteWaveMonster(vo.stringId());
         return WxResult.success();
     }
 

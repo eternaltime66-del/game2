@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.wx.core.wxBase.annotation.NeedHeader;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
+import org.wx.core.wxBusiness.api.vo.CommonIdVo;
 import org.wx.core.wxBusiness.game.entity.*;
 import org.wx.core.wxBusiness.game.service.GameChapterService;
 import org.wx.core.wxBusiness.game.service.GameLevelService;
@@ -110,6 +111,14 @@ public class B9GameLevelController {
     public WxResult<?> stageSave(@RequestBody GameStage entity) {
         entity.clearEmptyString();
         gameLevelService.saveStage(entity);
+        return WxResult.success();
+    }
+
+    @PostMapping("/stage/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> stageRemove(@RequestBody CommonIdVo vo) {
+        gameLevelService.deleteStage(vo.stringId());
         return WxResult.success();
     }
 }

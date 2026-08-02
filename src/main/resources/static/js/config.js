@@ -4,6 +4,7 @@ window.APP_CONFIG = {
   selectedStageKey: 'selectedStageId',
   homePage: '/index.html',
   battlePage: '/battle.html',
+  warehousePage: '/warehouse.html',
   loginPage: '/login.html',
   codeType: 'AccountCheckForEmail'
 };

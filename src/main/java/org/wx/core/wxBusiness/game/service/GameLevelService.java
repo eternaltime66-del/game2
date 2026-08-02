@@ -1,5 +1,6 @@
 package org.wx.core.wxBusiness.game.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,10 @@ public class GameLevelService extends WxServiceImpl<GameStageMapper, GameStage> 
     private GameChapterService chapterService;
     @Resource
     private GameStageGroupService stageGroupService;
+    @Resource
+    private GameWaveService waveService;
+    @Resource
+    private GameWaveMonsterService waveMonsterService;
 
     @Transactional(rollbackFor = Exception.class)
     public void saveModeGroup(GameModeGroup entity) {
@@ -72,6 +77,21 @@ public class GameLevelService extends WxServiceImpl<GameStageMapper, GameStage> 
             entity.setSort(0);
         }
         this.saveOrUpdate(entity);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteStage(String stageId) {
+        ErrorFactory.notNull(stageId, "小关卡ID不能为空");
+        List<GameWave> waves = waveService.find()
+                .eq(GameWave::getStageId, stageId)
+                .list();
+        for (GameWave wave : waves) {
+            waveMonsterService.remove(new LambdaQueryWrapper<GameWaveMonster>()
+                    .eq(GameWaveMonster::getWaveId, wave.getId()));
+        }
+        waveService.remove(new LambdaQueryWrapper<GameWave>()
+                .eq(GameWave::getStageId, stageId));
+        this.removeById(stageId);
     }
 
     public List<GameStage> listStagesByChapterId(String chapterId) {

@@ -3,6 +3,7 @@ package org.wx.core.wxBusiness.game.engine;
 import org.wx.core.wxBusiness.game.entity.BattleLog;
 import org.wx.core.wxBusiness.game.entity.BattleState;
 import org.wx.core.wxBusiness.game.entity.BattleUnit;
+import org.wx.core.wxBusiness.game.service.CombatDamageService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -59,11 +60,22 @@ public class BattleEngine {
     public static BigDecimal calcDamage(int attack) {
         double rate = 0.9 + ThreadLocalRandom.current().nextDouble() * 0.2;
         double raw = attack * rate;
-        return BigDecimal.valueOf(raw).setScale(1, RoundingMode.CEILING);
+        return BigDecimal.valueOf(raw).setScale(CombatDamageService.DAMAGE_SCALE, RoundingMode.HALF_UP);
     }
 
-    public static int damageToInt(BigDecimal damage) {
-        return damage.setScale(0, RoundingMode.CEILING).intValue();
+    public static void applyDamage(BattleUnit target, BigDecimal hurt) {
+        if (hurt == null) {
+            hurt = BigDecimal.ZERO;
+        }
+        BigDecimal current = target.getHp() != null ? target.getHp() : BigDecimal.ZERO;
+        BigDecimal nextHp = current.subtract(hurt)
+                .max(BigDecimal.ZERO)
+                .setScale(CombatDamageService.DAMAGE_SCALE, RoundingMode.HALF_UP);
+        target.setHp(nextHp);
+        if (nextHp.compareTo(BigDecimal.ZERO) <= 0) {
+            target.setAlive(false);
+            target.setActionBar(0);
+        }
     }
 
     public static BattleUnit pickTarget(BattleState state, BattleUnit actor) {
@@ -84,14 +96,19 @@ public class BattleEngine {
                 .orElse(null);
     }
 
-    public static void applyDamage(BattleUnit target, BigDecimal damage) {
-        int hurt = damageToInt(damage);
-        int nextHp = Math.max(0, target.getHp() - hurt);
-        target.setHp(nextHp);
-        if (nextHp <= 0) {
-            target.setAlive(false);
-            target.setActionBar(0);
+    public static BattleLog performAction(BattleState state, BattleUnit actor) {
+        BattleUnit target = pickTarget(state, actor);
+        if (target == null) {
+            return BattleLog.of(BattleLog.TYPE_ACTION, actor.getName() + " 无有效目标");
         }
+        BigDecimal outputDamage = calcDamage(actor.getAttack());
+        int defense = target.getDefense() != null ? target.getDefense() : 0;
+        BigDecimal hurt = CombatDamageService.calcReceivedDamage(outputDamage, defense);
+        applyDamage(target, hurt);
+        resetActionBar(actor);
+
+        String damageText = CombatDamageService.formatDamage(hurt);
+        return BattleLog.action(actor.getName(), target.getName(), damageText, !target.isAlive());
     }
 
     public static void resetActionBar(BattleUnit unit) {
@@ -106,22 +123,9 @@ public class BattleEngine {
         }
     }
 
-    public static BattleLog performAction(BattleState state, BattleUnit actor) {
-        BattleUnit target = pickTarget(state, actor);
-        if (target == null) {
-            return BattleLog.of(BattleLog.TYPE_ACTION, actor.getName() + " 无有效目标");
-        }
-        BigDecimal damage = calcDamage(actor.getAttack());
-        applyDamage(target, damage);
-        resetActionBar(actor);
-
-        String damageText = damage.stripTrailingZeros().toPlainString();
-        return BattleLog.action(actor.getName(), target.getName(), damageText, !target.isAlive());
-    }
-
     public static void refreshAliveState(BattleState state) {
         for (BattleUnit unit : state.getUnits()) {
-            unit.setAlive(unit.getHp() != null && unit.getHp() > 0);
+            unit.setAlive(unit.getHp() != null && unit.getHp().compareTo(BigDecimal.ZERO) > 0);
         }
     }
 

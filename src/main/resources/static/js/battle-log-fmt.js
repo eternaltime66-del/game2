@@ -44,6 +44,9 @@
       if (log.type === 'RESULT') {
         return '<span class="log-result-text">' + escapeHtml(log.text) + '</span>';
       }
+      if (log.type === 'LOOT') {
+        return '<span class="log-loot-text">' + escapeHtml(log.text) + '</span>';
+      }
       return escapeHtml(log.text);
     }
   };

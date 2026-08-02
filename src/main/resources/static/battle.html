@@ -30,8 +30,25 @@
       <span>状态 {{ statusText }}</span>
     </div>
 
-    <div v-if="battle.status === 'WIN'" class="battle-result win">胜利</div>
-    <div v-else-if="battle.status === 'LOSE'" class="battle-result lose">失败</div>
+    <div class="loot-bar" v-if="lootList.length">
+      <span class="loot-bar-label">获得</span>
+      <div class="loot-bar-scroll">
+        <div
+          v-for="item in lootList"
+          :key="item.itemId"
+          class="loot-mini"
+          :title="item.itemName + ' x' + item.quantity"
+        >
+          <img v-if="itemIconIsImage(item.icon)" class="loot-mini-img" :src="item.icon" :alt="item.itemName">
+          <span v-else class="loot-mini-icon">{{ item.icon || '📦' }}</span>
+          <span class="loot-mini-qty">×{{ item.quantity }}</span>
+        </div>
+      </div>
+      <span v-if="!animating && battle.status === 'WIN' && battle.lootGranted" class="loot-bar-badge">已入库</span>
+    </div>
+
+    <div v-if="!animating && battle.status === 'WIN'" class="battle-result win">胜利</div>
+    <div v-else-if="!animating && battle.status === 'LOSE'" class="battle-result lose">失败</div>
 
     <div class="battle-scene">
       <div
@@ -45,8 +62,9 @@
           class="battle-unit-wrap"
         >
           <div
-            class="battle-unit monster compact"
+            class="battle-unit monster compact clickable"
             :class="unitClasses(unit)"
+            @click="openMonsterDetail(unit)"
           >
             <div class="unit-head">
               <span class="unit-name">{{ unit.name }}</span>
@@ -55,7 +73,7 @@
             <div class="bar-row">
               <div class="bar-label">
                 <span>生命</span>
-                <span>{{ unit.hp }}/{{ unit.maxHp }}</span>
+                <span>{{ fmtBattleHp(unit.hp) }}/{{ unit.maxHp }}</span>
               </div>
               <div class="bar-track">
                 <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
@@ -95,7 +113,7 @@
             <div class="bar-row">
               <div class="bar-label">
                 <span>生命</span>
-                <span>{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
+                <span>{{ fmtBattleHp(heroUnit.hp) }}/{{ heroUnit.maxHp }}</span>
               </div>
               <div class="bar-track">
                 <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
@@ -124,6 +142,19 @@
       </div>
     </div>
 
+    <div class="battle-speed" v-if="battle && battle.status === 'RUNNING'">
+      <span class="battle-speed-label">速度</span>
+      <button
+        v-for="s in speedOptions"
+        :key="s"
+        class="btn-speed"
+        :class="{ active: battleSpeed === s }"
+        :disabled="skipping"
+        @click="setSpeed(s)"
+      >×{{ s }}</button>
+      <button class="btn-skip" :disabled="!canSkip || skipping" @click="skipBattle">跳过</button>
+    </div>
+
     <div class="battle-actions">
       <button v-if="!autoRunning" class="btn-next" :disabled="!canManualAct" @click="nextStep">下一步</button>
       <button
@@ -147,6 +178,53 @@
       <div v-else class="log-bar-empty">暂无记录</div>
     </div>
   </template>
+
+  <div v-if="showMonsterDetail" class="monster-detail-mask" @click.self="closeMonsterDetail">
+    <div class="monster-detail-panel">
+      <div class="monster-detail-head">
+        <div>
+          <h3>{{ selectedUnit ? selectedUnit.name : '怪物详情' }}</h3>
+          <div class="monster-detail-sub" v-if="monsterDetail">{{ monsterDetail.code }}</div>
+        </div>
+        <button @click="closeMonsterDetail">关闭</button>
+      </div>
+      <div v-if="monsterDetailLoading" class="monster-detail-loading">加载中...</div>
+      <template v-else-if="monsterDetail && selectedUnit">
+        <div class="monster-stat-grid">
+          <div class="monster-stat-item">
+            <span class="label">生命</span>
+            <span class="value">{{ fmtBattleHp(selectedUnit.hp) }}/{{ selectedUnit.maxHp }}</span>
+          </div>
+          <div class="monster-stat-item">
+            <span class="label">攻击</span>
+            <span class="value">{{ monsterDetail.attack }}</span>
+          </div>
+          <div class="monster-stat-item">
+            <span class="label">行动值</span>
+            <span class="value">{{ monsterDetail.actionValue }}</span>
+          </div>
+        </div>
+        <div class="monster-drop-section">
+          <div class="monster-drop-title">可能掉落</div>
+          <div v-if="!monsterDetail.drops || !monsterDetail.drops.length" class="monster-drop-empty">暂无掉落配置</div>
+          <div v-else class="monster-drop-list">
+            <div v-for="drop in monsterDetail.drops" :key="drop.itemId" class="monster-drop-row">
+              <div class="monster-drop-item">
+                <img v-if="itemIconIsImage(drop.icon)" class="monster-drop-icon-img" :src="drop.icon" :alt="drop.itemName">
+                <span v-else class="monster-drop-icon">{{ drop.icon || '📦' }}</span>
+                <span class="monster-drop-name">{{ drop.itemName }}</span>
+              </div>
+              <div class="monster-drop-meta">
+                <span class="drop-rate">{{ drop.dropRate }}%</span>
+                <span class="drop-qty">{{ drop.minQty === drop.maxQty ? drop.minQty : (drop.minQty + '~' + drop.maxQty) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="monster-drop-tip">每种物品独立判定 · 数量越多概率越低</div>
+        </div>
+      </template>
+    </div>
+  </div>
 
   <div v-if="showLogFull" class="log-full-mask" @click.self="showLogFull = false">
     <div class="log-full-panel">
@@ -174,6 +252,7 @@
 <script src="/js/api.js"></script>
 <script src="/js/battle-anim.js"></script>
 <script src="/js/battle-log-fmt.js"></script>
+<script src="/js/item-icon.js"></script>
 <script>
 const { createApp } = Vue;
 
@@ -194,7 +273,16 @@ createApp({
       growingUnitIds: [],
       autoRunning: false,
       autoTimer: null,
+      battleSpeed: Number(localStorage.getItem('battleSpeed')) || 1,
+      speedOptions: [1, 2, 3],
+      skipping: false,
+      skipAnim: false,
       showLogFull: false,
+      showMonsterDetail: false,
+      monsterDetailLoading: false,
+      monsterDetail: null,
+      selectedUnit: null,
+      monsterDetailCache: {},
       damageFloats: [],
       toast: { show: false, text: '', type: 'error' }
     };
@@ -207,8 +295,11 @@ createApp({
       return this.visibleUnits.find(function (u) { return u.side === 'HERO'; }) || null;
     },
     monsterUnits() {
+      var self = this;
       return this.visibleUnits.filter(function (u) {
-        return u.side === 'MONSTER' && u.alive;
+        if (u.side !== 'MONSTER') return false;
+        if (u.alive) return true;
+        return self.animating && Number(u.hp) > 0;
       });
     },
     monsterLayoutCount() {
@@ -223,8 +314,16 @@ createApp({
     canAct() {
       return this.battle && this.battle.status === 'RUNNING' && !this.loading && !this.animating;
     },
+    canSkip() {
+      return this.battle && this.battle.status === 'RUNNING' && !this.loading;
+    },
+    autoStepDelay() {
+      var speed = this.battleSpeed || 1;
+      return Math.max(40, Math.round(240 / speed));
+    },
     statusText() {
       if (!this.battle) return '';
+      if (this.animating) return '进行中';
       if (this.battle.status === 'WIN') return '胜利';
       if (this.battle.status === 'LOSE') return '失败';
       return '进行中';
@@ -236,6 +335,10 @@ createApp({
     allLogs() {
       if (!this.battle || !this.battle.logs) return [];
       return this.battle.logs.slice().reverse();
+    },
+    lootList() {
+      if (!this.battle || !this.battle.lootAccumulated) return [];
+      return this.battle.lootAccumulated;
     }
   },
   mounted() {
@@ -255,6 +358,16 @@ createApp({
     this.stopAuto();
   },
   methods: {
+    fmtBattleHp: function (hp) {
+      if (hp == null || hp === '') return '0';
+      var n = Number(hp);
+      if (!isFinite(n)) return String(hp);
+      if (Math.abs(n - Math.round(n)) < 0.0001) return String(Math.round(n));
+      return n.toFixed(1);
+    },
+    itemIconIsImage(icon) {
+      return ItemIcon.isImage(icon);
+    },
     showToast(text, type) {
       this.toast = { show: true, text: text, type: type || 'error' };
       var self = this;
@@ -262,7 +375,7 @@ createApp({
     },
     unitClasses(unit) {
       return {
-        dead: !unit.alive,
+        dead: !unit.alive || Number(unit.hp) <= 0,
         acting: this.actingUnitId === unit.unitId,
         hit: this.hitUnitId === unit.unitId
       };
@@ -285,6 +398,7 @@ createApp({
       if (type === 'WAVE') return 'wave';
       if (type === 'ACTION') return 'action';
       if (type === 'RESULT') return 'result';
+      if (type === 'LOOT') return 'loot';
       return '';
     },
     formatLogHtml(log) {
@@ -303,9 +417,13 @@ createApp({
     },
     applyBattle(data, animateFrom) {
       var self = this;
-      if (!animateFrom) {
+      if (!animateFrom || self.skipAnim) {
         self.battle = data;
         self.renderUnits = (data.units || []).map(function (u) { return Object.assign({}, u); });
+        self.animating = false;
+        self.actingUnitId = '';
+        self.hitUnitId = '';
+        self.growingUnitIds = [];
         return Promise.resolve();
       }
       return BattleAnim.playStep(self, animateFrom, data);
@@ -327,7 +445,7 @@ createApp({
     },
     nextStep() {
       if (!this.battle || this.battle.status !== 'RUNNING' || this.loading || this.animating) return;
-      if (!this.autoRunning && !this.canManualAct()) return;
+      if (!this.skipping && !this.autoRunning && !this.canManualAct()) return;
       var self = this;
       var snapshot = JSON.parse(JSON.stringify(self.battle));
       self.loading = true;
@@ -338,15 +456,48 @@ createApp({
         .catch(function (err) {
           self.showToast(err.message);
           self.stopAuto();
+          self.skipping = false;
+          self.skipAnim = false;
         })
         .finally(function () {
           self.loading = false;
           if (self.battle && self.battle.status !== 'RUNNING') {
             self.stopAuto();
+            self.skipping = false;
+            self.skipAnim = false;
+          } else if (self.skipping) {
+            self.runSkipLoop();
           } else if (self.autoRunning) {
             self.scheduleAutoStep();
           }
         });
+    },
+    setSpeed(speed) {
+      this.battleSpeed = speed;
+      localStorage.setItem('battleSpeed', String(speed));
+      if (this.autoRunning) {
+        this.scheduleAutoStep();
+      }
+    },
+    skipBattle() {
+      if (!this.canSkip || this.skipping) return;
+      this.skipping = true;
+      this.skipAnim = true;
+      this.stopAuto();
+      this.runSkipLoop();
+    },
+    runSkipLoop() {
+      var self = this;
+      if (!self.skipping || !self.battle || self.battle.status !== 'RUNNING') {
+        self.skipping = false;
+        self.skipAnim = false;
+        return;
+      }
+      if (self.loading || self.animating) {
+        setTimeout(function () { self.runSkipLoop(); }, 16);
+        return;
+      }
+      self.nextStep();
     },
     scheduleAutoStep() {
       var self = this;
@@ -366,7 +517,7 @@ createApp({
         } else {
           self.scheduleAutoStep();
         }
-      }, 240);
+      }, self.autoStepDelay);
     },
     toggleAuto() {
       if (this.autoRunning) {
@@ -387,6 +538,39 @@ createApp({
     goHome() {
       this.stopAuto();
       location.href = APP_CONFIG.homePage;
+    },
+    openMonsterDetail(unit) {
+      if (!unit || !unit.monsterId) {
+        this.showToast('无法查看该单位详情');
+        return;
+      }
+      var self = this;
+      self.selectedUnit = unit;
+      self.showMonsterDetail = true;
+      var cached = self.monsterDetailCache[unit.monsterId];
+      if (cached) {
+        self.monsterDetail = cached;
+        self.monsterDetailLoading = false;
+        return;
+      }
+      self.monsterDetailLoading = true;
+      self.monsterDetail = null;
+      GameApi.getMonsterDetail(unit.monsterId)
+        .then(function (res) {
+          self.monsterDetail = res.data;
+          self.monsterDetailCache[unit.monsterId] = res.data;
+        })
+        .catch(function (err) {
+          self.showToast(err.message);
+          self.showMonsterDetail = false;
+        })
+        .finally(function () {
+          self.monsterDetailLoading = false;
+        });
+    },
+    closeMonsterDetail() {
+      this.showMonsterDetail = false;
+      this.monsterDetailLoading = false;
     }
   }
 }).mount('#app');

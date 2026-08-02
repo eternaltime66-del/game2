@@ -66,29 +66,29 @@ SELECT 'wave_1_2_1', 'st_1_2', 1, '第1波', 1, 1
 WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave` WHERE `id` = 'wave_1_2_1');
 
 INSERT INTO `app_game_wave` (`id`, `stage_id`, `wave_no`, `name`, `sort`, `enabled`)
-SELECT 'wave_1_2_2', 'st_1_2', 2, '第2波', 2, 1
-WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave` WHERE `id` = 'wave_1_2_2');
+SELECT 'wave_1_3_1', 'st_1_3', 1, '第1波', 1, 1
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave` WHERE `id` = 'wave_1_3_1');
 
 INSERT INTO `app_game_wave` (`id`, `stage_id`, `wave_no`, `name`, `sort`, `enabled`)
-SELECT 'wave_1_2_3', 'st_1_2', 3, '第3波', 3, 1
-WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave` WHERE `id` = 'wave_1_2_3');
+SELECT 'wave_1_4_1', 'st_1_4', 1, '第1波', 1, 1
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave` WHERE `id` = 'wave_1_4_1');
 
 INSERT INTO `app_game_wave_monster` (`id`, `wave_id`, `monster_id`, `quantity`, `sort`)
 SELECT 'wm_1_1_1', 'wave_1_1_1', 'mon_slime', 2, 1
 WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_1_1');
 
 INSERT INTO `app_game_wave_monster` (`id`, `wave_id`, `monster_id`, `quantity`, `sort`)
-SELECT 'wm_1_2_1_1', 'wave_1_2_1', 'mon_goblin', 2, 1
+SELECT 'wm_1_2_1_1', 'wave_1_2_1', 'mon_goblin', 1, 1
 WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_2_1_1');
 
 INSERT INTO `app_game_wave_monster` (`id`, `wave_id`, `monster_id`, `quantity`, `sort`)
-SELECT 'wm_1_2_2_1', 'wave_1_2_2', 'mon_orc', 1, 1
-WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_2_2_1');
+SELECT 'wm_1_2_1_2', 'wave_1_2_1', 'mon_slime', 1, 2
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_2_1_2');
 
 INSERT INTO `app_game_wave_monster` (`id`, `wave_id`, `monster_id`, `quantity`, `sort`)
-SELECT 'wm_1_2_2_2', 'wave_1_2_2', 'mon_slime', 2, 2
-WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_2_2_2');
+SELECT 'wm_1_3_1_1', 'wave_1_3_1', 'mon_goblin', 2, 1
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_3_1_1');
 
 INSERT INTO `app_game_wave_monster` (`id`, `wave_id`, `monster_id`, `quantity`, `sort`)
-SELECT 'wm_1_2_3_1', 'wave_1_2_3', 'mon_boss', 1, 1
-WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_2_3_1');
+SELECT 'wm_1_4_1_1', 'wave_1_4_1', 'mon_orc', 1, 1
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_wave_monster` WHERE `id` = 'wm_1_4_1_1');

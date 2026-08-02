@@ -3,6 +3,8 @@ package org.wx.core.wxBusiness.game.entity;
 import com.alibaba.fastjson2.annotation.JSONField;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
  * 战斗单位运行时
  */
@@ -18,11 +20,14 @@ public class BattleUnit {
 
     private String name;
 
-    private Integer hp;
+    private BigDecimal hp;
 
     private Integer maxHp;
 
     private Integer attack;
+
+    /** 防御（受击减免用） */
+    private Integer defense;
 
     /** 行动条上限 */
     private Integer actionValue;
@@ -40,6 +45,6 @@ public class BattleUnit {
 
     @JSONField(serialize = false, deserialize = false)
     public boolean isAlive() {
-        return alive != null && alive && hp != null && hp > 0;
+        return alive != null && alive && hp != null && hp.compareTo(BigDecimal.ZERO) > 0;
     }
 }

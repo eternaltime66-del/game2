@@ -1,5 +1,6 @@
 package org.wx.core.wxBusiness.game.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,50 @@ public class GameBattleService {
     private GameLevelService gameLevelService;
     @Resource
     private GameStageGroupService stageGroupService;
+    @Resource
+    private GameMonsterDropService gameMonsterDropService;
+    @Resource
+    private GameItemService gameItemService;
+
+    public MonsterDetailVo getMonsterDetail(String monsterId) {
+        GameMonster monster = monsterService.getById(monsterId);
+        ErrorFactory.notNull(monster, "怪物不存在");
+        ErrorFactory.throwError(!Integer.valueOf(1).equals(monster.getEnabled()), "怪物未启用");
+
+        MonsterDetailVo vo = new MonsterDetailVo();
+        vo.setId(monster.getId());
+        vo.setCode(monster.getCode());
+        vo.setName(monster.getName());
+        vo.setHp(monster.getHp());
+        vo.setMaxHp(monster.getMaxHp());
+        vo.setAttack(monster.getAttack());
+        vo.setActionValue(monster.getActionValue());
+        vo.setRemark(monster.getRemark());
+
+        List<GameMonsterDrop> dropConfigs = gameMonsterDropService.listEnabledByMonsterId(monsterId);
+        if (dropConfigs.isEmpty()) {
+            return vo;
+        }
+        List<String> itemIds = dropConfigs.stream().map(GameMonsterDrop::getItemId).distinct().toList();
+        Map<String, GameItem> itemMap = gameItemService.listByIds(itemIds).stream()
+                .collect(Collectors.toMap(GameItem::getId, i -> i));
+        for (GameMonsterDrop config : dropConfigs) {
+            GameItem item = itemMap.get(config.getItemId());
+            if (item == null || !Integer.valueOf(1).equals(item.getEnabled())) {
+                continue;
+            }
+            MonsterDropPreviewVo dropVo = new MonsterDropPreviewVo();
+            dropVo.setItemId(item.getId());
+            dropVo.setItemCode(item.getCode());
+            dropVo.setItemName(item.getName());
+            dropVo.setIcon(item.getIcon());
+            dropVo.setDropRate(config.getDropRate());
+            dropVo.setMinQty(config.getMinQty());
+            dropVo.setMaxQty(config.getMaxQty());
+            vo.getDrops().add(dropVo);
+        }
+        return vo;
+    }
 
     @Transactional(rollbackFor = Exception.class)
     public void saveMonster(GameMonster entity) {
@@ -60,6 +105,26 @@ public class GameBattleService {
         }
         if (entity.getSort() == null) entity.setSort(0);
         waveMonsterService.saveOrUpdate(entity);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteMonster(String monsterId) {
+        ErrorFactory.notNull(monsterId, "怪物ID不能为空");
+        monsterService.removeById(monsterId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteWave(String waveId) {
+        ErrorFactory.notNull(waveId, "波次ID不能为空");
+        waveMonsterService.remove(new LambdaQueryWrapper<GameWaveMonster>()
+                .eq(GameWaveMonster::getWaveId, waveId));
+        waveService.removeById(waveId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteWaveMonster(String id) {
+        ErrorFactory.notNull(id, "波次怪物ID不能为空");
+        waveMonsterService.removeById(id);
     }
 
     public int countWavesByStageId(String stageId) {

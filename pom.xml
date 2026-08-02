@@ -235,8 +235,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <!-- devtools 自动重启需要独立进程 -->
-                    <fork>true</fork>
+                    <mainClass>org.wx.core.Web3Application</mainClass>
                     <addResources>true</addResources>
                     <excludeDevtools>false</excludeDevtools>
                     <excludes>

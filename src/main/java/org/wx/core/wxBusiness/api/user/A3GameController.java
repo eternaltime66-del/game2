@@ -13,11 +13,21 @@ import org.wx.core.wxBusiness.game.entity.GameHero;
 import org.wx.core.wxBusiness.game.entity.GameStage;
 import org.wx.core.wxBusiness.game.entity.GameStageSelectVo;
 import org.wx.core.wxBusiness.game.entity.BattleState;
+import org.wx.core.wxBusiness.game.entity.MonsterDetailVo;
+import org.wx.core.wxBusiness.game.entity.CraftRecipeVo;
+import org.wx.core.wxBusiness.game.entity.ItemDetailVo;
+import org.wx.core.wxBusiness.game.entity.ItemDropSourceVo;
 import org.wx.core.wxBusiness.game.service.GameBattleService;
+import org.wx.core.wxBusiness.game.service.GameCraftService;
 import org.wx.core.wxBusiness.game.service.GameHeroService;
+import org.wx.core.wxBusiness.game.service.GameItemDropSourceService;
+import org.wx.core.wxBusiness.game.service.GameItemService;
 import org.wx.core.wxBusiness.game.service.GameLevelService;
+import org.wx.core.wxBusiness.game.service.GamePrepService;
 import org.wx.core.wxBusiness.game.service.PveBattleService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
+
+import java.util.List;
 
 /**
  * 前端-PVE游戏
@@ -34,6 +44,14 @@ public class A3GameController {
     private GameBattleService gameBattleService;
     @Resource
     private PveBattleService pveBattleService;
+    @Resource
+    private GameItemService gameItemService;
+    @Resource
+    private GameItemDropSourceService itemDropSourceService;
+    @Resource
+    private GameCraftService craftService;
+    @Resource
+    private GamePrepService gamePrepService;
 
     /**
      * 主角详情
@@ -42,7 +60,7 @@ public class A3GameController {
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.USER)
     public WxResult<GameHero> heroInfo() {
-        return WxResult.success(gameHeroService.getOrInitHero(Wx.memberId()));
+        return WxResult.success(gamePrepService.getOutsideBattleHero(Wx.memberId()));
     }
 
     /**
@@ -116,5 +134,71 @@ public class A3GameController {
             @ParamCheck(msg = "战斗ID") String battleId
     ) {
         return WxResult.success(pveBattleService.getBattle(Wx.memberId(), battleId));
+    }
+
+    /**
+     * 怪物详情（含掉落预览）
+     */
+    @PostMapping("/monster/detail")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<MonsterDetailVo> monsterDetail(
+            @ParamCheck(msg = "怪物ID") String monsterId
+    ) {
+        return WxResult.success(gameBattleService.getMonsterDetail(monsterId));
+    }
+
+    /**
+     * 物品详情（含合成公式预留）
+     */
+    @PostMapping("/item/detail")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<ItemDetailVo> itemDetail(
+            @ParamCheck(msg = "物品ID") String itemId
+    ) {
+        return WxResult.success(gameItemService.getItemDetail(itemId));
+    }
+
+    /**
+     * 物品掉落关卡来源
+     */
+    @PostMapping("/item/drop-sources")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<List<ItemDropSourceVo>> itemDropSources(
+            @ParamCheck(msg = "物品ID") String itemId
+    ) {
+        return WxResult.success(itemDropSourceService.listByItemId(itemId));
+    }
+
+    /**
+     * 合成配方列表
+     */
+    @PostMapping("/craft/list")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<List<CraftRecipeVo>> craftList() {
+        return WxResult.success(craftService.listRecipes(Wx.memberId()));
+    }
+
+    /**
+     * 合成配方详情
+     */
+    @PostMapping("/craft/detail")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<CraftRecipeVo> craftDetail(@ParamCheck(msg = "配方ID") String recipeId) {
+        return WxResult.success(craftService.getRecipe(Wx.memberId(), recipeId));
+    }
+
+    /**
+     * 执行合成
+     */
+    @PostMapping("/craft/execute")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<CraftRecipeVo> craftExecute(@ParamCheck(msg = "配方ID") String recipeId) {
+        return WxResult.success(craftService.craft(Wx.memberId(), recipeId));
     }
 }

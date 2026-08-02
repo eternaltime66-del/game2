@@ -9,6 +9,8 @@ public class BattleLog {
     public static final String TYPE_ACTION = "ACTION";
     public static final String TYPE_WAVE = "WAVE";
     public static final String TYPE_RESULT = "RESULT";
+    public static final String TYPE_LOOT = "LOOT";
+    public static final String TYPE_TRIGGER = "TRIGGER";
 
     private String type;
 
@@ -40,6 +42,20 @@ public class BattleLog {
         if (killed) {
             text += "，" + targetName + " 死亡";
         }
+        log.setText(text);
+        return log;
+    }
+
+    public static BattleLog loot(String text) {
+        BattleLog log = new BattleLog();
+        log.setType(TYPE_LOOT);
+        log.setText(text);
+        return log;
+    }
+
+    public static BattleLog trigger(String text) {
+        BattleLog log = new BattleLog();
+        log.setType(TYPE_TRIGGER);
         log.setText(text);
         return log;
     }

@@ -2,175 +2,526 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>后台管理</title>
   <link rel="stylesheet" href="/css/auth.css">
   <link rel="stylesheet" href="/css/admin.css">
   <script src="/js/dev-live.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
-<body>
+<body class="admin-body">
 <div id="app" class="page admin-page">
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
 
-  <div v-if="!loggedIn" class="login-panel">
-    <div class="brand">
-      <div class="brand-badge">A</div>
-      <h1>后台管理</h1>
-      <p>管理员登录</p>
-    </div>
-    <div class="card">
-      <div class="field">
-        <label>账号</label>
-        <div class="input-wrap"><input v-model.trim="loginForm.account" placeholder="管理员邮箱"></div>
+  <!-- 登录 -->
+  <div v-if="!loggedIn" class="admin-login-wrap">
+    <div class="login-panel">
+      <div class="brand">
+        <div class="brand-badge">A</div>
+        <h1>后台管理</h1>
+        <p>管理员登录</p>
       </div>
-      <div class="field">
-        <label>密码</label>
-        <div class="input-wrap"><input v-model="loginForm.password" type="password" placeholder="密码"></div>
+      <div class="card">
+        <div class="field">
+          <label>账号</label>
+          <div class="input-wrap"><input v-model.trim="loginForm.account" placeholder="管理员邮箱"></div>
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <div class="input-wrap"><input v-model="loginForm.password" type="password" placeholder="密码"></div>
+        </div>
+        <button class="btn-primary" :disabled="loading" @click="doLogin">{{ loading ? '登录中...' : '登录' }}</button>
       </div>
-      <button class="btn-primary" :disabled="loading" @click="doLogin">{{ loading ? '登录中...' : '登录' }}</button>
     </div>
   </div>
 
-  <template v-else>
-    <div class="admin-header">
-      <h1>Game2 后台</h1>
-      <button class="btn-mini warn" @click="logout">退出</button>
-    </div>
-
-    <div class="admin-tabs">
-      <button class="admin-tab" :class="{ active: tab === 'member' }" @click="tab='member'">用户管理</button>
-      <button class="admin-tab" :class="{ active: tab === 'level' }" @click="switchLevel">关卡管理</button>
-      <button class="admin-tab" :class="{ active: tab === 'battle' }" @click="switchBattle">波次/怪物</button>
-    </div>
-
-    <div v-if="tab === 'member'" class="admin-card">
-      <h3>用户列表</h3>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr><th>ID</th><th>邮箱</th><th>角色</th><th>操作</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in members" :key="item.id">
-              <td>{{ item.id }}</td>
-              <td>{{ item.email || '-' }}</td>
-              <td>{{ item.memberRole }}</td>
-              <td>
-                <button class="btn-mini" @click="loginAs(item)">一键登录</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+  <!-- 主界面 -->
+  <div v-else class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">Game2 后台</div>
+      <nav class="sidebar-nav">
+        <button v-for="t in tabs" :key="t.key" type="button" class="sidebar-nav-item" :class="{ active: tab === t.key }" @click="switchTab(t.key)">{{ t.label }}</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="btn-mini warn" style="width:100%" @click="logout">退出登录</button>
       </div>
-      <p class="muted" v-if="pager">共 {{ pager.totalRows }} 条</p>
-    </div>
+    </aside>
 
-    <div v-if="tab === 'level'">
-      <div class="admin-card">
-        <h3>关卡树</h3>
-        <div class="level-tree">
-          <div class="level-block" v-for="mode in levelTree.modeGroups" :key="mode.modeGroup.id">
-            <div class="title">[模式组] {{ mode.modeGroup.name }} ({{ mode.modeGroup.code }})</div>
-            <div v-for="chapter in mode.chapters" :key="chapter.chapter.id" class="sub">
-              <div class="title">[大关] {{ chapter.chapter.name }} ({{ chapter.chapter.code }})</div>
-              <div v-for="group in chapter.stageGroups" :key="group.stageGroup.id">
-                <div class="sub">[小关组 {{ group.stageGroup.groupNo }}] {{ group.stageGroup.name }}</div>
-                <div class="stage-tags">
-                  <span class="stage-tag" v-for="stage in group.stages" :key="stage.id">
-                    {{ stage.displayCode || (group.stageGroup.groupNo + '-' + stage.stageNo) }} {{ stage.name }}
-                  </span>
-                </div>
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <h2>{{ currentTabLabel }}</h2>
+      </header>
+
+      <div class="admin-content">
+
+        <!-- 用户 -->
+        <div v-if="tab === 'member'" class="admin-panel">
+          <div class="panel-toolbar">
+            <h3>用户列表</h3>
+            <div class="panel-toolbar-actions">
+              <button type="button" class="btn-mini secondary" @click="loadMembers">刷新</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>邮箱</th><th>角色</th><th class="col-actions">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="item in members" :key="item.id">
+                  <td class="col-id">{{ item.id }}</td>
+                  <td>{{ item.email || '-' }}</td>
+                  <td>{{ item.memberRole }}</td>
+                  <td class="col-actions"><button type="button" class="btn-mini" @click="loginAs(item)">一键登录</button></td>
+                </tr>
+                <tr v-if="!members.length"><td colspan="4" class="empty-hint">暂无数据</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 关卡 -->
+        <div v-if="tab === 'level'">
+          <div class="admin-panel">
+            <div class="level-tree-compact" v-if="levelTreeSummary">{{ levelTreeSummary }}</div>
+            <div class="panel-toolbar">
+              <h3>小关卡列表</h3>
+              <div class="panel-toolbar-actions">
+                <button type="button" class="btn-primary" @click="openDrawer('stage')">+ 新增</button>
+                <button type="button" class="btn-mini secondary" @click="loadLevel">刷新</button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="admin-card">
-        <h3>快速新增小关卡</h3>
-        <div class="form-grid">
-          <div class="field full">
-            <label>小关卡组 ID</label>
-            <input v-model="stageForm.stageGroupId" placeholder="如 sg_1">
-          </div>
-          <div class="field">
-            <label>组内序号 stageNo</label>
-            <input v-model.number="stageForm.stageNo" type="number" placeholder="3">
-          </div>
-          <div class="field">
-            <label>排序 sort</label>
-            <input v-model.number="stageForm.sort" type="number" placeholder="3">
-          </div>
-          <div class="field full">
-            <label>名称</label>
-            <input v-model="stageForm.name" placeholder="1-3 新关卡">
-          </div>
-        </div>
-        <button class="btn-primary" style="margin-top:12px" @click="saveStage">保存小关卡</button>
-        <p class="muted" style="margin-top:10px">默认数据：sg_1(1-x)、sg_2(2-x)，大关卡 chapter_main，模式组 mode_core</p>
-      </div>
-    </div>
-
-    <div v-if="tab === 'battle'">
-      <div class="admin-card">
-        <h3>怪物列表</h3>
-        <div class="table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>行动值</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="m in monsters" :key="m.id">
-                <td>{{ m.code }}</td>
-                <td>{{ m.name }}</td>
-                <td>{{ m.hp }}/{{ m.maxHp }}</td>
-                <td>{{ m.attack }}</td>
-                <td>{{ m.actionValue }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="admin-card">
-        <h3>小关波次详情</h3>
-        <div class="form-grid">
-          <div class="field full">
-            <label>小关卡 ID</label>
-            <input v-model="battleStageId" placeholder="st_1_2">
-          </div>
-        </div>
-        <button class="btn-primary" style="margin-top:12px" @click="loadStageBattle">加载</button>
-        <div v-if="stageBattle.stage" class="level-tree" style="margin-top:14px">
-          <div class="title">{{ stageBattle.stage.displayCode || stageBattle.stage.name }}</div>
-          <div class="level-block" v-for="wave in stageBattle.waves" :key="wave.wave.id">
-            <div class="sub">[{{ wave.wave.name }}] waveNo={{ wave.wave.waveNo }}</div>
-            <div class="stage-tags">
-              <span class="stage-tag" v-for="item in wave.monsters" :key="item.id">
-                {{ item.monsterName }} x{{ item.quantity }}
-              </span>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>ID</th><th>名称</th><th>关卡组</th><th>序号</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="s in stages" :key="s.id">
+                    <td class="col-id">{{ s.id }}</td>
+                    <td>{{ s.displayCode || s.stageNo }} {{ s.name }}</td>
+                    <td class="col-id">{{ s.stageGroupId }}</td>
+                    <td>{{ s.stageNo }}</td>
+                    <td>{{ s.enabled ? '是' : '否' }}</td>
+                    <td class="col-actions">
+                      <button type="button" class="btn-mini" @click="openDrawer('stage', s)">编辑</button>
+                      <button type="button" class="btn-mini danger" @click="askRemoveStage(s)">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!stages.length"><td colspan="6" class="empty-hint">暂无小关卡</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="admin-card">
-        <h3>快速配置</h3>
-        <div class="form-grid">
-          <div class="field full"><label>新增波次 stageId</label><input v-model="waveForm.stageId"></div>
-          <div class="field"><label>waveNo</label><input v-model.number="waveForm.waveNo" type="number"></div>
-          <div class="field"><label>名称</label><input v-model="waveForm.name"></div>
-          <div class="field full"><label>波次怪物 waveId</label><input v-model="waveMonsterForm.waveId"></div>
-          <div class="field"><label>monsterId</label><input v-model="waveMonsterForm.monsterId"></div>
-          <div class="field"><label>数量</label><input v-model.number="waveMonsterForm.quantity" type="number"></div>
+        <!-- 波次/怪物 -->
+        <div v-if="tab === 'battle'">
+          <div class="admin-panel">
+            <div class="panel-toolbar">
+              <h3>怪物</h3>
+              <div class="panel-toolbar-actions">
+                <button type="button" class="btn-primary" @click="openDrawer('monster')">+ 新增</button>
+                <button type="button" class="btn-mini secondary" @click="loadMonsters">刷新</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>行动值</th><th class="col-actions">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="m in monsters" :key="m.id">
+                    <td class="col-id">{{ m.id }}</td>
+                    <td>{{ m.code }}</td>
+                    <td>{{ m.name }}</td>
+                    <td>{{ m.hp }}/{{ m.maxHp }}</td>
+                    <td>{{ m.attack }}</td>
+                    <td>{{ m.actionValue }}</td>
+                    <td class="col-actions">
+                      <button type="button" class="btn-mini" @click="openDrawer('monster', m)">编辑</button>
+                      <button type="button" class="btn-mini danger" @click="askRemoveMonster(m)">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!monsters.length"><td colspan="7" class="empty-hint">暂无怪物</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-panel">
+            <div class="panel-toolbar">
+              <h3>波次配置</h3>
+              <div class="panel-toolbar-actions panel-filter">
+                <label class="muted">小关卡 ID</label>
+                <input v-model.trim="battleStageId" placeholder="st_1_2">
+                <button type="button" class="btn-mini secondary" @click="loadStageBattle">加载</button>
+                <button type="button" class="btn-primary" @click="openDrawer('wave')">+ 新增波次</button>
+              </div>
+            </div>
+            <div v-if="stageBattle.stage" class="level-tree-compact">{{ stageBattle.stage.displayCode }} {{ stageBattle.stage.name }}（{{ stageBattle.stage.id }}）</div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>ID</th><th>波次</th><th>名称</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="w in stageBattle.waves" :key="w.wave.id" :class="{ 'row-selected': selectedWaveId === w.wave.id }">
+                    <td class="col-id">{{ w.wave.id }}</td>
+                    <td>{{ w.wave.waveNo }}</td>
+                    <td>{{ w.wave.name }}</td>
+                    <td>{{ w.wave.enabled ? '是' : '否' }}</td>
+                    <td class="col-actions">
+                      <button type="button" class="btn-mini secondary" @click="selectWave(w.wave.id)">怪物</button>
+                      <button type="button" class="btn-mini" @click="openDrawer('wave', w.wave)">编辑</button>
+                      <button type="button" class="btn-mini danger" @click="askRemoveWave(w.wave)">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!stageBattle.waves.length"><td colspan="5" class="empty-hint">请先输入小关卡 ID 并加载</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="selectedWaveId" class="admin-panel">
+            <div class="panel-toolbar">
+              <h3>波次怪物 · {{ selectedWaveId }}</h3>
+              <div class="panel-toolbar-actions">
+                <button type="button" class="btn-primary" @click="openDrawer('waveMonster')">+ 新增</button>
+                <button type="button" class="btn-mini secondary" @click="loadWaveMonsters">刷新</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>ID</th><th>怪物</th><th>数量</th><th class="col-actions">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="wm in waveMonsters" :key="wm.id">
+                    <td class="col-id">{{ wm.id }}</td>
+                    <td>{{ wm.monsterName || wm.monsterId }}</td>
+                    <td>{{ wm.quantity }}</td>
+                    <td class="col-actions">
+                      <button type="button" class="btn-mini" @click="openDrawer('waveMonster', wm)">编辑</button>
+                      <button type="button" class="btn-mini danger" @click="askRemoveWaveMonster(wm)">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!waveMonsters.length"><td colspan="4" class="empty-hint">该波次暂无怪物</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <button class="btn-primary" style="margin-top:12px;margin-right:8px" @click="saveWave">保存波次</button>
-        <button class="btn-primary" style="margin-top:12px" @click="saveWaveMonster">保存波次怪物</button>
+
+        <!-- 物品 -->
+        <div v-if="tab === 'item'" class="admin-panel">
+          <div class="panel-toolbar">
+            <h3>物品列表</h3>
+            <div class="panel-toolbar-actions">
+              <button type="button" class="btn-primary" @click="openDrawer('item')">+ 新增</button>
+              <button type="button" class="btn-mini secondary" @click="loadItems">刷新</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>标签</th><th>堆叠</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="it in items" :key="it.id">
+                  <td class="col-id">{{ it.id }}</td>
+                  <td>{{ it.code }}</td>
+                  <td>{{ it.name }}</td>
+                  <td>{{ it.itemTags || '-' }}</td>
+                  <td>{{ it.maxStack }}</td>
+                  <td>{{ it.enabled ? '是' : '否' }}</td>
+                  <td class="col-actions">
+                    <button type="button" class="btn-mini" @click="openDrawer('item', it)">编辑</button>
+                    <button type="button" class="btn-mini danger" @click="askRemoveItem(it)">删除</button>
+                  </td>
+                </tr>
+                <tr v-if="!items.length"><td colspan="7" class="empty-hint">暂无物品</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 掉落 -->
+        <div v-if="tab === 'drop'" class="admin-panel">
+          <div class="panel-toolbar">
+            <h3>怪物掉落</h3>
+            <div class="panel-toolbar-actions panel-filter">
+              <input v-model.trim="dropFilter.monsterId" placeholder="筛选怪物 ID">
+              <button type="button" class="btn-mini secondary" @click="loadDrops">查询</button>
+              <button type="button" class="btn-primary" @click="openDrawer('drop')">+ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>怪物</th><th>物品</th><th>概率%</th><th>数量</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="d in drops" :key="d.id">
+                  <td class="col-id">{{ d.id }}</td>
+                  <td class="col-id">{{ d.monsterId }}</td>
+                  <td class="col-id">{{ d.itemId }}</td>
+                  <td>{{ d.dropRate }}</td>
+                  <td>{{ d.minQty }}~{{ d.maxQty }}</td>
+                  <td>{{ d.enabled ? '是' : '否' }}</td>
+                  <td class="col-actions">
+                    <button type="button" class="btn-mini" @click="openDrawer('drop', d)">编辑</button>
+                    <button type="button" class="btn-mini danger" @click="askRemoveDrop(d)">删除</button>
+                  </td>
+                </tr>
+                <tr v-if="!drops.length"><td colspan="7" class="empty-hint">暂无掉落配置</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 合成 -->
+        <div v-if="tab === 'craft'" class="admin-panel">
+          <div class="panel-toolbar">
+            <h3>合成配方</h3>
+            <div class="panel-toolbar-actions">
+              <button type="button" class="btn-primary" @click="openDrawer('craft')">+ 新增</button>
+              <button type="button" class="btn-mini secondary" @click="loadCraftRecipes">刷新</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>产物</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="r in craftRecipes" :key="r.id">
+                  <td class="col-id">{{ r.id }}</td>
+                  <td>{{ r.code }}</td>
+                  <td>{{ r.name }}</td>
+                  <td class="col-id">{{ r.resultItemId }}</td>
+                  <td>{{ r.enabled ? '是' : '否' }}</td>
+                  <td class="col-actions">
+                    <button type="button" class="btn-mini" @click="editCraftRecipe(r)">编辑</button>
+                    <button type="button" class="btn-mini danger" @click="askRemoveCraftRecipe(r)">删除</button>
+                  </td>
+                </tr>
+                <tr v-if="!craftRecipes.length"><td colspan="6" class="empty-hint">暂无配方</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 扳机 -->
+        <div v-if="tab === 'trigger'">
+          <div class="admin-panel">
+            <div class="level-tree-compact">
+              扳机绑定完整技能 · 时机含累计受伤/回血/攻击次数 · 技能在「技能」页组合基础效果
+            </div>
+            <div class="panel-toolbar">
+              <h3>物品扳机列表</h3>
+              <div class="panel-toolbar-actions panel-filter">
+                <input v-model.trim="triggerFilter.itemId" placeholder="筛选物品 ID">
+                <button type="button" class="btn-mini secondary" @click="loadTriggers">查询</button>
+                <button type="button" class="btn-primary" @click="openDrawer('trigger')">+ 新增</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>ID</th><th>物品</th><th>扳机</th><th>技能ID</th><th>阈值</th><th>排序</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="t in triggers" :key="t.id">
+                    <td class="col-id">{{ t.id }}</td>
+                    <td class="col-id">{{ t.itemId }}</td>
+                    <td>{{ triggerPhaseLabel(t.triggerPhase) }}</td>
+                    <td class="col-id">{{ t.skillId || '-' }}</td>
+                    <td>{{ t.thresholdValue != null ? t.thresholdValue : '-' }}</td>
+                    <td>{{ t.sort }}</td>
+                    <td>{{ t.enabled ? '是' : '否' }}</td>
+                    <td class="col-actions">
+                      <button type="button" class="btn-mini" @click="openDrawer('trigger', t)">编辑</button>
+                      <button type="button" class="btn-mini danger" @click="askRemoveTrigger(t)">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!triggers.length"><td colspan="8" class="empty-hint">暂无扳机配置</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 技能 -->
+        <div v-if="tab === 'skill'" class="admin-panel">
+          <div class="panel-toolbar">
+            <h3>完整技能</h3>
+            <div class="panel-toolbar-actions">
+              <button type="button" class="btn-primary" @click="openDrawer('skill')">+ 新增</button>
+              <button type="button" class="btn-mini secondary" @click="loadSkills">刷新</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="s in skills" :key="s.id">
+                  <td class="col-id">{{ s.id }}</td>
+                  <td>{{ s.code }}</td>
+                  <td>{{ s.name }}</td>
+                  <td>{{ s.enabled ? '是' : '否' }}</td>
+                  <td class="col-actions">
+                    <button type="button" class="btn-mini" @click="editSkill(s)">编辑</button>
+                    <button type="button" class="btn-mini danger" @click="askRemoveSkill(s)">删除</button>
+                  </td>
+                </tr>
+                <tr v-if="!skills.length"><td colspan="5" class="empty-hint">暂无技能</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
-  </template>
+  </div>
+
+  <!-- 编辑抽屉 -->
+  <div v-if="drawerOpen" class="admin-drawer-mask" @click.self="closeDrawer">
+    <div class="admin-drawer">
+      <div class="drawer-header">
+        <h3>{{ drawerTitle }}</h3>
+        <button type="button" class="drawer-close" @click="closeDrawer">&times;</button>
+      </div>
+      <div class="drawer-body">
+
+        <!-- 小关卡 -->
+        <div v-if="drawerType === 'stage'" class="form-grid">
+          <div class="field full"><label>ID（留空自动）</label><input v-model="stageForm.id" placeholder="st_1_5"></div>
+          <div class="field full"><label>小关卡组 ID</label><input v-model="stageForm.stageGroupId" placeholder="sg_1"></div>
+          <div class="field"><label>组内序号</label><input v-model.number="stageForm.stageNo" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="stageForm.sort" type="number"></div>
+          <div class="field full"><label>名称</label><input v-model="stageForm.name"></div>
+          <div class="field"><label>启用</label><select v-model.number="stageForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+        </div>
+
+        <!-- 怪物 -->
+        <div v-if="drawerType === 'monster'" class="form-grid">
+          <div class="field full"><label>ID</label><input v-model="monsterForm.id" placeholder="mon_slime"></div>
+          <div class="field"><label>编码</label><input v-model="monsterForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="monsterForm.name"></div>
+          <div class="field"><label>生命</label><input v-model.number="monsterForm.hp" type="number"></div>
+          <div class="field"><label>最大生命</label><input v-model.number="monsterForm.maxHp" type="number"></div>
+          <div class="field"><label>攻击</label><input v-model.number="monsterForm.attack" type="number"></div>
+          <div class="field"><label>行动值</label><input v-model.number="monsterForm.actionValue" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="monsterForm.sort" type="number"></div>
+          <div class="field"><label>启用</label><select v-model.number="monsterForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+        </div>
+
+        <!-- 波次 -->
+        <div v-if="drawerType === 'wave'" class="form-grid">
+          <div class="field full"><label>波次 ID（留空新建）</label><input v-model="waveForm.id"></div>
+          <div class="field full"><label>小关卡 ID</label><input v-model="waveForm.stageId"></div>
+          <div class="field"><label>波次序号</label><input v-model.number="waveForm.waveNo" type="number"></div>
+          <div class="field"><label>名称</label><input v-model="waveForm.name"></div>
+          <div class="field"><label>排序</label><input v-model.number="waveForm.sort" type="number"></div>
+          <div class="field"><label>启用</label><select v-model.number="waveForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+        </div>
+
+        <!-- 波次怪物 -->
+        <div v-if="drawerType === 'waveMonster'" class="form-grid">
+          <div class="field full"><label>ID（留空新建）</label><input v-model="waveMonsterForm.id"></div>
+          <div class="field full"><label>波次 ID</label><input v-model="waveMonsterForm.waveId"></div>
+          <div class="field"><label>怪物 ID</label><input v-model="waveMonsterForm.monsterId"></div>
+          <div class="field"><label>数量</label><input v-model.number="waveMonsterForm.quantity" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="waveMonsterForm.sort" type="number"></div>
+        </div>
+
+        <!-- 物品 -->
+        <div v-if="drawerType === 'item'" class="form-grid">
+          <div class="field full"><label>ID</label><input v-model="itemForm.id" placeholder="item_wood_armor"></div>
+          <div class="field"><label>编码</label><input v-model="itemForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="itemForm.name"></div>
+          <div class="field full"><label>图标路径</label><input v-model="itemForm.icon" placeholder="/img/items/wood_armor.png"></div>
+          <div class="field full"><label>标签（逗号分隔）</label><input v-model="itemForm.itemTags" placeholder="MATERIAL,ARMOR"></div>
+          <div class="field"><label>最大堆叠</label><input v-model.number="itemForm.maxStack" type="number"></div>
+          <div class="field"><label>重量</label><input v-model.number="itemForm.weight" type="number" step="0.1"></div>
+          <div class="field"><label>排序</label><input v-model.number="itemForm.sort" type="number"></div>
+          <div class="field"><label>启用</label><select v-model.number="itemForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+          <div class="field full"><label>备注</label><input v-model="itemForm.remark"></div>
+        </div>
+        <div v-if="drawerType === 'item' && itemTagOptions.length" class="tag-pick-row">
+          <span class="muted">快捷标签：</span>
+          <button type="button" class="btn-mini" v-for="opt in itemTagOptions" :key="opt.code" @click="appendItemTag(opt.code)">{{ opt.label }}</button>
+        </div>
+
+        <!-- 掉落 -->
+        <div v-if="drawerType === 'drop'" class="form-grid">
+          <div class="field full"><label>ID</label><input v-model="dropForm.id"></div>
+          <div class="field"><label>怪物 ID</label><input v-model="dropForm.monsterId"></div>
+          <div class="field"><label>物品 ID</label><input v-model="dropForm.itemId"></div>
+          <div class="field"><label>掉落率 %</label><input v-model.number="dropForm.dropRate" type="number"></div>
+          <div class="field"><label>最小数量</label><input v-model.number="dropForm.minQty" type="number"></div>
+          <div class="field"><label>最大数量</label><input v-model.number="dropForm.maxQty" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="dropForm.sort" type="number"></div>
+          <div class="field"><label>启用</label><select v-model.number="dropForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+        </div>
+
+        <!-- 合成 -->
+        <div v-if="drawerType === 'craft'">
+          <div class="form-grid">
+            <div class="field full"><label>配方 ID</label><input v-model="craftForm.id" placeholder="craft_wood_armor"></div>
+            <div class="field"><label>编码</label><input v-model="craftForm.code"></div>
+            <div class="field"><label>名称</label><input v-model="craftForm.name"></div>
+            <div class="field full"><label>产物物品 ID</label><input v-model="craftForm.resultItemId"></div>
+            <div class="field"><label>排序</label><input v-model.number="craftForm.sort" type="number"></div>
+            <div class="field"><label>启用</label><select v-model.number="craftForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+            <div class="field full"><label>备注</label><input v-model="craftForm.remark"></div>
+          </div>
+          <h4 style="margin:18px 0 10px;font-size:14px;color:var(--muted)">材料</h4>
+          <div class="mat-editor" v-for="(mat, idx) in craftForm.materials" :key="idx">
+            <div class="form-grid">
+              <div class="field"><label>物品 ID</label><input v-model="mat.itemId"></div>
+              <div class="field"><label>数量</label><input v-model.number="mat.quantity" type="number"></div>
+            </div>
+            <button type="button" class="btn-mini warn" @click="removeCraftMaterial(idx)">删除材料</button>
+          </div>
+          <button type="button" class="btn-mini secondary" style="margin-top:10px" @click="addCraftMaterial">+ 添加材料</button>
+        </div>
+
+        <!-- 扳机 -->
+        <div v-if="drawerType === 'trigger'" class="form-grid">
+          <div class="field full"><label>ID（留空自动）</label><input v-model="triggerForm.id" placeholder="trg_seven_hurt_pre"></div>
+          <div class="field full"><label>物品 ID</label><input v-model="triggerForm.itemId" placeholder="item_seven_hurt_blade"></div>
+          <div class="field full"><label>完整技能 ID</label><input v-model="triggerForm.skillId" placeholder="sk_seven_hurt_pre"></div>
+          <div class="field"><label>扳机时机</label>
+            <select v-model="triggerForm.triggerPhase">
+              <option v-for="opt in triggerPhaseOptions" :key="opt.code" :value="opt.code">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="field" v-if="isCounterPhase(triggerForm.triggerPhase)"><label>累计阈值</label><input v-model.number="triggerForm.thresholdValue" type="number" step="0.1"></div>
+          <div class="field"><label>排序</label><input v-model.number="triggerForm.sort" type="number"></div>
+          <div class="field"><label>启用</label><select v-model.number="triggerForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+          <div class="field full"><label>备注</label><input v-model="triggerForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'skill'">
+          <div class="form-grid">
+            <div class="field full"><label>技能 ID</label><input v-model="skillForm.id" placeholder="sk_seven_hurt_pre"></div>
+            <div class="field"><label>编码</label><input v-model="skillForm.code"></div>
+            <div class="field"><label>名称</label><input v-model="skillForm.name"></div>
+            <div class="field"><label>排序</label><input v-model.number="skillForm.sort" type="number"></div>
+            <div class="field"><label>启用</label><select v-model.number="skillForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
+            <div class="field full"><label>备注</label><input v-model="skillForm.remark"></div>
+          </div>
+          <h4 style="margin:18px 0 10px;font-size:14px;color:var(--muted)">技能步骤（基础效果组合）</h4>
+          <div class="mat-editor" v-for="(eff, idx) in skillForm.effects" :key="idx">
+            <div class="form-grid">
+              <div class="field"><label>效果</label>
+                <select v-model="eff.effectType">
+                  <option v-for="opt in skillEffectOptions" :key="opt.code" :value="opt.code">{{ opt.label }}</option>
+                </select>
+              </div>
+              <div class="field"><label>数值</label><input v-model.number="eff.effectValue" type="number" step="0.1"></div>
+              <div class="field"><label>目标</label>
+                <select v-model="eff.targetType">
+                  <option v-for="opt in skillTargetOptions" :key="opt.code" :value="opt.code">{{ opt.label }}</option>
+                </select>
+              </div>
+              <div class="field"><label>排序</label><input v-model.number="eff.sort" type="number"></div>
+            </div>
+            <button type="button" class="btn-mini warn" @click="removeSkillEffect(idx)">删除步骤</button>
+          </div>
+          <button type="button" class="btn-mini secondary" style="margin-top:10px" @click="addSkillEffect">+ 添加步骤</button>
+        </div>
+
+      </div>
+      <div class="drawer-footer">
+        <button type="button" class="btn-primary" @click="saveDrawer">保存</button>
+        <button type="button" class="btn-mini secondary" @click="closeDrawer">取消</button>
+      </div>
+    </div>
+  </div>
 
   <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
 </div>
@@ -180,103 +531,560 @@
 <script>
 const { createApp } = Vue;
 
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj || {}));
+}
+
+var DEFAULT_FORMS = {
+  stage: { id: '', stageGroupId: 'sg_1', stageNo: 1, sort: 1, name: '', enabled: 1 },
+  monster: { id: '', code: '', name: '', hp: 60, maxHp: 60, attack: 6, actionValue: 90, sort: 0, enabled: 1 },
+  wave: { id: '', stageId: 'st_1_2', waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
+  waveMonster: { id: '', waveId: '', monsterId: 'mon_slime', quantity: 1, sort: 1 },
+  item: { id: '', code: '', name: '', icon: '', itemTags: 'MATERIAL', maxStack: 99, weight: 1, sort: 0, enabled: 1, remark: '' },
+  drop: { id: '', monsterId: 'mon_slime', itemId: 'item_stick', dropRate: 100, minQty: 1, maxQty: 2, sort: 1, enabled: 1 },
+  craft: { id: '', code: '', name: '', resultItemId: '', sort: 1, enabled: 1, remark: '', materials: [] },
+  trigger: { id: '', itemId: '', skillId: '', triggerPhase: 'BEFORE_ATTACK', thresholdValue: null, sort: 1, enabled: 1, remark: '' },
+  skill: { id: '', code: '', name: '', sort: 1, enabled: 1, remark: '', effects: [] }
+};
+
+var DRAWER_TITLES = {
+  stage: '小关卡',
+  monster: '怪物',
+  wave: '波次',
+  waveMonster: '波次怪物',
+  item: '物品',
+  drop: '掉落配置',
+  craft: '合成配方',
+  trigger: '物品扳机',
+  skill: '完整技能'
+};
+
 createApp({
-  data() {
+  data: function () {
     return {
       loggedIn: !!AdminApi.getAdminToken(),
       loading: false,
       tab: 'member',
+      tabs: [
+        { key: 'member', label: '用户' },
+        { key: 'level', label: '关卡' },
+        { key: 'battle', label: '波次/怪物' },
+        { key: 'item', label: '物品' },
+        { key: 'drop', label: '掉落' },
+        { key: 'craft', label: '合成' },
+        { key: 'trigger', label: '扳机' },
+        { key: 'skill', label: '技能' }
+      ],
       loginForm: { account: '', password: '' },
       members: [],
-      pager: null,
       levelTree: { modeGroups: [] },
-      stageForm: { stageGroupId: 'sg_1', stageNo: 3, sort: 3, name: '1-3 新关卡', enabled: 1 },
+      stages: [],
       monsters: [],
       battleStageId: 'st_1_2',
       stageBattle: { stage: null, waves: [] },
-      waveForm: { stageId: 'st_1_2', waveNo: 4, name: '第4波', sort: 4, enabled: 1 },
-      waveMonsterForm: { waveId: 'wave_1_2_1', monsterId: 'mon_goblin', quantity: 1, sort: 1 },
+      selectedWaveId: '',
+      waveMonsters: [],
+      items: [],
+      itemTagOptions: [],
+      drops: [],
+      dropFilter: { monsterId: '' },
+      craftRecipes: [],
+      drawerOpen: false,
+      drawerType: '',
+      stageForm: clone(DEFAULT_FORMS.stage),
+      monsterForm: clone(DEFAULT_FORMS.monster),
+      waveForm: clone(DEFAULT_FORMS.wave),
+      waveMonsterForm: clone(DEFAULT_FORMS.waveMonster),
+      itemForm: clone(DEFAULT_FORMS.item),
+      dropForm: clone(DEFAULT_FORMS.drop),
+      craftForm: clone(DEFAULT_FORMS.craft),
+      triggers: [],
+      triggerFilter: { itemId: '' },
+      triggerPhaseOptions: [],
+      triggerForm: clone(DEFAULT_FORMS.trigger),
+      skills: [],
+      skillEffectOptions: [],
+      skillTargetOptions: [],
+      skillForm: clone(DEFAULT_FORMS.skill),
       toast: { show: false, text: '', type: 'error' }
     };
   },
-  mounted() {
-    if (this.loggedIn) {
-      this.loadMembers();
+  computed: {
+    currentTabLabel: function () {
+      var t = this.tabs.find(function (x) { return x.key === this.tab; }.bind(this));
+      return t ? t.label : '后台管理';
+    },
+    drawerTitle: function () {
+      var label = DRAWER_TITLES[this.drawerType] || '编辑';
+      var form = this.getCurrentForm();
+      var isEdit = form && form.id;
+      return (isEdit ? '编辑' : '新增') + label;
+    },
+    levelTreeSummary: function () {
+      var tree = this.levelTree;
+      if (!tree.modeGroups || !tree.modeGroups.length) return '';
+      var parts = [];
+      tree.modeGroups.forEach(function (mg) {
+        parts.push(mg.modeGroup.name);
+      });
+      return '关卡结构：' + parts.join(' · ');
     }
   },
+  mounted: function () {
+    if (this.loggedIn) this.loadMembers();
+  },
   methods: {
-    showToast(text, type) {
-      this.toast = { show: true, text, type: type || 'error' };
-      setTimeout(() => { this.toast.show = false; }, 2200);
+    showToast: function (text, type) {
+      this.toast = { show: true, text: text, type: type || 'error' };
+      var self = this;
+      setTimeout(function () { self.toast.show = false; }, 2200);
     },
-    doLogin() {
-      this.loading = true;
-      AdminApi.login(this.loginForm.account, this.loginForm.password)
-        .then((res) => {
+    confirmRemove: function (msg, fn) {
+      if (window.confirm(msg)) fn();
+    },
+    askRemoveStage: function (s) {
+      var self = this;
+      this.confirmRemove('确定删除小关卡「' + s.name + '」？关联波次也会删除。', function () { self.removeStage(s.id); });
+    },
+    askRemoveMonster: function (m) {
+      var self = this;
+      this.confirmRemove('确定删除怪物「' + m.name + '」？', function () { self.removeMonster(m.id); });
+    },
+    askRemoveWave: function (w) {
+      var self = this;
+      this.confirmRemove('确定删除波次「' + w.name + '」？', function () { self.removeWave(w.id); });
+    },
+    askRemoveWaveMonster: function (wm) {
+      var self = this;
+      this.confirmRemove('确定删除该波次怪物？', function () { self.removeWaveMonster(wm.id); });
+    },
+    askRemoveItem: function (it) {
+      var self = this;
+      this.confirmRemove('确定删除物品「' + it.name + '」？', function () { self.removeItem(it.id); });
+    },
+    askRemoveDrop: function (d) {
+      var self = this;
+      this.confirmRemove('确定删除该掉落配置？', function () { self.removeDrop(d.id); });
+    },
+    askRemoveCraftRecipe: function (r) {
+      var self = this;
+      this.confirmRemove('确定删除配方「' + r.name + '」？', function () { self.removeCraftRecipe(r.id); });
+    },
+    askRemoveTrigger: function (t) {
+      var self = this;
+      this.confirmRemove('确定删除扳机「' + t.id + '」？', function () { self.removeTrigger(t.id); });
+    },
+    triggerPhaseLabel: function (code) {
+      var opt = this.triggerPhaseOptions.find(function (o) { return o.code === code; });
+      return opt ? opt.label : code;
+    },
+    isCounterPhase: function (code) {
+      return code === 'ACCUMULATED_TAKE_DAMAGE' || code === 'ACCUMULATED_HEAL' || code === 'ATTACK_COUNT';
+    },
+    getCurrentForm: function () {
+      var map = {
+        stage: this.stageForm,
+        monster: this.monsterForm,
+        wave: this.waveForm,
+        waveMonster: this.waveMonsterForm,
+        item: this.itemForm,
+        drop: this.dropForm,
+        craft: this.craftForm,
+        trigger: this.triggerForm,
+        skill: this.skillForm
+      };
+      return map[this.drawerType];
+    },
+    openDrawer: function (type, data) {
+      this.drawerType = type;
+      var defaults = clone(DEFAULT_FORMS[type]);
+      if (type === 'wave') defaults.stageId = this.battleStageId || defaults.stageId;
+      if (type === 'waveMonster') defaults.waveId = this.selectedWaveId || '';
+      if (data) {
+        if (type === 'craft') {
+          this.editCraftRecipe(data);
+          return;
+        }
+        if (type === 'skill') {
+          this.editSkill(data);
+          return;
+        }
+        if (type === 'stage') this.stageForm = clone(data);
+        else if (type === 'monster') this.monsterForm = clone(data);
+        else if (type === 'wave') this.waveForm = clone(data);
+        else if (type === 'waveMonster') this.waveMonsterForm = clone(data);
+        else if (type === 'item') this.itemForm = clone(data);
+        else if (type === 'drop') this.dropForm = clone(data);
+        else if (type === 'trigger') this.triggerForm = clone(data);
+      } else {
+        if (type === 'stage') this.stageForm = defaults;
+        else if (type === 'monster') this.monsterForm = defaults;
+        else if (type === 'wave') this.waveForm = defaults;
+        else if (type === 'waveMonster') this.waveMonsterForm = defaults;
+        else if (type === 'item') this.itemForm = defaults;
+        else if (type === 'drop') this.dropForm = defaults;
+        else if (type === 'craft') this.craftForm = defaults;
+        else if (type === 'trigger') this.triggerForm = defaults;
+        else if (type === 'skill') this.skillForm = defaults;
+      }
+      this.drawerOpen = true;
+    },
+    closeDrawer: function () {
+      this.drawerOpen = false;
+      this.drawerType = '';
+    },
+    saveDrawer: function () {
+      var type = this.drawerType;
+      if (type === 'stage') this.saveStage();
+      else if (type === 'monster') this.saveMonster();
+      else if (type === 'wave') this.saveWave();
+      else if (type === 'waveMonster') this.saveWaveMonster();
+      else if (type === 'item') this.saveItem();
+      else if (type === 'drop') this.saveDrop();
+      else if (type === 'craft') this.saveCraftRecipe();
+      else if (type === 'trigger') this.saveTrigger();
+      else if (type === 'skill') this.saveSkill();
+    },
+    switchTab: function (key) {
+      this.tab = key;
+      this.closeDrawer();
+      if (key === 'member') this.loadMembers();
+      if (key === 'level') this.loadLevel();
+      if (key === 'battle') this.loadBattle();
+      if (key === 'item') this.loadItems();
+      if (key === 'drop') this.loadDrops();
+      if (key === 'craft') this.loadCraftRecipes();
+      if (key === 'trigger') this.loadTriggers();
+      if (key === 'skill') this.loadSkills();
+    },
+    doLogin: function () {
+      var self = this;
+      self.loading = true;
+      AdminApi.login(self.loginForm.account, self.loginForm.password)
+        .then(function (res) {
           AdminApi.saveAdminToken(res.token);
-          this.loggedIn = true;
-          this.loadMembers();
-          this.showToast('登录成功', 'success');
+          self.loggedIn = true;
+          self.loadMembers();
+          self.showToast('登录成功', 'success');
         })
-        .catch((err) => this.showToast(err.message))
-        .finally(() => { this.loading = false; });
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.loading = false; });
     },
-    logout() {
+    logout: function () {
       AdminApi.clearAdminToken();
       this.loggedIn = false;
     },
-    loadMembers() {
+    loadMembers: function () {
+      var self = this;
       AdminApi.memberList({ current: 1, size: 50 })
-        .then((res) => {
-          this.members = res.data || [];
-          this.pager = res.pager;
-        })
-        .catch((err) => this.showToast(err.message));
+        .then(function (res) { self.members = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
     },
-    loginAs(member) {
+    loginAs: function (member) {
+      var self = this;
       AdminApi.loginAsUser(member.id)
-        .then((res) => {
+        .then(function (res) {
           localStorage.setItem(APP_CONFIG.tokenKey, res.token);
-          this.showToast('已获取用户 token，正在跳转', 'success');
-          setTimeout(() => { location.href = APP_CONFIG.homePage; }, 500);
+          self.showToast('已获取用户 token，正在跳转', 'success');
+          setTimeout(function () { location.href = APP_CONFIG.homePage; }, 500);
         })
-        .catch((err) => this.showToast(err.message));
+        .catch(function (err) { self.showToast(err.message); });
     },
-    switchLevel() {
-      this.tab = 'level';
+    loadLevel: function () {
+      var self = this;
       AdminApi.levelTree()
-        .then((res) => { this.levelTree = res.data || { modeGroups: [] }; })
-        .catch((err) => this.showToast(err.message));
+        .then(function (res) { self.levelTree = res.data || { modeGroups: [] }; })
+        .catch(function (err) { self.showToast(err.message); });
+      AdminApi.stageList({ current: 1, size: 500 })
+        .then(function (res) { self.stages = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
     },
-    saveStage() {
-      AdminApi.saveStage(this.stageForm)
-        .then(() => {
-          this.showToast('保存成功', 'success');
-          this.switchLevel();
+    saveStage: function () {
+      var self = this;
+      AdminApi.saveStage(self.stageForm)
+        .then(function () {
+          self.showToast('保存成功', 'success');
+          self.closeDrawer();
+          self.loadLevel();
         })
-        .catch((err) => this.showToast(err.message));
+        .catch(function (err) { self.showToast(err.message); });
     },
-    switchBattle() {
-      this.tab = 'battle';
-      AdminApi.monsterList({ current: 1, size: 50 })
-        .then((res) => { this.monsters = res.data || []; })
-        .catch((err) => this.showToast(err.message));
+    removeStage: function (id) {
+      var self = this;
+      AdminApi.removeStage(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadLevel(); })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadBattle: function () {
+      this.loadMonsters();
       this.loadStageBattle();
     },
-    loadStageBattle() {
-      AdminApi.stageBattleDetail(this.battleStageId)
-        .then((res) => { this.stageBattle = res.data || { stage: null, waves: [] }; })
-        .catch((err) => this.showToast(err.message));
+    loadMonsters: function () {
+      var self = this;
+      AdminApi.monsterList({ current: 1, size: 200 })
+        .then(function (res) { self.monsters = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
     },
-    saveWave() {
-      AdminApi.saveWave(this.waveForm)
-        .then(() => { this.showToast('波次已保存', 'success'); this.loadStageBattle(); })
-        .catch((err) => this.showToast(err.message));
+    saveMonster: function () {
+      var self = this;
+      AdminApi.saveMonster(self.monsterForm)
+        .then(function () {
+          self.showToast('怪物已保存', 'success');
+          self.closeDrawer();
+          self.loadMonsters();
+        })
+        .catch(function (err) { self.showToast(err.message); });
     },
-    saveWaveMonster() {
-      AdminApi.saveWaveMonster(this.waveMonsterForm)
-        .then(() => { this.showToast('波次怪物已保存', 'success'); this.loadStageBattle(); })
-        .catch((err) => this.showToast(err.message));
+    removeMonster: function (id) {
+      var self = this;
+      AdminApi.removeMonster(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadMonsters(); })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadStageBattle: function () {
+      var self = this;
+      AdminApi.stageBattleDetail(self.battleStageId)
+        .then(function (res) {
+          self.stageBattle = res.data || { stage: null, waves: [] };
+          if (self.selectedWaveId) self.loadWaveMonsters();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    selectWave: function (waveId) {
+      this.selectedWaveId = waveId;
+      this.loadWaveMonsters();
+    },
+    loadWaveMonsters: function () {
+      var self = this;
+      if (!self.selectedWaveId) return;
+      AdminApi.waveMonsterList(self.selectedWaveId)
+        .then(function (res) { self.waveMonsters = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    saveWave: function () {
+      var self = this;
+      AdminApi.saveWave(self.waveForm)
+        .then(function () {
+          self.showToast('波次已保存', 'success');
+          self.closeDrawer();
+          self.loadStageBattle();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    removeWave: function (id) {
+      var self = this;
+      AdminApi.removeWave(id)
+        .then(function () {
+          if (self.selectedWaveId === id) {
+            self.selectedWaveId = '';
+            self.waveMonsters = [];
+          }
+          self.showToast('已删除', 'success');
+          self.loadStageBattle();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    saveWaveMonster: function () {
+      var self = this;
+      AdminApi.saveWaveMonster(self.waveMonsterForm)
+        .then(function () {
+          self.showToast('波次怪物已保存', 'success');
+          self.closeDrawer();
+          self.loadStageBattle();
+          self.loadWaveMonsters();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    removeWaveMonster: function (id) {
+      var self = this;
+      AdminApi.removeWaveMonster(id)
+        .then(function () {
+          self.showToast('已删除', 'success');
+          self.loadWaveMonsters();
+          self.loadStageBattle();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadItems: function () {
+      var self = this;
+      AdminApi.itemList({ current: 1, size: 500 })
+        .then(function (res) { self.items = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
+      if (!self.itemTagOptions.length) {
+        AdminApi.itemTagOptions()
+          .then(function (res) { self.itemTagOptions = res.data || []; })
+          .catch(function () {});
+      }
+    },
+    appendItemTag: function (code) {
+      var tags = (this.itemForm.itemTags || '').split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+      if (tags.indexOf(code) < 0) tags.push(code);
+      this.itemForm.itemTags = tags.join(',');
+    },
+    saveItem: function () {
+      var self = this;
+      AdminApi.saveItem(self.itemForm)
+        .then(function () {
+          self.showToast('物品已保存', 'success');
+          self.closeDrawer();
+          self.loadItems();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    removeItem: function (id) {
+      var self = this;
+      AdminApi.removeItem(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadItems(); })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadDrops: function () {
+      var self = this;
+      var body = {};
+      if (self.dropFilter.monsterId) body.monsterId = self.dropFilter.monsterId;
+      AdminApi.dropList({ current: 1, size: 500 }, body)
+        .then(function (res) { self.drops = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    saveDrop: function () {
+      var self = this;
+      AdminApi.saveDrop(self.dropForm)
+        .then(function () {
+          self.showToast('掉落已保存', 'success');
+          self.closeDrawer();
+          self.loadDrops();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    removeDrop: function (id) {
+      var self = this;
+      AdminApi.removeDrop(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadDrops(); })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadCraftRecipes: function () {
+      var self = this;
+      AdminApi.craftRecipeList({ current: 1, size: 200 })
+        .then(function (res) { self.craftRecipes = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    editCraftRecipe: function (r) {
+      var self = this;
+      AdminApi.craftRecipeDetail(r.id)
+        .then(function (res) {
+          self.craftForm = res.data || clone(DEFAULT_FORMS.craft);
+          if (!self.craftForm.materials) self.craftForm.materials = [];
+          self.drawerType = 'craft';
+          self.drawerOpen = true;
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    addCraftMaterial: function () {
+      if (!this.craftForm.materials) this.craftForm.materials = [];
+      this.craftForm.materials.push({ itemId: '', quantity: 1, sort: this.craftForm.materials.length + 1 });
+    },
+    removeCraftMaterial: function (idx) {
+      this.craftForm.materials.splice(idx, 1);
+    },
+    saveCraftRecipe: function () {
+      var self = this;
+      AdminApi.saveCraftRecipe(self.craftForm)
+        .then(function (res) {
+          self.craftForm = res.data || self.craftForm;
+          self.showToast('配方已保存', 'success');
+          self.closeDrawer();
+          self.loadCraftRecipes();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    removeCraftRecipe: function (id) {
+      var self = this;
+      AdminApi.removeCraftRecipe(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadCraftRecipes(); })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadTriggers: function () {
+      var self = this;
+      var body = {};
+      if (self.triggerFilter.itemId) body.itemId = self.triggerFilter.itemId;
+      AdminApi.triggerList({ current: 1, size: 500 }, body)
+        .then(function (res) { self.triggers = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
+      if (!self.triggerPhaseOptions.length) {
+        AdminApi.triggerPhaseOptions()
+          .then(function (res) { self.triggerPhaseOptions = res.data || []; })
+          .catch(function () {});
+      }
+    },
+    saveTrigger: function () {
+      var self = this;
+      AdminApi.saveTrigger(self.triggerForm)
+        .then(function () {
+          self.showToast('扳机已保存', 'success');
+          self.closeDrawer();
+          self.loadTriggers();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    removeTrigger: function (id) {
+      var self = this;
+      AdminApi.removeTrigger(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadTriggers(); })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    loadSkills: function () {
+      var self = this;
+      AdminApi.skillList({ current: 1, size: 200 })
+        .then(function (res) { self.skills = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); });
+      if (!self.skillEffectOptions.length) {
+        AdminApi.skillEffectOptions()
+          .then(function (res) { self.skillEffectOptions = res.data || []; })
+          .catch(function () {});
+      }
+      if (!self.skillTargetOptions.length) {
+        AdminApi.skillTargetOptions()
+          .then(function (res) { self.skillTargetOptions = res.data || []; })
+          .catch(function () {});
+      }
+    },
+    editSkill: function (s) {
+      var self = this;
+      AdminApi.skillDetail(s.id)
+        .then(function (res) {
+          self.skillForm = res.data || clone(DEFAULT_FORMS.skill);
+          if (!self.skillForm.effects) self.skillForm.effects = [];
+          self.drawerType = 'skill';
+          self.drawerOpen = true;
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    addSkillEffect: function () {
+      if (!this.skillForm.effects) this.skillForm.effects = [];
+      this.skillForm.effects.push({ effectType: 'DEAL_DAMAGE', effectValue: 1, targetType: 'SELF', sort: this.skillForm.effects.length + 1 });
+    },
+    removeSkillEffect: function (idx) {
+      this.skillForm.effects.splice(idx, 1);
+    },
+    saveSkill: function () {
+      var self = this;
+      AdminApi.saveSkill(self.skillForm)
+        .then(function (res) {
+          self.skillForm = res.data || self.skillForm;
+          self.showToast('技能已保存', 'success');
+          self.closeDrawer();
+          self.loadSkills();
+        })
+        .catch(function (err) { self.showToast(err.message); });
+    },
+    askRemoveSkill: function (s) {
+      var self = this;
+      this.confirmRemove('确定删除技能「' + s.name + '」？', function () { self.removeSkill(s.id); });
+    },
+    removeSkill: function (id) {
+      var self = this;
+      AdminApi.removeSkill(id)
+        .then(function () { self.showToast('已删除', 'success'); self.loadSkills(); })
+        .catch(function (err) { self.showToast(err.message); });
     }
   }
 }).mount('#app');

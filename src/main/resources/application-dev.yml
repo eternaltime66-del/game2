@@ -8,6 +8,7 @@ spring:
       poll-interval: 1s
       quiet-period: 400ms
       log-condition: delta-time
+      trigger-file: .reloadtrigger
   web:
     resources:
       static-locations:
@@ -17,3 +18,7 @@ spring:
         period: 0
       chain:
         cache: false
+
+logging:
+  level:
+    org.springframework.boot.devtools.restart: INFO

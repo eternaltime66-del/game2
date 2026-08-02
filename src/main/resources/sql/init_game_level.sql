@@ -78,6 +78,14 @@ SELECT 'st_1_2', 'sg_1', 2, '1-2 小试牛刀', 2, 1, NULL
 WHERE NOT EXISTS (SELECT 1 FROM `app_game_stage` WHERE `id` = 'st_1_2');
 
 INSERT INTO `app_game_stage` (`id`, `stage_group_id`, `stage_no`, `name`, `sort`, `enabled`, `remark`)
+SELECT 'st_1_3', 'sg_1', 3, '1-3 哥布林巢穴', 3, 1, NULL
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_stage` WHERE `id` = 'st_1_3');
+
+INSERT INTO `app_game_stage` (`id`, `stage_group_id`, `stage_no`, `name`, `sort`, `enabled`, `remark`)
+SELECT 'st_1_4', 'sg_1', 4, '1-4 兽人首领', 4, 1, NULL
+WHERE NOT EXISTS (SELECT 1 FROM `app_game_stage` WHERE `id` = 'st_1_4');
+
+INSERT INTO `app_game_stage` (`id`, `stage_group_id`, `stage_no`, `name`, `sort`, `enabled`, `remark`)
 SELECT 'st_2_1', 'sg_2', 1, '2-1 再战强敌', 1, 1, NULL
 WHERE NOT EXISTS (SELECT 1 FROM `app_game_stage` WHERE `id` = 'st_2_1');
 

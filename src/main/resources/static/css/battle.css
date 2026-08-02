@@ -303,6 +303,58 @@
   100% { transform: translateX(200%); }
 }
 
+.battle-speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.battle-speed-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.btn-speed {
+  flex: 0 0 auto;
+  min-width: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-speed.active {
+  border-color: rgba(124, 92, 255, 0.55);
+  background: rgba(124, 92, 255, 0.22);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-speed:disabled,
+.btn-skip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-skip {
+  margin-left: auto;
+  border: 1px solid rgba(255, 167, 94, 0.45);
+  background: rgba(255, 167, 94, 0.14);
+  color: #ffa94d;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .battle-actions {
   display: flex;
   gap: 10px;
@@ -426,6 +478,87 @@
   font-weight: 600;
 }
 
+.log-loot-text {
+  color: #69db7c;
+  font-weight: 600;
+}
+
+.loot-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  min-height: 32px;
+  border-radius: 10px;
+  background: rgba(105, 219, 124, 0.06);
+  border: 1px solid rgba(105, 219, 124, 0.16);
+  flex-shrink: 0;
+}
+
+.loot-bar-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.loot-bar-scroll {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.loot-bar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.loot-mini {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+}
+
+.loot-mini-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.loot-mini-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.loot-mini-qty {
+  color: #ffd43b;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.loot-bar-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #69db7c;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(105, 219, 124, 0.12);
+}
+
+.log-item.loot .log-loot-text {
+  color: #69db7c;
+}
+
 .log-full-mask {
   position: fixed;
   inset: 0;
@@ -497,4 +630,189 @@
 .battle-page.is-animating .btn-auto {
   pointer-events: none;
   opacity: 0.55;
+}
+
+.battle-unit.monster.clickable {
+  cursor: pointer;
+}
+
+.battle-unit.monster.clickable:active {
+  transform: scale(0.98);
+}
+
+.monster-detail-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  background: rgba(8, 12, 22, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.monster-detail-panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 26, 42, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.monster-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.monster-detail-head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.monster-detail-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.monster-detail-head button {
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.monster-detail-loading {
+  padding: 32px 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.monster-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 14px 16px 0;
+}
+
+.monster-stat-item {
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.monster-stat-item .label {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 4px;
+}
+
+.monster-stat-item .value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.monster-drop-section {
+  padding: 14px 16px 16px;
+  overflow-y: auto;
+}
+
+.monster-drop-title {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 10px;
+}
+
+.monster-drop-empty {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 12px 0;
+}
+
+.monster-drop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monster-drop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.monster-drop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.monster-drop-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.monster-drop-icon-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.monster-drop-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.monster-drop-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.monster-drop-meta .drop-rate {
+  font-size: 13px;
+  color: #69db7c;
+  font-weight: 700;
+}
+
+.monster-drop-meta .drop-qty {
+  font-size: 11px;
+  color: #ffd43b;
+}
+
+.monster-drop-tip {
+  margin-top: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.5;
 }

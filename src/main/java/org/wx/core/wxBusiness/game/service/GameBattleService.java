@@ -1,5 +1,6 @@
 package org.wx.core.wxBusiness.game.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,14 @@ public class GameBattleService {
         if (entity.getEnabled() == null) entity.setEnabled(1);
         if (entity.getSort() == null) entity.setSort(0);
         monsterService.saveOrUpdate(entity);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeMonster(String id) {
+        ErrorFactory.notNull(id, "怪物ID不能为空");
+        waveMonsterService.remove(new LambdaQueryWrapper<GameWaveMonster>()
+                .eq(GameWaveMonster::getMonsterId, id));
+        monsterService.removeById(id);
     }
 
     @Transactional(rollbackFor = Exception.class)

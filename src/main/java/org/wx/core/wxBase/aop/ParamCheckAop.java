@@ -153,7 +153,8 @@ public class ParamCheckAop {
             ErrorFactory.throwError(true,"4401", finishMsg + errMsg);
         }
 
-        if (!paramCheck.lessZero() && Number.class.isAssignableFrom(parameterType) && new BigDecimal(value.toString()).compareTo(BigDecimal.ZERO) == -1) {
+        if (!paramCheck.lessZero() && value != null && Number.class.isAssignableFrom(parameterType)
+                && new BigDecimal(value.toString()).compareTo(BigDecimal.ZERO) == -1) {
             ErrorFactory.throwError(true,"4401", finishMsg + "不可以小于0");
         }
         boolean assignableFrom = parameterType.isInstance(Number.class);

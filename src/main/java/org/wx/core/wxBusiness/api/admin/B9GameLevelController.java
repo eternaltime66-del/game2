@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.wx.core.wxBase.annotation.NeedHeader;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
+import org.wx.core.wxBusiness.api.vo.CommonIdVo;
 import org.wx.core.wxBusiness.game.entity.*;
 import org.wx.core.wxBusiness.game.service.GameChapterService;
 import org.wx.core.wxBusiness.game.service.GameLevelService;
@@ -68,12 +69,28 @@ public class B9GameLevelController {
         return WxResult.page(page);
     }
 
+    @PostMapping("/mode/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> modeRemove(@RequestBody CommonIdVo vo) {
+        gameLevelService.removeModeGroup(vo.stringId());
+        return WxResult.success();
+    }
+
     @PostMapping("/chapter/save")
     @WxRequestLog()
     @NeedHeader(roles = MemberRole.ADMIN)
     public WxResult<?> chapterSave(@RequestBody GameChapter entity) {
         entity.clearEmptyString();
         gameLevelService.saveChapter(entity);
+        return WxResult.success();
+    }
+
+    @PostMapping("/chapter/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> chapterRemove(@RequestBody CommonIdVo vo) {
+        gameLevelService.removeChapter(vo.stringId());
         return WxResult.success();
     }
 
@@ -95,6 +112,14 @@ public class B9GameLevelController {
         return WxResult.success();
     }
 
+    @PostMapping("/stage-group/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> stageGroupRemove(@RequestBody CommonIdVo vo) {
+        gameLevelService.removeStageGroup(vo.stringId());
+        return WxResult.success();
+    }
+
     @PostMapping("/stage/list")
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.ADMIN)
@@ -110,6 +135,14 @@ public class B9GameLevelController {
     public WxResult<?> stageSave(@RequestBody GameStage entity) {
         entity.clearEmptyString();
         gameLevelService.saveStage(entity);
+        return WxResult.success();
+    }
+
+    @PostMapping("/stage/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> stageRemove(@RequestBody CommonIdVo vo) {
+        gameLevelService.removeStage(vo.stringId());
         return WxResult.success();
     }
 }

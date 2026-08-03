@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -24,15 +25,23 @@ public class BattleEngine {
     }
 
     public static void tickActionBars(BattleState state) {
+        tickActionBars(state, null);
+    }
+
+    public static void tickActionBars(BattleState state, BiConsumer<BattleUnit, Integer> onUnitTick) {
         if (!state.isRunning()) {
             return;
         }
+        int gain = state.getActionTickGain() != null ? state.getActionTickGain() : DEFAULT_TICK_GAIN;
         for (BattleUnit unit : state.getUnits()) {
             if (!unit.isAlive()) {
                 continue;
             }
-            int next = ceilActionBar(unit.getActionBar() + state.getActionTickGain());
+            int next = ceilActionBar(unit.getActionBar() + gain);
             unit.setActionBar(Math.min(next, unit.getActionValue()));
+            if (onUnitTick != null) {
+                onUnitTick.accept(unit, gain);
+            }
         }
     }
 
@@ -99,9 +108,13 @@ public class BattleEngine {
     }
 
     public static void advanceUntilReady(BattleState state) {
+        advanceUntilReady(state, null);
+    }
+
+    public static void advanceUntilReady(BattleState state, BiConsumer<BattleUnit, Integer> onUnitTick) {
         int guard = 0;
         while (state.isRunning() && pickReadyUnit(state) == null && guard < MAX_INTERNAL_TICKS) {
-            tickActionBars(state);
+            tickActionBars(state, onUnitTick);
             guard++;
         }
     }

@@ -8,6 +8,8 @@ import lombok.EqualsAndHashCode;
 import org.wx.core.wxBase.base.WxBaseEntity;
 import org.wx.core.wxBase.unit.WordUnit;
 
+import java.math.BigDecimal;
+
 /**
  * PVE 主角
  */
@@ -18,8 +20,10 @@ public class GameHero extends WxBaseEntity<GameHero> {
 
     public static final int DEFAULT_MAX_HP = 200;
     public static final int DEFAULT_ATTACK = 10;
+    public static final int DEFAULT_DEFENSE = 0;
     public static final int DEFAULT_ACTION_VALUE = 100;
     public static final String DEFAULT_NAME = "主角";
+    public static final BigDecimal DEFAULT_OPTIMAL_CARRY_WEIGHT = BigDecimal.valueOf(10);
 
     @TableId(type = IdType.ASSIGN_ID)
     private String id;
@@ -34,7 +38,11 @@ public class GameHero extends WxBaseEntity<GameHero> {
 
     private Integer attack;
 
+    private Integer defense;
+
     private Integer actionValue;
+
+    private BigDecimal optimalCarryWeight;
 
     public static GameHero defaultHero(String uid) {
         GameHero hero = new GameHero();
@@ -44,7 +52,9 @@ public class GameHero extends WxBaseEntity<GameHero> {
         hero.setMaxHp(DEFAULT_MAX_HP);
         hero.setHp(DEFAULT_MAX_HP);
         hero.setAttack(DEFAULT_ATTACK);
+        hero.setDefense(DEFAULT_DEFENSE);
         hero.setActionValue(DEFAULT_ACTION_VALUE);
+        hero.setOptimalCarryWeight(DEFAULT_OPTIMAL_CARRY_WEIGHT);
         return hero;
     }
 }

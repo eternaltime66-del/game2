@@ -1,5 +1,6 @@
 package org.wx.core.wxBusiness.game.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +25,15 @@ public class GameLevelService extends WxServiceImpl<GameStageMapper, GameStage> 
     private GameChapterService chapterService;
     @Resource
     private GameStageGroupService stageGroupService;
+    @Resource
+    private GameWaveService waveService;
+    @Resource
+    private GameWaveMonsterService waveMonsterService;
 
     @Transactional(rollbackFor = Exception.class)
     public void saveModeGroup(GameModeGroup entity) {
+        ErrorFactory.notNull(entity.getCode(), "编码不能为空");
+        ErrorFactory.notNull(entity.getName(), "名称不能为空");
         if (entity.getEnabled() == null) {
             entity.setEnabled(1);
         }
@@ -37,8 +44,10 @@ public class GameLevelService extends WxServiceImpl<GameStageMapper, GameStage> 
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void saveChapter(GameChapter entity) {
+    public void     saveChapter(GameChapter entity) {
         ErrorFactory.notNull(entity.getGroupId(), "模式分组不能为空");
+        ErrorFactory.notNull(entity.getCode(), "编码不能为空");
+        ErrorFactory.notNull(entity.getName(), "名称不能为空");
         if (entity.getEnabled() == null) {
             entity.setEnabled(1);
         }
@@ -49,9 +58,10 @@ public class GameLevelService extends WxServiceImpl<GameStageMapper, GameStage> 
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void saveStageGroup(GameStageGroup entity) {
+    public void     saveStageGroup(GameStageGroup entity) {
         ErrorFactory.notNull(entity.getChapterId(), "大关卡不能为空");
         ErrorFactory.notNull(entity.getGroupNo(), "组编号不能为空");
+        ErrorFactory.notNull(entity.getName(), "名称不能为空");
         if (entity.getEnabled() == null) {
             entity.setEnabled(1);
         }
@@ -72,6 +82,60 @@ public class GameLevelService extends WxServiceImpl<GameStageMapper, GameStage> 
             entity.setSort(0);
         }
         this.saveOrUpdate(entity);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeModeGroup(String id) {
+        ErrorFactory.notNull(id, "ID不能为空");
+        List<GameChapter> chapters = chapterService.find()
+                .eq(GameChapter::getGroupId, id)
+                .list();
+        for (GameChapter chapter : chapters) {
+            removeChapter(chapter.getId());
+        }
+        modeGroupService.removeById(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeChapter(String id) {
+        ErrorFactory.notNull(id, "ID不能为空");
+        List<GameStageGroup> groups = stageGroupService.find()
+                .eq(GameStageGroup::getChapterId, id)
+                .list();
+        for (GameStageGroup group : groups) {
+            removeStageGroup(group.getId());
+        }
+        chapterService.removeById(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeStageGroup(String id) {
+        ErrorFactory.notNull(id, "ID不能为空");
+        List<GameStage> stages = this.find()
+                .eq(GameStage::getStageGroupId, id)
+                .list();
+        for (GameStage stage : stages) {
+            removeStage(stage.getId());
+        }
+        stageGroupService.removeById(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeStage(String id) {
+        ErrorFactory.notNull(id, "ID不能为空");
+        deleteWavesByStageId(id);
+        this.removeById(id);
+    }
+
+    private void deleteWavesByStageId(String stageId) {
+        List<GameWave> waves = waveService.find()
+                .eq(GameWave::getStageId, stageId)
+                .list();
+        for (GameWave wave : waves) {
+            waveMonsterService.remove(new LambdaQueryWrapper<GameWaveMonster>()
+                    .eq(GameWaveMonster::getWaveId, wave.getId()));
+            waveService.removeById(wave.getId());
+        }
     }
 
     public List<GameStage> listStagesByChapterId(String chapterId) {

@@ -2,206 +2,1063 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>后台管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game2 后台管理</title>
   <link rel="stylesheet" href="/css/auth.css">
   <link rel="stylesheet" href="/css/admin.css">
   <script src="/js/dev-live.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
-<body>
+<body class="admin-body">
 <div id="app" class="page admin-page">
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
 
-  <div v-if="!loggedIn" class="login-panel">
-    <div class="brand">
-      <div class="brand-badge">A</div>
-      <h1>后台管理</h1>
-      <p>管理员登录</p>
-    </div>
-    <div class="card">
-      <div class="field">
-        <label>账号</label>
-        <div class="input-wrap"><input v-model.trim="loginForm.account" placeholder="管理员邮箱"></div>
+  <div v-if="!loggedIn" class="admin-login-wrap">
+    <div class="login-panel">
+      <div class="brand">
+        <div class="brand-badge">A</div>
+        <h1>后台管理</h1>
+        <p>管理员登录</p>
       </div>
-      <div class="field">
-        <label>密码</label>
-        <div class="input-wrap"><input v-model="loginForm.password" type="password" placeholder="密码"></div>
+      <div class="card">
+        <div class="field">
+          <label>账号</label>
+          <div class="input-wrap"><input v-model.trim="loginForm.account" placeholder="管理员邮箱"></div>
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <div class="input-wrap"><input v-model="loginForm.password" type="password" placeholder="密码"></div>
+        </div>
+        <button class="btn-primary" :disabled="loading" @click="doLogin">{{ loading ? '登录中...' : '登录' }}</button>
       </div>
-      <button class="btn-primary" :disabled="loading" @click="doLogin">{{ loading ? '登录中...' : '登录' }}</button>
     </div>
   </div>
 
-  <template v-else>
-    <div class="admin-header">
-      <h1>Game2 后台</h1>
-      <button class="btn-mini warn" @click="logout">退出</button>
-    </div>
+  <div v-else class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">Game2 后台</div>
+      <nav class="sidebar-nav">
+        <button v-for="t in tabs" :key="t.key" type="button" class="sidebar-nav-item" :class="{ active: tab === t.key }" @click="switchTab(t.key)">{{ t.label }}</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="btn-mini warn" style="width:100%" @click="logout">退出登录</button>
+      </div>
+    </aside>
 
-    <div class="admin-tabs">
-      <button class="admin-tab" :class="{ active: tab === 'member' }" @click="tab='member'">用户管理</button>
-      <button class="admin-tab" :class="{ active: tab === 'level' }" @click="switchLevel">关卡管理</button>
-      <button class="admin-tab" :class="{ active: tab === 'battle' }" @click="switchBattle">波次/怪物</button>
-    </div>
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <h2>{{ currentTabLabel }}</h2>
+      </header>
 
-    <div v-if="tab === 'member'" class="admin-card">
-      <h3>用户列表</h3>
+      <div class="admin-content">
+
+    <div v-if="tab === 'member'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>用户列表</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-mini secondary" @click="loadMembers">刷新</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>ID</th><th>邮箱</th><th>角色</th><th>操作</th></tr>
+            <tr><th>ID</th><th>邮箱</th><th>角色</th><th class="col-actions">操作</th></tr>
           </thead>
           <tbody>
             <tr v-for="item in members" :key="item.id">
-              <td>{{ item.id }}</td>
+              <td class="col-id">{{ item.id }}</td>
               <td>{{ item.email || '-' }}</td>
               <td>{{ item.memberRole }}</td>
-              <td>
-                <button class="btn-mini" @click="loginAs(item)">一键登录</button>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="loginAs(item)">一键登录</button>
               </td>
             </tr>
+            <tr v-if="!members.length"><td colspan="4" class="empty-hint">暂无数据</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="muted" v-if="pager">共 {{ pager.totalRows }} 条</p>
+      <div class="panel-body" v-if="pager"><p class="muted">共 {{ pager.totalRows }} 条</p></div>
     </div>
 
-    <div v-if="tab === 'level'">
-      <div class="admin-card">
-        <h3>关卡树</h3>
-        <div class="level-tree">
-          <div class="level-block" v-for="mode in levelTree.modeGroups" :key="mode.modeGroup.id">
-            <div class="title">[模式组] {{ mode.modeGroup.name }} ({{ mode.modeGroup.code }})</div>
-            <div v-for="chapter in mode.chapters" :key="chapter.chapter.id" class="sub">
-              <div class="title">[大关] {{ chapter.chapter.name }} ({{ chapter.chapter.code }})</div>
-              <div v-for="group in chapter.stageGroups" :key="group.stageGroup.id">
-                <div class="sub">[小关组 {{ group.stageGroup.groupNo }}] {{ group.stageGroup.name }}</div>
-                <div class="stage-tags">
-                  <span class="stage-tag" v-for="stage in group.stages" :key="stage.id">
-                    {{ stage.displayCode || (group.stageGroup.groupNo + '-' + stage.stageNo) }} {{ stage.name }}
-                  </span>
-                </div>
+    <div v-if="tab === 'level'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>关卡与战斗</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-mini secondary" @click="switchLevel">刷新</button>
+          <button type="button" class="btn-mini secondary" @click="showMonsterLib = !showMonsterLib">{{ showMonsterLib ? '收起怪物库' : '怪物库' }}</button>
+        </div>
+      </div>
+
+      <div class="drill-breadcrumb">
+        <span class="crumb" :class="{ active: !levelPick.modeId }" @click="resetLevelPick('root')">全部模式</span>
+        <template v-if="levelPick.modeId">
+          <span class="sep">›</span>
+          <span class="crumb" :class="{ active: !levelPick.chapterId }" @click="resetLevelPick('mode')">{{ selectedModeName }}</span>
+        </template>
+        <template v-if="levelPick.chapterId">
+          <span class="sep">›</span>
+          <span class="crumb" :class="{ active: !levelPick.stageGroupId }" @click="resetLevelPick('chapter')">{{ selectedChapterName }}</span>
+        </template>
+        <template v-if="levelPick.stageGroupId">
+          <span class="sep">›</span>
+          <span class="crumb" :class="{ active: !levelPick.stageId }" @click="resetLevelPick('group')">{{ selectedStageGroupName }}</span>
+        </template>
+        <template v-if="levelPick.stageId">
+          <span class="sep">›</span>
+          <span class="crumb active">{{ selectedStageName }}</span>
+        </template>
+      </div>
+
+      <div class="drill-columns">
+        <div class="drill-col">
+          <div class="drill-col-head">① 模式组</div>
+          <div class="drill-col-list">
+            <button type="button" class="drill-item" v-for="mode in levelTree.modeGroups" :key="mode.modeGroup.id"
+              :class="{ selected: levelPick.modeId === mode.modeGroup.id }" @click="pickMode(mode)">
+              {{ mode.modeGroup.name }}
+              <span class="sub-id">{{ mode.modeGroup.code }}</span>
+            </button>
+            <div v-if="!levelTree.modeGroups.length" class="empty-hint" style="padding:12px">暂无模式</div>
+          </div>
+          <div class="drill-col-actions">
+            <button type="button" class="btn-primary btn-mini" @click="openModeDrawer()">+ 新增</button>
+            <button type="button" class="btn-mini" v-if="levelPick.modeId" @click="openModeDrawer(currentSelectedMode)">编辑</button>
+            <button type="button" class="btn-mini danger" v-if="levelPick.modeId" @click="removeMode">删除</button>
+          </div>
+        </div>
+        <div class="drill-col">
+          <div class="drill-col-head">② 大关</div>
+          <div class="drill-col-list">
+            <button type="button" class="drill-item" v-for="ch in drillChapters" :key="ch.chapter.id"
+              :class="{ selected: levelPick.chapterId === ch.chapter.id }" @click="pickChapter(ch)">
+              {{ ch.chapter.name }}
+              <span class="sub-id">{{ ch.chapter.code }}</span>
+            </button>
+            <div v-if="levelPick.modeId && !drillChapters.length" class="empty-hint" style="padding:12px">无大关</div>
+            <div v-if="!levelPick.modeId" class="empty-hint" style="padding:12px">← 先选模式</div>
+          </div>
+          <div class="drill-col-actions" v-if="levelPick.modeId">
+            <button type="button" class="btn-primary btn-mini" @click="openChapterDrawer()">+ 新增</button>
+            <button type="button" class="btn-mini" v-if="levelPick.chapterId" @click="openChapterDrawer(currentSelectedChapter)">编辑</button>
+            <button type="button" class="btn-mini danger" v-if="levelPick.chapterId" @click="removeChapter">删除</button>
+          </div>
+        </div>
+        <div class="drill-col">
+          <div class="drill-col-head">③ 小关组</div>
+          <div class="drill-col-list">
+            <button type="button" class="drill-item" v-for="g in drillStageGroups" :key="g.stageGroup.id"
+              :class="{ selected: levelPick.stageGroupId === g.stageGroup.id }" @click="pickStageGroup(g)">
+              {{ g.stageGroup.groupNo }}-{{ g.stageGroup.name }}
+              <span class="sub-id">{{ g.stageGroup.id }}</span>
+            </button>
+            <div v-if="levelPick.chapterId && !drillStageGroups.length" class="empty-hint" style="padding:12px">无小关组</div>
+            <div v-if="!levelPick.chapterId" class="empty-hint" style="padding:12px">← 先选大关</div>
+          </div>
+          <div class="drill-col-actions" v-if="levelPick.chapterId">
+            <button type="button" class="btn-primary btn-mini" @click="openStageGroupDrawer()">+ 新增</button>
+            <button type="button" class="btn-mini" v-if="levelPick.stageGroupId" @click="openStageGroupDrawer(currentSelectedStageGroup)">编辑</button>
+            <button type="button" class="btn-mini danger" v-if="levelPick.stageGroupId" @click="removeStageGroup">删除</button>
+          </div>
+        </div>
+        <div class="drill-col">
+          <div class="drill-col-head">④ 小关卡</div>
+          <div class="drill-col-list">
+            <button type="button" class="drill-item" v-for="st in drillStages" :key="st.id"
+              :class="{ selected: levelPick.stageId === st.id }" @click="pickStage(st)">
+              {{ st.displayCode || st.name }}
+              <span class="sub-id">{{ st.name }}</span>
+            </button>
+            <div v-if="levelPick.stageGroupId && !drillStages.length" class="empty-hint" style="padding:12px">暂无小关</div>
+            <div v-if="!levelPick.stageGroupId" class="empty-hint" style="padding:12px">← 先选小关组</div>
+          </div>
+          <div class="drill-col-actions" v-if="levelPick.stageGroupId">
+            <button type="button" class="btn-primary btn-mini" @click="openStageDrawer()">+ 新增</button>
+            <button type="button" class="btn-mini" v-if="levelPick.stageId" @click="openStageDrawer(currentSelectedStage)">编辑</button>
+            <button type="button" class="btn-mini danger" v-if="levelPick.stageId" @click="removeStage">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="levelPick.stageId" class="stage-battle-panel">
+        <div class="stage-battle-head">
+          <h4>{{ selectedStageName }} · 波次与怪物</h4>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn-mini secondary" @click="openStageDrawer(currentSelectedStage)">编辑小关</button>
+            <button type="button" class="btn-primary btn-mini" @click="startAddWave">+ 新增波次</button>
+          </div>
+        </div>
+
+        <div v-if="addingWave" class="wave-card" style="margin-bottom:12px">
+          <div class="wave-card-body" style="padding-top:12px">
+            <div class="form-grid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="field"><label>波次号</label><input v-model.number="inlineWaveForm.waveNo" type="number"></div>
+              <div class="field"><label>名称</label><input v-model="inlineWaveForm.name"></div>
+              <div class="field"><label>排序</label><input v-model.number="inlineWaveForm.sort" type="number"></div>
+              <div class="field" style="align-self:end">
+                <button type="button" class="btn-primary btn-mini" @click="saveInlineWave">保存波次</button>
+                <button type="button" class="btn-mini secondary" @click="addingWave = false">取消</button>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="admin-card">
-        <h3>快速新增小关卡</h3>
-        <div class="form-grid">
-          <div class="field full">
-            <label>小关卡组 ID</label>
-            <input v-model="stageForm.stageGroupId" placeholder="如 sg_1">
+        <div class="wave-cards">
+          <div class="wave-card" v-for="wave in stageBattle.waves" :key="wave.wave.id"
+            :class="{ selected: selectedWaveId === wave.wave.id }">
+            <div class="wave-card-head" @click="selectWave(wave.wave.id)">
+              <span><strong>{{ wave.wave.name }}</strong> · 第 {{ wave.wave.waveNo }} 波</span>
+              <button type="button" class="btn-mini" @click.stop="editWave(wave.wave)">编辑</button>
+            </div>
+            <div class="wave-card-body" v-if="selectedWaveId === wave.wave.id">
+              <div class="wave-monster-row" v-for="wm in wave.monsters" :key="wm.id">
+                <span>{{ wm.monsterName || wm.monsterId }} × {{ wm.quantity }}</span>
+              </div>
+              <div v-if="!wave.monsters.length" class="empty-hint">本波暂无怪物</div>
+              <div class="wave-add-row">
+                <div class="field" style="margin:0">
+                  <label>添加怪物</label>
+                  <admin-select v-model="waveMonsterDraft.monsterId" :options="monsterSelectOptions" placeholder="选择怪物" searchable />
+                </div>
+                <div class="field" style="margin:0">
+                  <label>数量</label>
+                  <input v-model.number="waveMonsterDraft.quantity" type="number" min="1">
+                </div>
+                <button type="button" class="btn-primary btn-mini" @click="addMonsterToSelectedWave(wave.wave.id)">添加</button>
+              </div>
+            </div>
           </div>
-          <div class="field">
-            <label>组内序号 stageNo</label>
-            <input v-model.number="stageForm.stageNo" type="number" placeholder="3">
-          </div>
-          <div class="field">
-            <label>排序 sort</label>
-            <input v-model.number="stageForm.sort" type="number" placeholder="3">
-          </div>
-          <div class="field full">
-            <label>名称</label>
-            <input v-model="stageForm.name" placeholder="1-3 新关卡">
-          </div>
+          <div v-if="!stageBattle.waves.length" class="empty-hint">该小关暂无波次，点击上方新增</div>
         </div>
-        <button class="btn-primary" style="margin-top:12px" @click="saveStage">保存小关卡</button>
-        <p class="muted" style="margin-top:10px">默认数据：sg_1(1-x)、sg_2(2-x)，大关卡 chapter_main，模式组 mode_core</p>
       </div>
-    </div>
+      <div v-else-if="levelPick.stageGroupId" class="stage-battle-panel">
+        <p class="empty-hint">在右侧选择一个小关卡，即可配置波次与怪物</p>
+      </div>
 
-    <div v-if="tab === 'battle'">
-      <div class="admin-card">
-        <h3>怪物列表</h3>
+      <div v-if="showMonsterLib" class="stage-battle-panel" style="border-top:1px solid rgba(255,255,255,0.08)">
+        <div class="stage-battle-head">
+          <h4>怪物库</h4>
+          <button type="button" class="btn-primary btn-mini" @click="openDrawer('monster')">+ 新增怪物</button>
+        </div>
         <div class="table-wrap">
           <table class="admin-table">
             <thead>
-              <tr><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>行动值</th></tr>
+              <tr><th>名称</th><th>编码</th><th>生命</th><th>攻击</th><th>行动值</th><th class="col-actions">操作</th></tr>
             </thead>
             <tbody>
               <tr v-for="m in monsters" :key="m.id">
-                <td>{{ m.code }}</td>
                 <td>{{ m.name }}</td>
+                <td>{{ m.code }}</td>
                 <td>{{ m.hp }}/{{ m.maxHp }}</td>
                 <td>{{ m.attack }}</td>
                 <td>{{ m.actionValue }}</td>
+                <td class="col-actions"><button type="button" class="btn-mini" @click="openDrawer('monster', m)">编辑</button></td>
               </tr>
+              <tr v-if="!monsters.length"><td colspan="6" class="empty-hint">暂无怪物</td></tr>
             </tbody>
           </table>
         </div>
       </div>
+    </div>
 
-      <div class="admin-card">
-        <h3>小关波次详情</h3>
-        <div class="form-grid">
-          <div class="field full">
-            <label>小关卡 ID</label>
-            <input v-model="battleStageId" placeholder="st_1_2">
+    <div v-if="tab === 'monster'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>怪兽列表</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary" @click="openDrawer('monster')">+ 新增</button>
+          <button type="button" class="btn-mini secondary" @click="loadMonsters">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">配置战斗怪物属性；关卡波次中引用此处怪兽</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>行动值</th><th>排序</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="m in monsters" :key="m.id">
+              <td class="col-id">{{ m.id }}</td>
+              <td>{{ m.code }}</td>
+              <td>{{ m.name }}</td>
+              <td>{{ m.hp }}/{{ m.maxHp }}</td>
+              <td>{{ m.attack }}</td>
+              <td>{{ m.actionValue }}</td>
+              <td>{{ m.sort }}</td>
+              <td>{{ m.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openDrawer('monster', m)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeMonster(m)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!monsters.length"><td colspan="9" class="empty-hint">暂无怪兽</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'material'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>材料列表</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary" @click="openDrawer('material')">+ 新增</button>
+          <button type="button" class="btn-mini secondary" @click="loadMaterials">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">仅显示标签为 MATERIAL 的纯材料，堆叠可 &gt; 1；修改堆叠上限保存后将自动重排所有玩家仓库</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>物品ID</th><th>编码</th><th>名称</th><th>堆叠</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="m in materials" :key="m.id">
+              <td class="col-id">{{ m.id }}</td>
+              <td>{{ m.code }}</td>
+              <td>{{ m.name }}</td>
+              <td>{{ m.maxStack }}</td>
+              <td>{{ m.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openDrawer('material', m)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeMaterial(m)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!materials.length"><td colspan="6" class="empty-hint">暂无材料</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'recipe'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>合成配方</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary" @click="openDrawer('recipe')">+ 新增</button>
+          <button type="button" class="btn-mini secondary" @click="loadRecipes">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">选择产出物品 A，配置所需材料 B 及数量</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>配方ID</th><th>产出物品</th><th>所需材料</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="r in recipes" :key="r.id">
+              <td class="col-id">{{ r.id }}</td>
+              <td>{{ r.outputItemName || r.outputItemId }}</td>
+              <td>{{ r.materialSummary || '-' }}</td>
+              <td>{{ r.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openRecipeDrawer(r)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeRecipe(r)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!recipes.length"><td colspan="5" class="empty-hint">暂无配方</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'weapon'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>武器列表</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary" @click="openDrawer('weapon')">+ 新增</button>
+          <button type="button" class="btn-mini secondary" @click="loadWeapons">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">先保存武器属性，再自动同步 app_game_item（标签 WEAPON）</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>武器ID</th><th>物品ID</th><th>名称</th><th>攻击</th><th>行动值</th><th>伤害比</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="w in weapons" :key="w.id">
+              <td class="col-id">{{ w.id }}</td>
+              <td class="col-id">{{ w.itemId }}</td>
+              <td>{{ w.name }}</td>
+              <td>{{ w.attack }}</td>
+              <td>{{ w.baseActionValue }}</td>
+              <td>{{ w.damageRatio }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openDrawer('weapon', w)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeWeapon(w)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!weapons.length"><td colspan="7" class="empty-hint">暂无武器</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'armor'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>防具列表</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary" @click="openDrawer('armor')">+ 新增</button>
+          <button type="button" class="btn-mini secondary" @click="loadArmors">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">先保存防具属性，再自动同步 app_game_item（标签 ARMOR）</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>防具ID</th><th>物品ID</th><th>名称</th><th>生命加成</th><th>防御</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="a in armors" :key="a.id">
+              <td class="col-id">{{ a.id }}</td>
+              <td class="col-id">{{ a.itemId }}</td>
+              <td>{{ a.name }}</td>
+              <td>{{ a.bonusHp }}</td>
+              <td>{{ a.defense }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openDrawer('armor', a)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeArmor(a)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!armors.length"><td colspan="6" class="empty-hint">暂无防具</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="equipPartListMeta" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>{{ equipPartListMeta.label }}列表</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary" @click="openDrawer(tab)">+ 新增</button>
+          <button type="button" class="btn-mini secondary" @click="loadEquipPartList(tab)">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">先保存{{ equipPartListMeta.label }}属性，再自动同步 app_game_item（标签 {{ equipPartListMeta.tag }}）</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>装备ID</th><th>物品ID</th><th>名称</th><th v-if="tab === 'accessory'">攻击</th><th>生命加成</th><th>防御</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="a in equipPartList" :key="a.id">
+              <td class="col-id">{{ a.id }}</td>
+              <td class="col-id">{{ a.itemId }}</td>
+              <td>{{ a.name }}</td>
+              <td v-if="tab === 'accessory'">{{ a.bonusAttack || 0 }}</td>
+              <td>{{ a.bonusHp }}</td>
+              <td>{{ a.defense }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openDrawer(tab, a)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeEquipPart(tab, a)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!equipPartList.length"><td :colspan="tab === 'accessory' ? 7 : 6" class="empty-hint">暂无{{ equipPartListMeta.label }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'finishedSkill'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>主动技能</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" @click="openDrawer('finishedSkill')">+ 新增</button>
+          <button class="btn-mini secondary" @click="loadFinishedSkills">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">组合高级效果 + 目标槽，可被装备扳机槽引用</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>目标</th><th>启用</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="s in finishedSkills" :key="s.id">
+              <td class="col-id">{{ s.id }}</td>
+              <td>{{ s.code }}</td>
+              <td>{{ s.name }}</td>
+              <td>{{ s.targetType }}</td>
+              <td>{{ s.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button class="btn-mini" @click="editFinishedSkill(s)">编辑</button>
+                <button class="btn-mini danger" @click="removeFinishedSkill(s)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!finishedSkills.length"><td colspan="6" class="empty-hint">暂无主动技能</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'passiveSkill'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>被动技能</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" @click="openDrawer('passiveSkill')">+ 新增</button>
+          <button class="btn-mini secondary" @click="loadPassiveSkills">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">被动效果由技能徽章授予；可设置生效条件（如全身装备某件装备）</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>条件</th><th>效果</th><th>数值</th><th>启用</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="s in passiveSkills" :key="s.id">
+              <td class="col-id">{{ s.id }}</td>
+              <td>{{ s.code }}</td>
+              <td>{{ s.name }}</td>
+              <td>{{ s.conditionTypeLabel || s.conditionType }}{{ s.conditionEquipItemName ? ' · ' + s.conditionEquipItemName : '' }}</td>
+              <td>{{ s.effectTypeLabel || s.effectType }}</td>
+              <td>{{ s.effectValue }}</td>
+              <td>{{ s.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button class="btn-mini" @click="openDrawer('passiveSkill', s)">编辑</button>
+                <button class="btn-mini danger" @click="removePassiveSkill(s)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!passiveSkills.length"><td colspan="8" class="empty-hint">暂无被动技能</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'skillBadge'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>技能徽章</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" @click="openDrawer('skillBadge')">+ 新增</button>
+          <button class="btn-mini secondary" @click="loadSkillBadges">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">装备到技能徽章槽后授予对应被动技能</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>物品ID</th><th>编码</th><th>名称</th><th>被动技能</th><th>启用</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="b in skillBadges" :key="b.id">
+              <td class="col-id">{{ b.itemId }}</td>
+              <td>{{ b.code }}</td>
+              <td>{{ b.icon }} {{ b.name }}</td>
+              <td>{{ b.passiveSkillName || b.passiveSkillId }}</td>
+              <td>{{ b.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button class="btn-mini" @click="openDrawer('skillBadge', b)">编辑</button>
+                <button class="btn-mini danger" @click="removeSkillBadge(b)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!skillBadges.length"><td colspan="6" class="empty-hint">暂无技能徽章</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+      </div><!-- admin-content -->
+    </div><!-- admin-main -->
+  </div><!-- admin-shell -->
+
+    <div v-if="drawerOpen" class="admin-drawer-mask" @click.self="closeDrawer">
+    <div class="admin-drawer" :class="{ wide: drawerType === 'weapon' || isEquipPartDrawer || drawerType === 'recipe' }">
+      <div class="drawer-header">
+        <h3>{{ drawerTitle }}</h3>
+        <button type="button" class="drawer-close" @click="closeDrawer">&times;</button>
+      </div>
+      <div class="drawer-body">
+        <div v-if="drawerType === 'material'" class="form-grid">
+          <div class="field full"><label>物品 ID（留空自动生成）</label><input v-model="materialForm.id"></div>
+          <div class="field"><label>编码</label><input v-model="materialForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="materialForm.name"></div>
+          <div class="field"><label>图标</label><input v-model="materialForm.icon" placeholder="📦"></div>
+          <div class="field"><label>最大堆叠</label><input v-model.number="materialForm.maxStack" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="materialForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="materialForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="materialForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'weapon' || isEquipPartDrawer">
+          <div class="equip-drawer-tabs">
+            <button type="button" class="equip-drawer-tab" :class="{ active: equipDrawerTab === 'base' }" @click="switchEquipDrawerTab('base')">基础属性</button>
+            <button type="button" class="equip-drawer-tab" :class="{ active: equipDrawerTab === 'trigger' }" @click="switchEquipDrawerTab('trigger')">扳机编辑</button>
+            <button type="button" class="equip-drawer-tab" :class="{ active: equipDrawerTab === 'passive' }" @click="switchEquipDrawerTab('passive')">被动编辑</button>
+          </div>
+
+          <div v-show="equipDrawerTab === 'base'">
+            <div v-if="drawerType === 'weapon'" class="form-grid">
+              <div class="field" v-if="weaponForm.id"><label>武器 ID</label><input v-model="weaponForm.id" readonly></div>
+              <div class="field" v-if="weaponForm.itemId"><label>物品 ID</label><input v-model="weaponForm.itemId" readonly></div>
+              <div class="field"><label>编码</label><input v-model="weaponForm.code"></div>
+              <div class="field"><label>名称</label><input v-model="weaponForm.name"></div>
+              <div class="field"><label>攻击力</label><input v-model.number="weaponForm.attack" type="number"></div>
+              <div class="field"><label>基础行动值</label><input v-model.number="weaponForm.baseActionValue" type="number"></div>
+              <div class="field"><label>伤害比例</label><input v-model.number="weaponForm.damageRatio" type="number" step="0.01"></div>
+              <div class="field"><label>排序</label><input v-model.number="weaponForm.sort" type="number"></div>
+              <div class="field"><label>启用</label>
+                <admin-select v-model="weaponForm.enabled" :options="yesNoOptions" />
+              </div>
+              <div class="field full"><label>备注</label><input v-model="weaponForm.remark"></div>
+            </div>
+            <div v-else class="form-grid">
+              <div class="field"><label>{{ activeEquipPartMeta.label }} ID</label><input v-model="activeEquipForm.id" placeholder="留空自动生成" readonly></div>
+              <div class="field"><label>物品 ID</label><input v-model="activeEquipForm.itemId" placeholder="留空自动生成" readonly></div>
+              <div class="field"><label>编码</label><input v-model="activeEquipForm.code" placeholder="留空自动生成"></div>
+              <div class="field"><label>名称</label><input v-model="activeEquipForm.name"></div>
+              <div class="field" v-if="drawerType === 'accessory'"><label>攻击力</label><input v-model.number="activeEquipForm.bonusAttack" type="number"></div>
+              <div class="field"><label>生命加成</label><input v-model.number="activeEquipForm.bonusHp" type="number"></div>
+              <div class="field"><label>防御</label><input v-model.number="activeEquipForm.defense" type="number"></div>
+              <div class="field"><label>排序</label><input v-model.number="activeEquipForm.sort" type="number"></div>
+              <div class="field"><label>启用</label>
+                <admin-select v-model="activeEquipForm.enabled" :options="yesNoOptions" />
+              </div>
+              <div class="field full"><label>备注</label><input v-model="activeEquipForm.remark"></div>
+            </div>
+          </div>
+
+          <div v-show="equipDrawerTab === 'trigger'">
+            <div class="level-tree-compact">扳机：满足时机后触发主动技能</div>
+            <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置扳机</p>
+            <template v-else>
+              <div class="trigger-inline-row" v-for="(t, idx) in itemTriggers" :key="t.id || idx">
+                <div class="field"><label>扳机</label><span>{{ t.triggerSlotTypeLabel || t.triggerSlotType }}</span></div>
+                <div class="field"><label>主动技能</label><span>{{ t.finishedSkillName || t.finishedSkillId }}</span></div>
+                <div class="field"><label>释放上限</label><span>{{ formatCastLimit(t.maxCastCount) }}</span></div>
+                <div class="field full" style="display:flex;gap:8px;justify-content:flex-end">
+                  <button type="button" class="btn-mini" @click="editItemTrigger(t)">编辑</button>
+                  <button type="button" class="btn-mini danger" @click="removeItemTrigger(t)">删除</button>
+                </div>
+              </div>
+              <div v-if="!itemTriggers.length && !showTriggerInlineForm" class="empty-hint">暂无扳机，点击下方添加</div>
+              <div v-if="showTriggerInlineForm" class="trigger-inline-row">
+                <div class="field full"><label>扳机槽</label>
+                  <admin-select v-model="triggerInlineForm.triggerSlotType" :options="meta.triggerTypes" value-key="code" label-key="label" searchable />
+                </div>
+                <div class="field" v-if="triggerNeedParam(triggerInlineForm.triggerSlotType)"><label>阈值 x</label><input v-model.number="triggerInlineForm.triggerParam" type="number"></div>
+                <div class="field" v-if="triggerInlineForm.triggerSlotType === 'FINISHED_SKILL_CAST_COUNT'"><label>关联主动技能</label>
+                  <admin-select v-model="triggerInlineForm.triggerRefId" :options="finishedSkillSelectOptions" value-key="value" label-key="label" placeholder="请选择" clearable searchable />
+                </div>
+                <div class="field full"><label>触发主动技能</label>
+                  <admin-select v-model="triggerInlineForm.finishedSkillId" :options="finishedSkillSelectOptions" value-key="value" label-key="label" placeholder="请选择主动技能" searchable />
+                </div>
+                <div class="field"><label>释放次数</label>
+                  <admin-select v-model="triggerInlineForm.castLimitMode" :options="castLimitOptions" />
+                </div>
+                <div class="field" v-if="triggerInlineForm.castLimitMode === 'limited'"><label>最多次数</label>
+                  <input v-model.number="triggerInlineForm.maxCastCount" type="number" min="1" placeholder="如 3">
+                </div>
+                <div class="field"><label>排序</label><input v-model.number="triggerInlineForm.sort" type="number"></div>
+                <div class="field"><label>启用</label>
+                  <admin-select v-model="triggerInlineForm.enabled" :options="yesNoOptions" />
+                </div>
+                <div class="field full" style="display:flex;gap:8px">
+                  <button type="button" class="btn-primary btn-mini" @click="saveItemTrigger">保存扳机</button>
+                  <button type="button" class="btn-mini secondary" @click="cancelItemTrigger">取消</button>
+                </div>
+              </div>
+              <button v-else type="button" class="btn-mini" @click="startAddItemTrigger">+ 添加扳机</button>
+            </template>
+          </div>
+
+          <div v-show="equipDrawerTab === 'passive'">
+            <div class="level-tree-compact">被动：装备后授予被动技能，满足被动条件时生效</div>
+            <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置被动</p>
+            <template v-else>
+              <div class="trigger-inline-row" v-for="(p, idx) in itemPassives" :key="p.id || idx">
+                <div class="field"><label>被动技能</label><span>{{ p.passiveSkillName || p.passiveSkillId }}</span></div>
+                <div class="field"><label>条件</label><span>{{ p.conditionTypeLabel || '—' }}</span></div>
+                <div class="field"><label>效果</label><span>{{ p.effectTypeLabel }} {{ p.effectValue }}</span></div>
+                <div class="field full" style="display:flex;gap:8px;justify-content:flex-end">
+                  <button type="button" class="btn-mini" @click="editItemPassive(p)">编辑</button>
+                  <button type="button" class="btn-mini danger" @click="removeItemPassive(p)">删除</button>
+                </div>
+              </div>
+              <div v-if="!itemPassives.length && !showPassiveInlineForm" class="empty-hint">暂无被动，点击下方添加</div>
+              <div v-if="showPassiveInlineForm" class="trigger-inline-row">
+                <div class="field full"><label>被动技能</label>
+                  <admin-select v-model="passiveInlineForm.passiveSkillId" :options="passiveSkillSelectOptions" value-key="value" label-key="label" placeholder="请选择被动技能" searchable />
+                </div>
+                <div class="field"><label>排序</label><input v-model.number="passiveInlineForm.sort" type="number"></div>
+                <div class="field"><label>启用</label>
+                  <admin-select v-model="passiveInlineForm.enabled" :options="yesNoOptions" />
+                </div>
+                <div class="field full"><label>备注</label><input v-model="passiveInlineForm.remark"></div>
+                <div class="field full" style="display:flex;gap:8px">
+                  <button type="button" class="btn-primary btn-mini" @click="saveItemPassive">保存被动</button>
+                  <button type="button" class="btn-mini secondary" @click="cancelItemPassive">取消</button>
+                </div>
+              </div>
+              <button v-else type="button" class="btn-mini" @click="startAddItemPassive">+ 添加被动</button>
+            </template>
           </div>
         </div>
-        <button class="btn-primary" style="margin-top:12px" @click="loadStageBattle">加载</button>
-        <div v-if="stageBattle.stage" class="level-tree" style="margin-top:14px">
-          <div class="title">{{ stageBattle.stage.displayCode || stageBattle.stage.name }}</div>
-          <div class="level-block" v-for="wave in stageBattle.waves" :key="wave.wave.id">
-            <div class="sub">[{{ wave.wave.name }}] waveNo={{ wave.wave.waveNo }}</div>
-            <div class="stage-tags">
-              <span class="stage-tag" v-for="item in wave.monsters" :key="item.id">
-                {{ item.monsterName }} x{{ item.quantity }}
-              </span>
+
+        <div v-if="drawerType === 'finishedSkill'" class="form-grid">
+          <div class="field full"><label>ID</label><input v-model="finishedSkillForm.id" placeholder="留空自动生成"></div>
+          <div class="field"><label>编码</label><input v-model="finishedSkillForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="finishedSkillForm.name"></div>
+          <div class="field"><label>目标槽</label>
+            <admin-select v-model="finishedSkillForm.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
+          </div>
+          <div class="field"><label>目标参数 x</label><input v-model.number="finishedSkillForm.targetParam" type="number" placeholder="随机敌人数/重复次数"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="finishedSkillForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="finishedSkillForm.remark"></div>
+          <div class="field full">
+            <div class="panel-toolbar" style="margin:0">
+              <span>高级效果步骤</span>
+              <button type="button" class="btn-mini" @click="addFinishedEffect">+ 效果</button>
+            </div>
+            <div class="effect-block" v-for="(eff, idx) in finishedSkillForm.effects" :key="idx">
+              <div class="effect-block-head"><span>步骤 {{ idx + 1 }}</span><button type="button" class="btn-mini danger" @click="removeFinishedEffect(idx)">删</button></div>
+              <div class="form-grid">
+                <div class="field"><label>种类</label>
+                  <admin-select v-model="eff.effectKind" :options="meta.effectKinds" value-key="code" label-key="label" />
+                </div>
+                <div class="field" v-if="eff.effectKind !== 'ACTION_VALUE'"><label>伤害/治疗</label>
+                  <admin-select v-model="eff.outcomeType" :options="meta.outcomeTypes" value-key="code" label-key="label" />
+                </div>
+                <div class="field" v-if="eff.effectKind === 'STAT_FORMULA'"><label>属性 x</label>
+                  <admin-select v-model="eff.statRef" :options="meta.statRefs" value-key="code" label-key="label" />
+                </div>
+                <div class="field" v-if="eff.effectKind === 'STAT_FORMULA'"><label>比例 y</label><input v-model.number="eff.ratioY" type="number" step="0.01"></div>
+                <div class="field" v-if="eff.effectKind === 'STAT_FORMULA'"><label>由武器释放</label>
+                  <admin-select v-model="eff.useWeaponRatio" :options="yesNoOptions" />
+                </div>
+                <div class="field full" v-if="eff.effectKind === 'STAT_FORMULA' && eff.useWeaponRatio === 1">
+                  <span class="muted" style="font-size:12px">z = 角色装备武器的「伤害比例」，战斗中自动读取，无需填写</span>
+                </div>
+                <div class="field" v-if="eff.effectKind === 'FIXED_VALUE'"><label>固定值</label><input v-model.number="eff.fixedValue" type="number"></div>
+                <div class="field" v-if="eff.effectKind === 'ACTION_VALUE'"><label>行动值 ±</label><input v-model.number="eff.actionDelta" type="number"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="admin-card">
-        <h3>快速配置</h3>
-        <div class="form-grid">
-          <div class="field full"><label>新增波次 stageId</label><input v-model="waveForm.stageId"></div>
+        <div v-if="drawerType === 'passiveSkill'" class="form-grid">
+          <div class="field full"><label>ID</label><input v-model="passiveSkillForm.id" placeholder="留空自动生成"></div>
+          <div class="field"><label>编码</label><input v-model="passiveSkillForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="passiveSkillForm.name"></div>
+          <div class="field full"><label>生效条件</label>
+            <admin-select v-model="passiveSkillForm.conditionType" :options="passiveMeta.conditionTypes" value-key="code" label-key="label" />
+          </div>
+          <div class="field full" v-if="passiveSkillForm.conditionType === 'REQUIRE_EQUIP'"><label>需装备物品（全身任意槽）</label>
+            <admin-select v-model="passiveSkillForm.conditionEquipItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择装备" searchable />
+          </div>
+          <div class="field full"><label>效果类型</label>
+            <admin-select v-model="passiveSkillForm.effectType" :options="passiveMeta.effectTypes" value-key="code" label-key="label" />
+          </div>
+          <div class="field"><label>效果数值</label><input v-model.number="passiveSkillForm.effectValue" type="number" step="0.01" placeholder="固定值或百分比"></div>
+          <div class="field"><label>排序</label><input v-model.number="passiveSkillForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="passiveSkillForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="passiveSkillForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'skillBadge'" class="form-grid">
+          <div class="field full"><label>物品 ID</label><input v-model="skillBadgeForm.itemId" placeholder="留空按编码生成"></div>
+          <div class="field"><label>编码</label><input v-model="skillBadgeForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="skillBadgeForm.name"></div>
+          <div class="field"><label>图标</label><input v-model="skillBadgeForm.icon"></div>
+          <div class="field full"><label>关联被动技能</label>
+            <admin-select v-model="skillBadgeForm.passiveSkillId" :options="passiveSkillSelectOptions" value-key="value" label-key="label" placeholder="请选择被动技能" searchable />
+          </div>
+          <div class="field"><label>排序</label><input v-model.number="skillBadgeForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="skillBadgeForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="skillBadgeForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'mode'" class="form-grid">
+          <div class="field full"><label>ID（留空自动生成）</label><input v-model="modeForm.id" placeholder="留空自动生成"></div>
+          <div class="field"><label>编码</label><input v-model="modeForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="modeForm.name"></div>
+          <div class="field"><label>排序</label><input v-model.number="modeForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="modeForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="modeForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'chapter'" class="form-grid">
+          <div class="field full"><label>所属模式组</label><input :value="selectedModeName + ' (' + chapterForm.groupId + ')'" readonly></div>
+          <div class="field full"><label>ID（留空自动生成）</label><input v-model="chapterForm.id" placeholder="留空自动生成"></div>
+          <div class="field"><label>编码</label><input v-model="chapterForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="chapterForm.name"></div>
+          <div class="field"><label>排序</label><input v-model.number="chapterForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="chapterForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="chapterForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'stageGroup'" class="form-grid">
+          <div class="field full"><label>所属大关</label><input :value="selectedChapterName + ' (' + stageGroupForm.chapterId + ')'" readonly></div>
+          <div class="field full"><label>ID（留空自动生成）</label><input v-model="stageGroupForm.id" placeholder="留空自动生成"></div>
+          <div class="field"><label>组编号 groupNo</label><input v-model.number="stageGroupForm.groupNo" type="number"></div>
+          <div class="field"><label>名称</label><input v-model="stageGroupForm.name"></div>
+          <div class="field"><label>排序</label><input v-model.number="stageGroupForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="stageGroupForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="stageGroupForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'stage'" class="form-grid">
+          <div class="field full"><label>所属小关组</label><input :value="selectedStageGroupName + ' (' + stageForm.stageGroupId + ')'" readonly></div>
+          <div class="field"><label>组内序号 stageNo</label><input v-model.number="stageForm.stageNo" type="number"></div>
+          <div class="field"><label>排序 sort</label><input v-model.number="stageForm.sort" type="number"></div>
+          <div class="field full"><label>名称</label><input v-model="stageForm.name"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="stageForm.enabled" :options="yesNoOptions" />
+          </div>
+        </div>
+
+        <div v-if="drawerType === 'monster'" class="form-grid">
+          <div class="field full"><label>ID</label><input v-model="monsterForm.id" placeholder="mon_slime"></div>
+          <div class="field"><label>编码</label><input v-model="monsterForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="monsterForm.name"></div>
+          <div class="field"><label>生命</label><input v-model.number="monsterForm.hp" type="number"></div>
+          <div class="field"><label>最大生命</label><input v-model.number="monsterForm.maxHp" type="number"></div>
+          <div class="field"><label>攻击</label><input v-model.number="monsterForm.attack" type="number"></div>
+          <div class="field"><label>行动值</label><input v-model.number="monsterForm.actionValue" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="monsterForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="monsterForm.enabled" :options="yesNoOptions" />
+          </div>
+        </div>
+
+        <div v-if="drawerType === 'wave'" class="form-grid">
+          <div class="field full"><label>所属小关</label><input :value="selectedStageName" readonly></div>
           <div class="field"><label>waveNo</label><input v-model.number="waveForm.waveNo" type="number"></div>
           <div class="field"><label>名称</label><input v-model="waveForm.name"></div>
-          <div class="field full"><label>波次怪物 waveId</label><input v-model="waveMonsterForm.waveId"></div>
-          <div class="field"><label>monsterId</label><input v-model="waveMonsterForm.monsterId"></div>
-          <div class="field"><label>数量</label><input v-model.number="waveMonsterForm.quantity" type="number"></div>
+          <div class="field"><label>排序</label><input v-model.number="waveForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="waveForm.enabled" :options="yesNoOptions" />
+          </div>
         </div>
-        <button class="btn-primary" style="margin-top:12px;margin-right:8px" @click="saveWave">保存波次</button>
-        <button class="btn-primary" style="margin-top:12px" @click="saveWaveMonster">保存波次怪物</button>
+
+        <div v-if="drawerType === 'recipe'">
+          <div class="form-grid">
+            <div class="field full"><label>配方 ID</label><input v-model="recipeForm.id" placeholder="留空自动生成"></div>
+            <div class="field full"><label>产出物品 A</label>
+              <admin-select v-model="recipeForm.outputItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择合成产物" searchable />
+            </div>
+            <div class="field"><label>排序</label><input v-model.number="recipeForm.sort" type="number"></div>
+            <div class="field"><label>启用</label>
+              <admin-select v-model="recipeForm.enabled" :options="yesNoOptions" />
+            </div>
+            <div class="field full"><label>备注</label><input v-model="recipeForm.remark"></div>
+          </div>
+          <div class="drawer-section-title">所需材料</div>
+          <div class="effect-block" v-for="(mat, idx) in recipeForm.materials" :key="idx">
+            <div class="effect-block-head">
+              <span>材料 {{ idx + 1 }}</span>
+              <button type="button" class="btn-mini danger" @click="removeRecipeMaterial(idx)" v-if="recipeForm.materials.length > 1">删</button>
+            </div>
+            <div class="form-grid">
+              <div class="field"><label>材料 B</label>
+                <admin-select v-model="mat.materialItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择材料" searchable />
+              </div>
+              <div class="field"><label>数量</label><input v-model.number="mat.quantity" type="number" min="1"></div>
+            </div>
+          </div>
+          <button type="button" class="btn-mini" @click="addRecipeMaterial">+ 添加材料</button>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <button type="button" class="btn-primary" @click="saveDrawer">保存</button>
+        <button type="button" class="btn-mini secondary" @click="closeDrawer">取消</button>
       </div>
     </div>
-  </template>
+  </div>
 
   <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
 </div>
 
-<script src="/js/config.js"></script>
+  <script src="/js/admin-select.js"></script>
+  <script src="/js/config.js"></script>
 <script src="/js/admin-api.js"></script>
 <script>
 const { createApp } = Vue;
 
 createApp({
+  components: {
+    AdminSelect: window.AdminSelectComponent
+  },
   data() {
     return {
+      yesNoOptions: [{ value: 1, label: '是' }, { value: 0, label: '否' }],
+      castLimitOptions: [{ value: 'unlimited', label: '无限' }, { value: 'limited', label: '限定次数' }],
       loggedIn: !!AdminApi.getAdminToken(),
       loading: false,
       tab: 'member',
+      tabs: [
+        { key: 'member', label: '用户管理' },
+        { key: 'level', label: '关卡管理' },
+        { key: 'monster', label: '怪兽管理' },
+        { key: 'material', label: '材料管理' },
+        { key: 'recipe', label: '配方管理' },
+        { key: 'weapon', label: '武器管理' },
+        { key: 'armor', label: '防具管理' },
+        { key: 'gloves', label: '护手管理' },
+        { key: 'helmet', label: '头盔管理' },
+        { key: 'legs', label: '护腿管理' },
+        { key: 'accessory', label: '饰品管理' },
+        { key: 'finishedSkill', label: '主动技能' },
+        { key: 'passiveSkill', label: '被动技能' },
+        { key: 'skillBadge', label: '技能徽章' }
+      ],
       loginForm: { account: '', password: '' },
       members: [],
       pager: null,
       levelTree: { modeGroups: [] },
-      stageForm: { stageGroupId: 'sg_1', stageNo: 3, sort: 3, name: '1-3 新关卡', enabled: 1 },
+      levelPick: { modeId: null, chapterId: null, stageGroupId: null, stageId: null },
+      showMonsterLib: false,
+      modeForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
+      chapterForm: { id: '', groupId: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
+      stageGroupForm: { id: '', chapterId: '', groupNo: 1, name: '', sort: 0, enabled: 1, remark: '' },
+      stageForm: { stageGroupId: '', stageNo: 1, sort: 1, name: '', enabled: 1 },
       monsters: [],
-      battleStageId: 'st_1_2',
       stageBattle: { stage: null, waves: [] },
-      waveForm: { stageId: 'st_1_2', waveNo: 4, name: '第4波', sort: 4, enabled: 1 },
-      waveMonsterForm: { waveId: 'wave_1_2_1', monsterId: 'mon_goblin', quantity: 1, sort: 1 },
+      selectedWaveId: null,
+      addingWave: false,
+      inlineWaveForm: { waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
+      waveMonsterDraft: { monsterId: '', quantity: 1 },
+      waveForm: { id: '', stageId: '', waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
+      monsterForm: { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, sort: 0, enabled: 1 },
+      materials: [],
+      recipes: [],
+      recipeForm: { id: '', outputItemId: '', sort: 0, enabled: 1, remark: '', materials: [] },
+      weapons: [],
+      armors: [],
+      gloves: [],
+      helmets: [],
+      legs: [],
+      accessories: [],
+      allItems: [],
+      finishedSkills: [],
+      passiveSkills: [],
+      skillBadges: [],
+      itemTriggers: [],
+      itemPassives: [],
+      equipDrawerTab: 'base',
+      showTriggerInlineForm: false,
+      showPassiveInlineForm: false,
+      triggerInlineForm: { id: '', itemId: '', triggerSlotType: 'ON_ATTACK', triggerParam: null, triggerRefId: '', finishedSkillId: '', sort: 0, enabled: 1, remark: '', castLimitMode: 'unlimited', maxCastCount: 1 },
+      passiveInlineForm: { id: '', itemId: '', passiveSkillId: '', sort: 0, enabled: 1, remark: '' },
+      meta: { triggerTypes: [], targetTypes: [], effectKinds: [], statRefs: [], outcomeTypes: [], bindTypes: [], finishedSkillOptions: [] },
+      passiveMeta: { conditionTypes: [], effectTypes: [], passiveSkillOptions: [] },
+      drawerOpen: false,
+      drawerType: '',
+      drawerTitle: '',
+      materialForm: { id: '', code: '', name: '', icon: '📦', maxStack: 99, sort: 0, enabled: 1, remark: '' },
+      weaponForm: { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, sort: 0, enabled: 1, remark: '' },
+      armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
+      equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
+      finishedSkillForm: { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, enabled: 1, remark: '', effects: [] },
+      passiveSkillForm: { id: '', code: '', name: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' },
+      skillBadgeForm: { id: '', itemId: '', code: '', name: '', icon: '🎖', passiveSkillId: '', sort: 0, enabled: 1, remark: '' },
       toast: { show: false, text: '', type: 'error' }
     };
+  },
+  computed: {
+    currentTabLabel() {
+      var t = this.tabs.find(function (x) { return x.key === this.tab; }.bind(this));
+      return t ? t.label : '后台管理';
+    },
+    finishedSkillSelectOptions() {
+      return (this.meta.finishedSkillOptions || []).map(function (fs) {
+        return { value: fs.id, label: fs.name + ' (' + fs.id + ')' };
+      });
+    },
+    passiveSkillSelectOptions() {
+      return (this.passiveMeta.passiveSkillOptions || []).map(function (ps) {
+        return { value: ps.code, label: ps.label };
+      });
+    },
+    itemSelectOptions() {
+      return (this.allItems || []).map(function (it) {
+        return { value: it.id, label: it.name + ' (' + it.id + ')' };
+      });
+    },
+    drillChapters() {
+      if (!this.levelPick.modeId) return [];
+      var mode = (this.levelTree.modeGroups || []).find(function (m) { return m.modeGroup.id === this.levelPick.modeId; }.bind(this));
+      return mode ? (mode.chapters || []) : [];
+    },
+    drillStageGroups() {
+      if (!this.levelPick.chapterId) return [];
+      var ch = this.drillChapters.find(function (c) { return c.chapter.id === this.levelPick.chapterId; }.bind(this));
+      return ch ? (ch.stageGroups || []) : [];
+    },
+    drillStages() {
+      if (!this.levelPick.stageGroupId) return [];
+      var g = this.drillStageGroups.find(function (x) { return x.stageGroup.id === this.levelPick.stageGroupId; }.bind(this));
+      return g ? (g.stages || []) : [];
+    },
+    selectedModeName() {
+      var mode = (this.levelTree.modeGroups || []).find(function (m) { return m.modeGroup.id === this.levelPick.modeId; }.bind(this));
+      return mode ? mode.modeGroup.name : '';
+    },
+    selectedChapterName() {
+      var ch = this.drillChapters.find(function (c) { return c.chapter.id === this.levelPick.chapterId; }.bind(this));
+      return ch ? ch.chapter.name : '';
+    },
+    selectedStageGroupName() {
+      var g = this.drillStageGroups.find(function (x) { return x.stageGroup.id === this.levelPick.stageGroupId; }.bind(this));
+      return g ? (g.stageGroup.groupNo + '-' + g.stageGroup.name) : '';
+    },
+    selectedStageName() {
+      var st = this.currentSelectedStage;
+      if (st) return (st.displayCode || st.name);
+      if (this.stageBattle.stage) return this.stageBattle.stage.displayCode || this.stageBattle.stage.name;
+      return '';
+    },
+    currentSelectedStage() {
+      return this.drillStages.find(function (s) { return s.id === this.levelPick.stageId; }.bind(this)) || null;
+    },
+    currentSelectedMode() {
+      var node = (this.levelTree.modeGroups || []).find(function (m) { return m.modeGroup.id === this.levelPick.modeId; }.bind(this));
+      return node ? node.modeGroup : null;
+    },
+    currentSelectedChapter() {
+      var node = this.drillChapters.find(function (c) { return c.chapter.id === this.levelPick.chapterId; }.bind(this));
+      return node ? node.chapter : null;
+    },
+    currentSelectedStageGroup() {
+      var node = this.drillStageGroups.find(function (g) { return g.stageGroup.id === this.levelPick.stageGroupId; }.bind(this));
+      return node ? node.stageGroup : null;
+    },
+    monsterSelectOptions() {
+      return (this.monsters || []).map(function (m) {
+        return { value: m.id, label: m.name + ' (' + m.code + ')' };
+      });
+    },
+    currentItemIdForTriggers() {
+      if (this.drawerType === 'weapon') return this.weaponForm.itemId;
+      if (this.isEquipPartDrawer) return this.activeEquipForm.itemId;
+      return '';
+    },
+    isEquipPartDrawer() {
+      return ['armor', 'gloves', 'helmet', 'legs', 'accessory'].indexOf(this.drawerType) >= 0;
+    },
+    equipPartConfig() {
+      return {
+        gloves: { label: '护手', tag: 'GLOVES', listKey: 'gloves', loadApi: 'glovesList', saveApi: 'saveGloves', removeApi: 'removeGloves' },
+        helmet: { label: '头盔', tag: 'HELMET', listKey: 'helmets', loadApi: 'helmetList', saveApi: 'saveHelmet', removeApi: 'removeHelmet' },
+        legs: { label: '护腿', tag: 'LEGS', listKey: 'legs', loadApi: 'legsList', saveApi: 'saveLegs', removeApi: 'removeLegs' },
+        accessory: { label: '饰品', tag: 'ACCESSORY', listKey: 'accessories', loadApi: 'accessoryList', saveApi: 'saveAccessory', removeApi: 'removeAccessory' }
+      };
+    },
+    equipPartListMeta() {
+      return this.equipPartConfig[this.tab] || null;
+    },
+    equipPartList() {
+      var meta = this.equipPartListMeta;
+      return meta ? (this[meta.listKey] || []) : [];
+    },
+    activeEquipPartMeta() {
+      if (this.drawerType === 'armor') {
+        return { label: '防具', tag: 'ARMOR', saveApi: 'saveArmor', reloadFn: 'loadArmors' };
+      }
+      return this.equipPartConfig[this.drawerType] || { label: '装备', tag: '', saveApi: '', reloadFn: '' };
+    },
+    activeEquipForm() {
+      if (this.drawerType === 'armor') return this.armorForm;
+      if (this.equipPartConfig[this.drawerType]) return this.equipPartForm;
+      return this.equipPartForm;
+    }
   },
   mounted() {
     if (this.loggedIn) {
       this.loadMembers();
+      this.loadV2Meta();
+      this.loadAllItems();
     }
   },
   methods: {
@@ -216,6 +1073,7 @@ createApp({
           AdminApi.saveAdminToken(res.token);
           this.loggedIn = true;
           this.loadMembers();
+          this.loadV2Meta();
           this.showToast('登录成功', 'success');
         })
         .catch((err) => this.showToast(err.message))
@@ -224,6 +1082,23 @@ createApp({
     logout() {
       AdminApi.clearAdminToken();
       this.loggedIn = false;
+    },
+    switchTab(key) {
+      this.tab = key;
+      if (key === 'member') this.loadMembers();
+      else if (key === 'level') this.switchLevel();
+      else if (key === 'monster') this.switchMonster();
+      else if (key === 'material') this.switchMaterial();
+      else if (key === 'recipe') this.switchRecipe();
+      else if (key === 'weapon') this.switchWeapon();
+      else if (key === 'armor') this.switchArmor();
+      else if (key === 'gloves') this.switchEquipPart('gloves');
+      else if (key === 'helmet') this.switchEquipPart('helmet');
+      else if (key === 'legs') this.switchEquipPart('legs');
+      else if (key === 'accessory') this.switchEquipPart('accessory');
+      else if (key === 'finishedSkill') this.switchFinishedSkill();
+      else if (key === 'passiveSkill') this.switchPassiveSkill();
+      else if (key === 'skillBadge') this.switchSkillBadge();
     },
     loadMembers() {
       AdminApi.memberList({ current: 1, size: 50 })
@@ -243,39 +1118,789 @@ createApp({
         .catch((err) => this.showToast(err.message));
     },
     switchLevel() {
-      this.tab = 'level';
       AdminApi.levelTree()
-        .then((res) => { this.levelTree = res.data || { modeGroups: [] }; })
+        .then((res) => {
+          this.levelTree = res.data || { modeGroups: [] };
+          this.loadMonsters();
+          if (this.levelPick.stageId) this.loadStageBattleForPick();
+        })
         .catch((err) => this.showToast(err.message));
     },
-    saveStage() {
-      AdminApi.saveStage(this.stageForm)
+    switchMonster() {
+      this.loadMonsters();
+    },
+    pickMode(mode) {
+      this.levelPick.modeId = mode.modeGroup.id;
+      this.levelPick.chapterId = null;
+      this.levelPick.stageGroupId = null;
+      this.levelPick.stageId = null;
+      this.stageBattle = { stage: null, waves: [] };
+      this.selectedWaveId = null;
+    },
+    pickChapter(ch) {
+      this.levelPick.chapterId = ch.chapter.id;
+      this.levelPick.stageGroupId = null;
+      this.levelPick.stageId = null;
+      this.stageBattle = { stage: null, waves: [] };
+      this.selectedWaveId = null;
+    },
+    pickStageGroup(g) {
+      this.levelPick.stageGroupId = g.stageGroup.id;
+      this.levelPick.stageId = null;
+      this.stageBattle = { stage: null, waves: [] };
+      this.selectedWaveId = null;
+    },
+    pickStage(st) {
+      this.levelPick.stageId = st.id;
+      this.selectedWaveId = null;
+      this.addingWave = false;
+      this.loadStageBattleForPick();
+    },
+    resetLevelPick(level) {
+      if (level === 'root') {
+        this.levelPick = { modeId: null, chapterId: null, stageGroupId: null, stageId: null };
+      } else if (level === 'mode') {
+        this.levelPick.chapterId = null;
+        this.levelPick.stageGroupId = null;
+        this.levelPick.stageId = null;
+      } else if (level === 'chapter') {
+        this.levelPick.stageGroupId = null;
+        this.levelPick.stageId = null;
+      } else if (level === 'group') {
+        this.levelPick.stageId = null;
+      }
+      this.stageBattle = { stage: null, waves: [] };
+      this.selectedWaveId = null;
+      this.addingWave = false;
+    },
+    openStageDrawer(stage) {
+      if (!this.levelPick.stageGroupId) {
+        this.showToast('请先选择小关组');
+        return;
+      }
+      var nextNo = this.drillStages.length + 1;
+      if (stage) {
+        this.stageForm = {
+          id: stage.id,
+          stageGroupId: this.levelPick.stageGroupId,
+          stageNo: stage.stageNo,
+          sort: stage.sort,
+          name: stage.name,
+          enabled: stage.enabled != null ? stage.enabled : 1
+        };
+        this.drawerTitle = '编辑小关卡';
+      } else {
+        this.stageForm = {
+          stageGroupId: this.levelPick.stageGroupId,
+          stageNo: nextNo,
+          sort: nextNo,
+          name: this.selectedStageGroupName + ' 第' + nextNo + '关',
+          enabled: 1
+        };
+        this.drawerTitle = '新增小关卡';
+      }
+      this.drawerType = 'stage';
+      this.drawerOpen = true;
+    },
+    openModeDrawer(row) {
+      if (row) {
+        this.modeForm = Object.assign({ id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' }, row);
+        this.drawerTitle = '编辑模式组';
+      } else {
+        var n = (this.levelTree.modeGroups || []).length + 1;
+        this.modeForm = { id: '', code: 'MODE_' + n, name: '新模式 ' + n, sort: n, enabled: 1, remark: '' };
+        this.drawerTitle = '新增模式组';
+      }
+      this.drawerType = 'mode';
+      this.drawerOpen = true;
+    },
+    openChapterDrawer(row) {
+      if (!this.levelPick.modeId) {
+        this.showToast('请先选择模式组');
+        return;
+      }
+      if (row) {
+        this.chapterForm = Object.assign({ id: '', groupId: this.levelPick.modeId, code: '', name: '', sort: 0, enabled: 1, remark: '' }, row);
+        this.drawerTitle = '编辑大关';
+      } else {
+        var n = this.drillChapters.length + 1;
+        this.chapterForm = {
+          id: '', groupId: this.levelPick.modeId, code: 'CH_' + n, name: '第' + n + '章', sort: n, enabled: 1, remark: ''
+        };
+        this.drawerTitle = '新增大关';
+      }
+      this.drawerType = 'chapter';
+      this.drawerOpen = true;
+    },
+    openStageGroupDrawer(row) {
+      if (!this.levelPick.chapterId) {
+        this.showToast('请先选择大关');
+        return;
+      }
+      if (row) {
+        this.stageGroupForm = Object.assign({
+          id: '', chapterId: this.levelPick.chapterId, groupNo: 1, name: '', sort: 0, enabled: 1, remark: ''
+        }, row);
+        this.drawerTitle = '编辑小关组';
+      } else {
+        var n = this.drillStageGroups.length + 1;
+        this.stageGroupForm = {
+          id: '', chapterId: this.levelPick.chapterId, groupNo: n, name: '小关组' + n, sort: n, enabled: 1, remark: ''
+        };
+        this.drawerTitle = '新增小关组';
+      }
+      this.drawerType = 'stageGroup';
+      this.drawerOpen = true;
+    },
+    removeMode() {
+      var row = this.currentSelectedMode;
+      if (!row) return;
+      if (!confirm('删除模式「' + row.name + '」及其下所有大关/小关/波次？')) return;
+      AdminApi.removeMode(row.id)
         .then(() => {
-          this.showToast('保存成功', 'success');
+          this.showToast('已删除', 'success');
+          this.resetLevelPick('root');
           this.switchLevel();
         })
         .catch((err) => this.showToast(err.message));
     },
-    switchBattle() {
-      this.tab = 'battle';
-      AdminApi.monsterList({ current: 1, size: 50 })
-        .then((res) => { this.monsters = res.data || []; })
+    removeChapter() {
+      var row = this.currentSelectedChapter;
+      if (!row) return;
+      if (!confirm('删除大关「' + row.name + '」及其下所有小关组/小关/波次？')) return;
+      var modeId = this.levelPick.modeId;
+      AdminApi.removeChapter(row.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.levelPick.chapterId = null;
+          this.levelPick.stageGroupId = null;
+          this.levelPick.stageId = null;
+          this.levelPick.modeId = modeId;
+          this.stageBattle = { stage: null, waves: [] };
+          this.switchLevel();
+        })
         .catch((err) => this.showToast(err.message));
-      this.loadStageBattle();
     },
-    loadStageBattle() {
-      AdminApi.stageBattleDetail(this.battleStageId)
+    removeStageGroup() {
+      var row = this.currentSelectedStageGroup;
+      if (!row) return;
+      if (!confirm('删除小关组「' + row.name + '」及其下所有小关/波次？')) return;
+      var modeId = this.levelPick.modeId;
+      var chapterId = this.levelPick.chapterId;
+      AdminApi.removeStageGroup(row.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.levelPick.stageGroupId = null;
+          this.levelPick.stageId = null;
+          this.levelPick.modeId = modeId;
+          this.levelPick.chapterId = chapterId;
+          this.stageBattle = { stage: null, waves: [] };
+          this.switchLevel();
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeStage() {
+      var row = this.currentSelectedStage;
+      if (!row) return;
+      if (!confirm('删除小关「' + (row.displayCode || row.name) + '」及其波次配置？')) return;
+      var pick = Object.assign({}, this.levelPick);
+      AdminApi.removeStage(row.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.levelPick = pick;
+          this.levelPick.stageId = null;
+          this.stageBattle = { stage: null, waves: [] };
+          this.switchLevel();
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadStageBattleForPick() {
+      if (!this.levelPick.stageId) return;
+      AdminApi.stageBattleDetail(this.levelPick.stageId)
         .then((res) => { this.stageBattle = res.data || { stage: null, waves: [] }; })
         .catch((err) => this.showToast(err.message));
     },
-    saveWave() {
-      AdminApi.saveWave(this.waveForm)
-        .then(() => { this.showToast('波次已保存', 'success'); this.loadStageBattle(); })
+    selectWave(waveId) {
+      this.selectedWaveId = this.selectedWaveId === waveId ? null : waveId;
+      this.waveMonsterDraft = { monsterId: '', quantity: 1 };
+    },
+    startAddWave() {
+      if (!this.levelPick.stageId) return;
+      var n = (this.stageBattle.waves || []).length + 1;
+      this.inlineWaveForm = { waveNo: n, name: '第' + n + '波', sort: n, enabled: 1 };
+      this.addingWave = true;
+    },
+    saveInlineWave() {
+      if (!this.levelPick.stageId) return;
+      AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.inlineWaveForm))
+        .then(() => {
+          this.showToast('波次已保存', 'success');
+          this.addingWave = false;
+          this.loadStageBattleForPick();
+        })
         .catch((err) => this.showToast(err.message));
     },
-    saveWaveMonster() {
-      AdminApi.saveWaveMonster(this.waveMonsterForm)
-        .then(() => { this.showToast('波次怪物已保存', 'success'); this.loadStageBattle(); })
+    editWave(wave) {
+      this.waveForm = Object.assign({ id: wave.id, stageId: this.levelPick.stageId }, wave);
+      this.drawerType = 'wave';
+      this.drawerTitle = '编辑波次';
+      this.drawerOpen = true;
+    },
+    addMonsterToSelectedWave(waveId) {
+      if (!this.waveMonsterDraft.monsterId) {
+        this.showToast('请选择怪物');
+        return;
+      }
+      var wave = (this.stageBattle.waves || []).find(function (w) { return w.wave.id === waveId; });
+      var sort = wave && wave.monsters ? wave.monsters.length + 1 : 1;
+      AdminApi.saveWaveMonster({
+        waveId: waveId,
+        monsterId: this.waveMonsterDraft.monsterId,
+        quantity: this.waveMonsterDraft.quantity || 1,
+        sort: sort
+      })
+        .then(() => {
+          this.showToast('已添加怪物', 'success');
+          this.waveMonsterDraft = { monsterId: '', quantity: 1 };
+          this.loadStageBattleForPick();
+          this.selectedWaveId = waveId;
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadMonsters() {
+      AdminApi.monsterList({ current: 1, size: 200 })
+        .then((res) => { this.monsters = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeMonster(m) {
+      if (!confirm('删除怪兽 ' + m.name + '？已配置在波次中的引用也会移除')) return;
+      AdminApi.removeMonster(m.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.loadMonsters();
+          if (this.levelPick.stageId) this.loadStageBattleForPick();
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadV2Meta() {
+      Promise.all([
+        AdminApi.v2TriggerTypes(),
+        AdminApi.v2TargetTypes(),
+        AdminApi.v2EffectKinds(),
+        AdminApi.v2StatRefs(),
+        AdminApi.v2OutcomeTypes(),
+        AdminApi.v2BindTypes(),
+        AdminApi.v2FinishedSkillOptions()
+      ]).then(([tr, tg, ek, sr, ot, bt, fs]) => {
+        this.meta.triggerTypes = tr.data || [];
+        this.meta.targetTypes = tg.data || [];
+        this.meta.effectKinds = ek.data || [];
+        this.meta.statRefs = sr.data || [];
+        this.meta.outcomeTypes = ot.data || [];
+        this.meta.bindTypes = bt.data || [];
+        this.meta.finishedSkillOptions = fs.data || [];
+      }).catch((err) => this.showToast(err.message));
+    },
+    triggerNeedParam(code) {
+      var o = (this.meta.triggerTypes || []).find(function (x) { return x.code === code; });
+      return o && o.needParam;
+    },
+    formatCastLimit(maxCastCount) {
+      if (maxCastCount == null || maxCastCount <= 0) return '无限';
+      return maxCastCount + ' 次';
+    },
+    applyTriggerInlineForm(row) {
+      if (row) {
+        var form = Object.assign({}, row);
+        form.castLimitMode = (row.maxCastCount != null && row.maxCastCount > 0) ? 'limited' : 'unlimited';
+        if (form.castLimitMode === 'limited' && !form.maxCastCount) form.maxCastCount = 1;
+        return form;
+      }
+      return { id: '', itemId: '', triggerSlotType: 'ON_ATTACK', triggerParam: null, triggerRefId: '', finishedSkillId: '', sort: 0, enabled: 1, remark: '', castLimitMode: 'unlimited', maxCastCount: 1 };
+    },
+    buildTriggerPayload() {
+      var payload = Object.assign({}, this.triggerInlineForm);
+      if (payload.castLimitMode === 'unlimited') {
+        payload.maxCastCount = null;
+      } else if (!payload.maxCastCount || payload.maxCastCount < 1) {
+        payload.maxCastCount = 1;
+      }
+      delete payload.castLimitMode;
+      delete payload.triggerSlotTypeLabel;
+      delete payload.finishedSkillName;
+      delete payload.itemName;
+      delete payload.triggerRefName;
+      if (payload.triggerRefId === '') payload.triggerRefId = null;
+      return payload;
+    },
+    loadPassiveMeta() {
+      AdminApi.passiveSkillMeta()
+        .then((res) => {
+          this.passiveMeta = Object.assign({ conditionTypes: [], effectTypes: [], passiveSkillOptions: [] }, res.data || {});
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadAllItems() {
+      AdminApi.allItemList()
+        .then((res) => { this.allItems = res.data || []; })
+        .catch(function () { this.allItems = []; }.bind(this));
+    },
+    switchMaterial() {
+      this.loadMaterials();
+    },
+    switchRecipe() {
+      this.loadRecipes();
+      this.loadAllItems();
+    },
+    loadRecipes() {
+      AdminApi.recipeList({ current: 1, size: 200 })
+        .then((res) => { this.recipes = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    newRecipeMaterialRow() {
+      return { materialItemId: '', quantity: 1 };
+    },
+    addRecipeMaterial() {
+      if (!this.recipeForm.materials) this.recipeForm.materials = [];
+      this.recipeForm.materials.push(this.newRecipeMaterialRow());
+    },
+    removeRecipeMaterial(idx) {
+      this.recipeForm.materials.splice(idx, 1);
+    },
+    openRecipeDrawer(row) {
+      var self = this;
+      this.drawerType = 'recipe';
+      this.drawerOpen = true;
+      this.drawerTitle = row ? '编辑配方' : '新增配方';
+      if (!this.allItems.length) this.loadAllItems();
+      if (row && row.id) {
+        AdminApi.recipeDetail(row.id)
+          .then((res) => {
+            var data = res.data || {};
+            self.recipeForm = {
+              id: data.id || '',
+              outputItemId: data.outputItemId || '',
+              sort: data.sort != null ? data.sort : 0,
+              enabled: data.enabled != null ? data.enabled : 1,
+              remark: data.remark || '',
+              materials: (data.materials && data.materials.length)
+                ? data.materials.map(function (m) {
+                  return { id: m.id, materialItemId: m.materialItemId, quantity: m.quantity || 1 };
+                })
+                : [self.newRecipeMaterialRow()]
+            };
+          })
+          .catch((err) => self.showToast(err.message));
+      } else {
+        this.recipeForm = {
+          id: '', outputItemId: '', sort: 0, enabled: 1, remark: '',
+          materials: [this.newRecipeMaterialRow()]
+        };
+      }
+    },
+    removeRecipe(r) {
+      if (!confirm('删除配方 ' + (r.outputItemName || r.id) + '?')) return;
+      AdminApi.removeRecipe(r.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadRecipes(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadMaterials() {
+      AdminApi.materialList({ current: 1, size: 200 })
+        .then((res) => { this.materials = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeMaterial(m) {
+      if (!confirm('删除材料 ' + m.name + '?')) return;
+      AdminApi.removeMaterial(m.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadMaterials(); this.loadAllItems(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchWeapon() {
+      this.loadWeapons();
+      this.loadV2Meta();
+    },
+    loadWeapons() {
+      AdminApi.weaponList({ current: 1, size: 200 })
+        .then((res) => { this.weapons = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeWeapon(w) {
+      if (!confirm('删除武器 ' + w.name + '？将同时删除关联物品')) return;
+      AdminApi.removeWeapon(w.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadWeapons(); this.loadAllItems(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchArmor() {
+      this.loadArmors();
+      this.loadV2Meta();
+    },
+    loadArmors() {
+      AdminApi.armorList({ current: 1, size: 200 })
+        .then((res) => { this.armors = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeArmor(a) {
+      if (!confirm('删除防具 ' + a.name + '？将同时删除关联物品')) return;
+      AdminApi.removeArmor(a.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadArmors(); this.loadAllItems(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchEquipPart(key) {
+      this.loadEquipPartList(key);
+      this.loadV2Meta();
+    },
+    loadEquipPartList(key) {
+      var cfg = this.equipPartConfig[key];
+      if (!cfg) return;
+      AdminApi[cfg.loadApi]({ current: 1, size: 200 })
+        .then((res) => { this[cfg.listKey] = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeEquipPart(key, a) {
+      var cfg = this.equipPartConfig[key];
+      if (!cfg) return;
+      if (!confirm('删除' + cfg.label + ' ' + a.name + '？将同时删除关联物品')) return;
+      AdminApi[cfg.removeApi](a.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.loadEquipPartList(key);
+          this.loadAllItems();
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    emptyEquipPartForm() {
+      return { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' };
+    },
+    switchEquipDrawerTab(tab) {
+      if (this.showTriggerInlineForm || this.showPassiveInlineForm) {
+        this.showToast('请先保存或取消当前编辑');
+        return;
+      }
+      this.equipDrawerTab = tab;
+      if (tab === 'passive' && !this.passiveMeta.passiveSkillOptions.length) {
+        this.loadPassiveMeta();
+      }
+    },
+    loadItemPassives(itemId) {
+      if (!itemId) {
+        this.itemPassives = [];
+        return;
+      }
+      AdminApi.itemPassiveByItem(itemId)
+        .then((res) => { this.itemPassives = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    applyPassiveInlineForm(row) {
+      if (row) return Object.assign({}, row);
+      return { id: '', itemId: '', passiveSkillId: '', sort: 0, enabled: 1, remark: '' };
+    },
+    startAddItemPassive() {
+      var itemId = this.currentItemIdForTriggers;
+      if (!itemId) {
+        this.showToast('请先保存装备');
+        return;
+      }
+      this.passiveInlineForm = this.applyPassiveInlineForm(null);
+      this.passiveInlineForm.itemId = itemId;
+      this.passiveInlineForm.sort = (this.itemPassives.length + 1);
+      this.showPassiveInlineForm = true;
+      if (!this.passiveMeta.passiveSkillOptions.length) this.loadPassiveMeta();
+    },
+    editItemPassive(p) {
+      this.passiveInlineForm = this.applyPassiveInlineForm(p);
+      this.showPassiveInlineForm = true;
+      if (!this.passiveMeta.passiveSkillOptions.length) this.loadPassiveMeta();
+    },
+    cancelItemPassive() {
+      this.showPassiveInlineForm = false;
+      this.passiveInlineForm = this.applyPassiveInlineForm(null);
+    },
+    saveItemPassive() {
+      var itemId = this.currentItemIdForTriggers;
+      if (!itemId) {
+        this.showToast('请先保存装备');
+        return;
+      }
+      var payload = Object.assign({}, this.passiveInlineForm);
+      payload.itemId = itemId;
+      AdminApi.saveItemPassive(payload)
+        .then(() => {
+          this.showToast('被动已保存', 'success');
+          this.showPassiveInlineForm = false;
+          this.loadItemPassives(itemId);
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeItemPassive(p) {
+      if (!confirm('删除该被动绑定?')) return;
+      AdminApi.removeItemPassive(p.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.loadItemPassives(this.currentItemIdForTriggers);
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadEquipItemExtras(itemId) {
+      this.loadItemTriggers(itemId);
+      this.loadItemPassives(itemId);
+    },
+    switchFinishedSkill() {
+      this.loadFinishedSkills();
+      this.loadV2Meta();
+    },
+    loadFinishedSkills() {
+      AdminApi.finishedSkillList({ current: 1, size: 100 })
+        .then((res) => { this.finishedSkills = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    editFinishedSkill(s) {
+      AdminApi.finishedSkillDetail(s.id)
+        .then((res) => {
+          this.finishedSkillForm = Object.assign({ effects: [] }, res.data || {});
+          if (!this.finishedSkillForm.effects) this.finishedSkillForm.effects = [];
+          this.openDrawer('finishedSkill');
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeFinishedSkill(s) {
+      if (!confirm('删除主动技能 ' + s.name + '?')) return;
+      AdminApi.removeFinishedSkill(s.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadFinishedSkills(); this.loadV2Meta(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchPassiveSkill() {
+      this.loadPassiveSkills();
+      this.loadPassiveMeta();
+      if (!this.allItems.length) this.loadAllItems();
+    },
+    loadPassiveSkills() {
+      AdminApi.passiveSkillList({ current: 1, size: 200 })
+        .then((res) => { this.passiveSkills = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removePassiveSkill(s) {
+      if (!confirm('删除被动技能 ' + s.name + '?')) return;
+      AdminApi.removePassiveSkill(s.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadPassiveSkills(); this.loadPassiveMeta(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchSkillBadge() {
+      this.loadSkillBadges();
+      this.loadPassiveMeta();
+    },
+    loadSkillBadges() {
+      AdminApi.skillBadgeList({ current: 1, size: 200 })
+        .then((res) => { this.skillBadges = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeSkillBadge(b) {
+      if (!confirm('删除技能徽章 ' + b.name + '?')) return;
+      AdminApi.removeSkillBadge(b.itemId || b.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadSkillBadges(); this.loadAllItems(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadItemTriggers(itemId) {
+      if (!itemId) {
+        this.itemTriggers = [];
+        return;
+      }
+      AdminApi.triggerSlotByItem(itemId)
+        .then((res) => { this.itemTriggers = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    startAddItemTrigger() {
+      var itemId = this.currentItemIdForTriggers;
+      if (!itemId) {
+        this.showToast('请先保存装备');
+        return;
+      }
+      this.triggerInlineForm = this.applyTriggerInlineForm(null);
+      this.triggerInlineForm.itemId = itemId;
+      this.triggerInlineForm.sort = (this.itemTriggers.length + 1);
+      this.showTriggerInlineForm = true;
+    },
+    editItemTrigger(t) {
+      this.triggerInlineForm = this.applyTriggerInlineForm(t);
+      this.showTriggerInlineForm = true;
+    },
+    cancelItemTrigger() {
+      this.showTriggerInlineForm = false;
+      this.triggerInlineForm = this.applyTriggerInlineForm(null);
+    },
+    saveItemTrigger() {
+      var itemId = this.currentItemIdForTriggers;
+      if (!itemId) {
+        this.showToast('请先保存装备');
+        return;
+      }
+      var payload = this.buildTriggerPayload();
+      payload.itemId = itemId;
+      AdminApi.saveTriggerSlot(payload)
+        .then(() => {
+          this.showToast('扳机已保存', 'success');
+          this.showTriggerInlineForm = false;
+          this.loadItemTriggers(itemId);
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeItemTrigger(t) {
+      if (!confirm('删除该扳机?')) return;
+      AdminApi.removeTriggerSlot(t.id)
+        .then(() => {
+          this.showToast('已删除', 'success');
+          this.loadItemTriggers(this.currentItemIdForTriggers);
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    openDrawer(type, row) {
+      this.drawerType = type;
+      this.drawerOpen = true;
+      this.equipDrawerTab = 'base';
+      this.showTriggerInlineForm = false;
+      this.showPassiveInlineForm = false;
+      this.itemTriggers = [];
+      this.itemPassives = [];
+      if (type === 'material') {
+        this.drawerTitle = row ? '编辑材料' : '新增材料';
+        this.materialForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', icon: '📦', maxStack: 99, sort: 0, enabled: 1, remark: '' };
+      } else if (type === 'weapon') {
+        this.drawerTitle = row ? '编辑武器' : '新增武器';
+        this.weaponForm = row ? Object.assign({}, row) : { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, sort: 0, enabled: 1, remark: '' };
+        if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
+      } else if (type === 'armor') {
+        this.drawerTitle = row ? '编辑防具' : '新增防具';
+        this.armorForm = row ? Object.assign({}, row) : this.emptyEquipPartForm();
+        if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
+      } else if (this.equipPartConfig[type]) {
+        var cfg = this.equipPartConfig[type];
+        this.drawerTitle = row ? ('编辑' + cfg.label) : ('新增' + cfg.label);
+        this.equipPartForm = row ? Object.assign({}, row) : this.emptyEquipPartForm();
+        if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
+      } else if (type === 'finishedSkill') {
+        if (!row && !this.finishedSkillForm.id && !this.finishedSkillForm.code) {
+          this.finishedSkillForm = { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, enabled: 1, remark: '', effects: [this.newEffectRow()] };
+        }
+        this.drawerTitle = this.finishedSkillForm.id ? '编辑主动技能' : '新增主动技能';
+      } else if (type === 'passiveSkill') {
+        this.drawerTitle = row ? '编辑被动技能' : '新增被动技能';
+        this.passiveSkillForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' };
+        this.loadPassiveMeta();
+        if (!this.allItems.length) this.loadAllItems();
+      } else if (type === 'skillBadge') {
+        this.drawerTitle = row ? '编辑技能徽章' : '新增技能徽章';
+        this.skillBadgeForm = row ? Object.assign({}, row) : { id: '', itemId: '', code: '', name: '', icon: '🎖', passiveSkillId: '', sort: 0, enabled: 1, remark: '' };
+        this.loadPassiveMeta();
+      } else if (type === 'recipe') {
+        this.openRecipeDrawer(row);
+        return;
+      } else if (type === 'monster') {
+        this.drawerTitle = row ? '编辑怪物' : '新增怪物';
+        this.monsterForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, sort: 0, enabled: 1 };
+      } else if (type === 'wave') {
+        this.drawerTitle = '编辑波次';
+        this.waveForm = row ? Object.assign({ stageId: this.levelPick.stageId }, row) : { id: '', stageId: this.levelPick.stageId, waveNo: 1, name: '第1波', sort: 1, enabled: 1 };
+      }
+    },
+    closeDrawer() {
+      this.drawerOpen = false;
+      this.drawerType = '';
+      this.equipDrawerTab = 'base';
+      this.showTriggerInlineForm = false;
+      this.showPassiveInlineForm = false;
+      this.itemTriggers = [];
+      this.itemPassives = [];
+      this.finishedSkillForm = { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, enabled: 1, remark: '', effects: [] };
+      this.recipeForm = { id: '', outputItemId: '', sort: 0, enabled: 1, remark: '', materials: [] };
+    },
+    newEffectRow() {
+      return { effectKind: 'STAT_FORMULA', outcomeType: 'DAMAGE', statRef: 'ATTACK', ratioY: 1, useWeaponRatio: 0, fixedValue: null, actionDelta: null };
+    },
+    addFinishedEffect() {
+      if (!this.finishedSkillForm.effects) this.finishedSkillForm.effects = [];
+      this.finishedSkillForm.effects.push(this.newEffectRow());
+    },
+    removeFinishedEffect(idx) {
+      this.finishedSkillForm.effects.splice(idx, 1);
+    },
+    saveDrawer() {
+      if ((this.drawerType === 'weapon' || this.isEquipPartDrawer) && this.showTriggerInlineForm) {
+        this.showToast('请先点击「保存扳机」或取消扳机编辑');
+        return;
+      }
+      if ((this.drawerType === 'weapon' || this.isEquipPartDrawer) && this.showPassiveInlineForm) {
+        this.showToast('请先点击「保存被动」或取消被动编辑');
+        return;
+      }
+      var p;
+      var self = this;
+      if (this.drawerType === 'material') {
+        p = AdminApi.saveMaterial(this.materialForm).then(() => { this.loadMaterials(); this.loadAllItems(); });
+      } else if (this.drawerType === 'weapon') {
+        if (!this.weaponForm.code || !String(this.weaponForm.code).trim()) {
+          this.showToast('请填写编码');
+          return;
+        }
+        p = AdminApi.saveWeapon(this.weaponForm).then((res) => {
+          if (res.data) {
+            self.weaponForm = Object.assign({}, self.weaponForm, res.data);
+            if (res.data.itemId) self.loadEquipItemExtras(res.data.itemId);
+          }
+          self.loadWeapons();
+          self.loadAllItems();
+        });
+      } else if (this.isEquipPartDrawer) {
+        var meta = this.activeEquipPartMeta;
+        var form = this.activeEquipForm;
+        if (!form.name || !String(form.name).trim()) {
+          this.showToast('请填写名称');
+          return;
+        }
+        p = AdminApi[meta.saveApi](form).then((res) => {
+          if (res.data) {
+            if (self.drawerType === 'armor') {
+              self.armorForm = Object.assign({}, self.armorForm, res.data);
+            } else {
+              self.equipPartForm = Object.assign({}, self.equipPartForm, res.data);
+            }
+            if (res.data.itemId) self.loadEquipItemExtras(res.data.itemId);
+          }
+          if (meta.reloadFn) self[meta.reloadFn]();
+          else if (self.equipPartConfig[self.drawerType]) self.loadEquipPartList(self.drawerType);
+          self.loadAllItems();
+        });
+      } else if (this.drawerType === 'finishedSkill') {
+        p = AdminApi.saveFinishedSkill(this.finishedSkillForm).then(() => { this.loadFinishedSkills(); this.loadV2Meta(); });
+      } else if (this.drawerType === 'passiveSkill') {
+        p = AdminApi.savePassiveSkill(this.passiveSkillForm).then(() => { this.loadPassiveSkills(); this.loadPassiveMeta(); });
+      } else if (this.drawerType === 'skillBadge') {
+        p = AdminApi.saveSkillBadge(this.skillBadgeForm).then(() => { this.loadSkillBadges(); this.loadAllItems(); this.loadPassiveMeta(); });
+      } else if (this.drawerType === 'recipe') {
+        p = AdminApi.saveRecipe(this.recipeForm).then(() => { this.loadRecipes(); });
+      } else if (this.drawerType === 'mode') {
+        p = AdminApi.saveMode(this.modeForm).then(() => { self.switchLevel(); });
+      } else if (this.drawerType === 'chapter') {
+        this.chapterForm.groupId = this.levelPick.modeId;
+        p = AdminApi.saveChapter(this.chapterForm).then(() => { self.switchLevel(); });
+      } else if (this.drawerType === 'stageGroup') {
+        this.stageGroupForm.chapterId = this.levelPick.chapterId;
+        p = AdminApi.saveStageGroup(this.stageGroupForm).then(() => { self.switchLevel(); });
+      } else if (this.drawerType === 'stage') {
+        p = AdminApi.saveStage(this.stageForm).then(() => {
+          self.switchLevel();
+          if (self.stageForm.id) self.levelPick.stageId = self.stageForm.id;
+        });
+      } else if (this.drawerType === 'monster') {
+        p = AdminApi.saveMonster(this.monsterForm).then(() => { this.loadMonsters(); });
+      } else if (this.drawerType === 'wave') {
+        p = AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.waveForm)).then(() => { this.loadStageBattleForPick(); });
+      }
+      if (!p) return;
+      var keepOpen = this.drawerType === 'weapon' || this.isEquipPartDrawer;
+      p.then(() => {
+        this.showToast('保存成功', 'success');
+        if (keepOpen) return;
+        this.closeDrawer();
+      })
         .catch((err) => this.showToast(err.message));
     }
   }

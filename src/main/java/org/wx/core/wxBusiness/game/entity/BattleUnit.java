@@ -24,11 +24,16 @@ public class BattleUnit {
 
     private Integer attack;
 
+    private Integer defense;
+
     /** 行动条上限 */
     private Integer actionValue;
 
     /** 当前行动条（整数，无小数） */
     private Integer actionBar;
+
+    /** 装备武器伤害比例（战斗初始化时写入，供技能公式 z 使用） */
+    private java.math.BigDecimal weaponDamageRatio;
 
     private String monsterId;
 

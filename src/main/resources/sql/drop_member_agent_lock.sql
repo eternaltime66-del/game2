@@ -1,3 +1,3 @@
--- 移除 app_member 表中已废弃字段
-ALTER TABLE app_member DROP COLUMN IF EXISTS agent;
-ALTER TABLE app_member DROP COLUMN IF EXISTS `lock`;
+-- 移除 app_member 表中已废弃字段（MySQL 8.0 不支持 DROP COLUMN IF EXISTS，需手动确认后执行）
+-- ALTER TABLE app_member DROP COLUMN agent;
+-- ALTER TABLE app_member DROP COLUMN `lock`;

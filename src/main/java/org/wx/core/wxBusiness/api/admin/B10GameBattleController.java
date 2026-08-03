@@ -10,6 +10,7 @@ import org.wx.core.wxBase.annotation.NeedHeader;
 import org.wx.core.wxBase.annotation.ParamCheck;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
+import org.wx.core.wxBusiness.api.vo.CommonIdVo;
 import org.wx.core.wxBusiness.game.entity.GameMonster;
 import org.wx.core.wxBusiness.game.entity.GameWave;
 import org.wx.core.wxBusiness.game.entity.GameWaveMonster;
@@ -52,6 +53,14 @@ public class B10GameBattleController {
     public WxResult<?> monsterSave(@RequestBody GameMonster entity) {
         entity.clearEmptyString();
         gameBattleService.saveMonster(entity);
+        return WxResult.success();
+    }
+
+    @PostMapping("/monster/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> monsterRemove(@RequestBody CommonIdVo vo) {
+        gameBattleService.removeMonster(vo.stringId());
         return WxResult.success();
     }
 

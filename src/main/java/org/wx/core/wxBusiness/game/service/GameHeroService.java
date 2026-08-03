@@ -32,4 +32,19 @@ public class GameHeroService extends WxServiceImpl<GameHeroMapper, GameHero> {
     public GameHero findByUid(String uid) {
         return this.find().eq(GameHero::getUid, uid).one();
     }
+
+    /** 战斗外血量始终等于当前生命上限（不含战斗内受伤状态） */
+    public void syncOutsideBattleHp(GameHero hero, int totalMaxHp) {
+        if (hero == null) {
+            return;
+        }
+        hero.setHp(totalMaxHp);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void persistOutsideBattleHp(String uid, int totalMaxHp) {
+        GameHero hero = getOrInitHero(uid);
+        hero.setHp(totalMaxHp);
+        this.updateById(hero);
+    }
 }

@@ -14,12 +14,30 @@
   <div class="bg-glow bg-glow-1"></div>
   <div class="bg-glow bg-glow-2"></div>
 
-  <div class="battle-header">
+    <div class="battle-header">
     <div>
       <h1>战斗</h1>
       <div class="stage-info" v-if="battle">{{ battle.displayCode }} · {{ battle.stageName }}</div>
     </div>
-    <button @click="goHome">返回</button>
+    <div class="battle-header-actions">
+      <div class="speed-group" v-if="battle && battle.status === 'RUNNING'">
+        <button
+          v-for="s in speedOptions"
+          :key="s"
+          type="button"
+          class="btn-speed"
+          :class="{ active: battleSpeed === s }"
+          @click="setSpeed(s)"
+        >{{ s }}x</button>
+      </div>
+      <button
+        type="button"
+        class="btn-header btn-skip"
+        v-if="battle && battle.status === 'RUNNING'"
+        @click="skipBattle"
+      >跳过</button>
+      <button type="button" @click="goHome">返回</button>
+    </div>
   </div>
 
   <div v-if="loading && !battle" class="loading-text">加载中...</div>
@@ -30,10 +48,50 @@
       <span>状态 {{ statusText }}</span>
     </div>
 
-    <div v-if="battle.status === 'WIN'" class="battle-result win">胜利</div>
-    <div v-else-if="battle.status === 'LOSE'" class="battle-result lose">失败</div>
+    <div class="loot-bar" v-if="lootList.length">
+      <span class="loot-bar-label">获得</span>
+      <div class="loot-bar-scroll">
+        <div
+          v-for="item in lootList"
+          :key="item.itemId"
+          class="loot-mini"
+          :title="item.itemName + ' x' + item.quantity"
+        >
+          <img v-if="itemIconIsImage(item.icon)" class="loot-mini-img" :src="item.icon" :alt="item.itemName">
+          <span v-else class="loot-mini-icon">{{ item.icon || '📦' }}</span>
+          <span class="loot-mini-qty">×{{ item.quantity }}</span>
+        </div>
+      </div>
+      <span v-if="battle.status === 'WIN' && battle.lootGranted" class="loot-bar-badge">已入库</span>
+    </div>
 
-    <div class="battle-scene">
+    <div v-if="battle.status === 'WIN' || battle.status === 'LOSE'" class="settlement-overlay">
+      <div class="settlement-panel" :class="battle.status === 'WIN' ? 'win' : 'lose'">
+        <div class="settlement-badge">{{ battle.status === 'WIN' ? '胜利' : '失败' }}</div>
+        <h2 class="settlement-title">{{ battle.status === 'WIN' ? '战斗胜利' : '战斗失败' }}</h2>
+        <p class="settlement-stage">{{ battle.displayCode }} · {{ battle.stageName }}</p>
+        <p class="settlement-meta">波次 {{ battle.currentWave }}/{{ battle.totalWaves }}</p>
+        <div v-if="battle.status === 'WIN'" class="settlement-loot">
+          <div class="settlement-loot-title">获得材料</div>
+          <div v-if="lootList.length" class="settlement-loot-list">
+            <div v-for="item in lootList" :key="item.itemId" class="settlement-loot-item">
+              <img v-if="itemIconIsImage(item.icon)" class="settlement-loot-img" :src="item.icon" :alt="item.itemName">
+              <span v-else class="settlement-loot-icon">{{ item.icon || '📦' }}</span>
+              <span class="settlement-loot-name">{{ item.itemName }}</span>
+              <span class="settlement-loot-qty">×{{ item.quantity }}</span>
+            </div>
+          </div>
+          <p v-else class="settlement-loot-empty">本局未获得材料</p>
+          <p v-if="lootList.length && battle.lootGranted" class="settlement-loot-tip">已放入仓库</p>
+        </div>
+        <div class="settlement-actions">
+          <button type="button" class="btn-settlement primary" @click="goHome">返回首页</button>
+          <button type="button" class="btn-settlement" @click="showLogFull = true">查看记录</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="battle-scene" :class="{ dimmed: battle.status !== 'RUNNING' }">
       <div
         v-if="monsterUnits.length"
         class="monster-grid"
@@ -42,7 +100,8 @@
         <div
           v-for="unit in monsterUnits"
           :key="unit.unitId"
-          class="battle-unit-wrap"
+          class="battle-unit-wrap clickable"
+          @click="openMonsterDetail(unit)"
         >
           <div
             class="battle-unit monster compact"
@@ -124,17 +183,6 @@
       </div>
     </div>
 
-    <div class="battle-actions">
-      <button v-if="!autoRunning" class="btn-next" :disabled="!canManualAct" @click="nextStep">下一步</button>
-      <button
-        class="btn-auto"
-        :class="{ active: autoRunning }"
-        :disabled="battle.status !== 'RUNNING'"
-        @click="toggleAuto"
-      >
-        {{ autoRunning ? '停止自动' : '自动战斗' }}
-      </button>
-    </div>
 
     <div class="log-bar" @click="showLogFull = true">
       <div class="log-bar-label">战斗记录 · 点击查看全部</div>
@@ -147,6 +195,54 @@
       <div v-else class="log-bar-empty">暂无记录</div>
     </div>
   </template>
+
+  <div v-if="showMonsterDetail" class="monster-detail-mask" @click.self="closeMonsterDetail">
+    <div class="monster-detail-panel">
+      <div class="monster-detail-head">
+        <div>
+          <h3>{{ monsterDetailLoading ? '加载中…' : (monsterDetail ? monsterDetail.name : '怪物详情') }}</h3>
+          <div class="monster-detail-sub" v-if="monsterDetail && !monsterDetailLoading">{{ monsterDetail.code }}</div>
+        </div>
+        <button type="button" @click="closeMonsterDetail">关闭</button>
+      </div>
+      <div v-if="monsterDetailLoading" class="monster-detail-loading">加载中…</div>
+      <div class="monster-detail-body" v-else-if="monsterDetail">
+        <div class="monster-stat-grid">
+          <div class="monster-stat-item">
+            <span class="label">生命</span>
+            <span class="value">{{ monsterDetail.maxHp }}</span>
+          </div>
+          <div class="monster-stat-item">
+            <span class="label">攻击</span>
+            <span class="value">{{ monsterDetail.attack }}</span>
+          </div>
+          <div class="monster-stat-item">
+            <span class="label">行动值</span>
+            <span class="value">{{ monsterDetail.actionValue }}</span>
+          </div>
+        </div>
+        <div class="monster-drop-section">
+          <div class="monster-drop-title">可能掉落</div>
+          <div v-if="!monsterDetail.drops || !monsterDetail.drops.length" class="monster-drop-empty">暂无掉落配置</div>
+          <div v-else class="monster-drop-list">
+            <div v-for="drop in monsterDetail.drops" :key="drop.itemId" class="monster-drop-row">
+              <div class="monster-drop-item">
+                <img v-if="itemIconIsImage(drop.icon)" class="monster-drop-icon-img" :src="drop.icon" :alt="drop.itemName">
+                <span v-else class="monster-drop-icon">{{ drop.icon || '📦' }}</span>
+                <span class="monster-drop-name">{{ drop.itemName }}</span>
+              </div>
+              <div class="monster-drop-meta">
+                <span v-if="drop.dropRate != null" class="drop-rate">{{ drop.dropRate }}%</span>
+                <span v-else class="drop-rate stage">关卡</span>
+                <span v-if="drop.minQty != null || drop.maxQty != null" class="drop-qty">{{ formatDropQty(drop) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="monster-drop-tip">每种物品独立判定 · 数量越多概率越低</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div v-if="showLogFull" class="log-full-mask" @click.self="showLogFull = false">
     <div class="log-full-panel">
@@ -172,6 +268,7 @@
 
 <script src="/js/config.js"></script>
 <script src="/js/api.js"></script>
+<script src="/js/item-icon.js"></script>
 <script src="/js/battle-anim.js"></script>
 <script src="/js/battle-log-fmt.js"></script>
 <script>
@@ -191,9 +288,17 @@ createApp({
       animating: false,
       actingUnitId: '',
       hitUnitId: '',
+      dyingUnitIds: [],
       growingUnitIds: [],
       autoRunning: false,
       autoTimer: null,
+      skipRequested: false,
+      stepToken: 0,
+      battleSpeed: 1,
+      speedOptions: [1, 2, 3],
+      showMonsterDetail: false,
+      monsterDetail: null,
+      monsterDetailLoading: false,
       showLogFull: false,
       damageFloats: [],
       toast: { show: false, text: '', type: 'error' }
@@ -207,8 +312,11 @@ createApp({
       return this.visibleUnits.find(function (u) { return u.side === 'HERO'; }) || null;
     },
     monsterUnits() {
+      var self = this;
       return this.visibleUnits.filter(function (u) {
-        return u.side === 'MONSTER' && u.alive;
+        if (u.side !== 'MONSTER') return false;
+        if (u.alive) return true;
+        return self.dyingUnitIds.indexOf(u.unitId) >= 0;
       });
     },
     monsterLayoutCount() {
@@ -223,6 +331,9 @@ createApp({
     canAct() {
       return this.battle && this.battle.status === 'RUNNING' && !this.loading && !this.animating;
     },
+    autoStepDelay() {
+      return Math.round(360 / this.battleSpeed);
+    },
     statusText() {
       if (!this.battle) return '';
       if (this.battle.status === 'WIN') return '胜利';
@@ -236,6 +347,10 @@ createApp({
     allLogs() {
       if (!this.battle || !this.battle.logs) return [];
       return this.battle.logs.slice().reverse();
+    },
+    lootList() {
+      if (!this.battle || !this.battle.lootAccumulated) return [];
+      return this.battle.lootAccumulated;
     }
   },
   mounted() {
@@ -263,6 +378,7 @@ createApp({
     unitClasses(unit) {
       return {
         dead: !unit.alive,
+        dying: this.dyingUnitIds.indexOf(unit.unitId) >= 0,
         acting: this.actingUnitId === unit.unitId,
         hit: this.hitUnitId === unit.unitId
       };
@@ -283,9 +399,18 @@ createApp({
     },
     logClass(type) {
       if (type === 'WAVE') return 'wave';
-      if (type === 'ACTION') return 'action';
+      if (type === 'ACTION' || type === 'SKILL') return 'action';
       if (type === 'RESULT') return 'result';
+      if (type === 'LOOT') return 'loot';
       return '';
+    },
+    itemIconIsImage(icon) {
+      return window.ItemIcon && window.ItemIcon.isImage(icon);
+    },
+    formatDropQty(drop) {
+      var min = drop.minQty != null ? drop.minQty : 0;
+      var max = drop.maxQty != null ? drop.maxQty : min;
+      return min === max ? String(min) : (min + '~' + max);
     },
     formatLogHtml(log) {
       return BattleLogFmt.html(log);
@@ -323,23 +448,83 @@ createApp({
         })
         .finally(function () {
           self.loading = false;
+          if (self.battle && self.battle.status === 'RUNNING') {
+            self.autoRunning = true;
+            self.scheduleAutoStep();
+          }
         });
     },
-    nextStep() {
-      if (!this.battle || this.battle.status !== 'RUNNING' || this.loading || this.animating) return;
-      if (!this.autoRunning && !this.canManualAct()) return;
+    setSpeed(speed) {
+      this.battleSpeed = speed;
+      if (this.autoRunning) {
+        this.scheduleAutoStep();
+      }
+    },
+    skipBattle() {
+      if (!this.battle || this.battle.status !== 'RUNNING') return;
       var self = this;
+      self.skipRequested = true;
+      self.stepToken++;
+      self.animating = false;
+      self.actingUnitId = '';
+      self.hitUnitId = '';
+      self.dyingUnitIds = [];
+      self.growingUnitIds = [];
+      self.stopAuto();
+      GameApi.battleSkip(this.battle.battleId)
+        .then(function (res) {
+          return self.applyBattle(res.data, null);
+        })
+        .catch(function (err) {
+          self.skipRequested = false;
+          self.showToast(err.message);
+          if (self.battle && self.battle.status === 'RUNNING') {
+            self.autoRunning = true;
+            self.scheduleAutoStep();
+          }
+        });
+    },
+    openMonsterDetail(unit) {
+      if (!unit || !unit.monsterId) return;
+      var self = this;
+      this.showMonsterDetail = true;
+      this.monsterDetailLoading = true;
+      this.monsterDetail = null;
+      GameApi.battleMonsterDetail(unit.monsterId, this.battle ? this.battle.stageId : '')
+        .then(function (res) {
+          self.monsterDetail = res.data;
+        })
+        .catch(function (err) {
+          self.showToast(err.message);
+          self.showMonsterDetail = false;
+        })
+        .finally(function () {
+          self.monsterDetailLoading = false;
+        });
+    },
+    closeMonsterDetail() {
+      this.showMonsterDetail = false;
+      this.monsterDetail = null;
+    },
+    nextStep() {
+      if (!this.battle || this.battle.status !== 'RUNNING' || this.skipRequested) return;
+      if (this.loading || this.animating) return;
+      var self = this;
+      var token = ++self.stepToken;
       var snapshot = JSON.parse(JSON.stringify(self.battle));
       self.loading = true;
       GameApi.battleNext(self.battle.battleId)
         .then(function (res) {
+          if (self.skipRequested || token !== self.stepToken) return;
           return self.applyBattle(res.data, snapshot);
         })
         .catch(function (err) {
+          if (self.skipRequested || token !== self.stepToken) return;
           self.showToast(err.message);
           self.stopAuto();
         })
         .finally(function () {
+          if (self.skipRequested || token !== self.stepToken) return;
           self.loading = false;
           if (self.battle && self.battle.status !== 'RUNNING') {
             self.stopAuto();
@@ -350,13 +535,13 @@ createApp({
     },
     scheduleAutoStep() {
       var self = this;
-      if (!self.autoRunning) return;
+      if (!self.autoRunning || self.skipRequested) return;
       if (self.autoTimer) {
         clearTimeout(self.autoTimer);
       }
       self.autoTimer = setTimeout(function () {
         self.autoTimer = null;
-        if (!self.autoRunning) return;
+        if (!self.autoRunning || self.skipRequested) return;
         if (!self.battle || self.battle.status !== 'RUNNING') {
           self.stopAuto();
           return;
@@ -366,16 +551,7 @@ createApp({
         } else {
           self.scheduleAutoStep();
         }
-      }, 240);
-    },
-    toggleAuto() {
-      if (this.autoRunning) {
-        this.stopAuto();
-        return;
-      }
-      if (!this.battle || this.battle.status !== 'RUNNING') return;
-      this.autoRunning = true;
-      this.scheduleAutoStep();
+      }, this.autoStepDelay);
     },
     stopAuto() {
       this.autoRunning = false;

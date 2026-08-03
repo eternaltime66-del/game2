@@ -77,3 +77,6 @@ hs_err_pid*
 _dockerCerts/
 
 .factorypath
+
+# Local DB backups (not tracked)
+sqlVersion/

@@ -37,6 +37,18 @@ public class BattleState {
 
     private List<BattleLog> logs = new ArrayList<>();
 
+    /** 扳机槽运行时计数 */
+    private BattleTriggerCounters triggerCounters;
+
+    /** 本场战斗累计掉落（胜利后发放到仓库） */
+    private List<BattleLootEntry> lootAccumulated = new ArrayList<>();
+
+    /** 战利品是否已发放到仓库 */
+    private Boolean lootGranted;
+
+    /** 主角已装备物品 ID（扳机槽来源） */
+    private List<String> heroEquippedItemIds = new ArrayList<>();
+
     @JSONField(serialize = false, deserialize = false)
     public boolean isRunning() {
         return STATUS_RUNNING.equals(status);

@@ -17,6 +17,14 @@ public class AdminPassiveSkillVo {
 
     private String passiveKindLabel;
 
+    private String catL1;
+
+    private String catL2;
+
+    private String catL2Label;
+
+    private String ownerRef;
+
     private String conditionType;
 
     private String conditionTypeLabel;

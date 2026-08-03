@@ -24,6 +24,15 @@ public class GamePassiveSkill extends WxBaseEntity<GamePassiveSkill> {
     /** NUMERIC / MECHANISM */
     private String passiveKind;
 
+    /** EQUIP / PERSON */
+    private String catL1;
+
+    /** 装备部位 或 CHARACTER/PROFESSION/GENERAL */
+    private String catL2;
+
+    /** 角色模板 code 或职业 id */
+    private String ownerRef;
+
     private String conditionType;
 
     private String conditionEquipItemId;

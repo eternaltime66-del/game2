@@ -5,10 +5,14 @@ import lombok.Getter;
 @Getter
 public enum FinishedSkillCatL1 {
 
-    GENERAL("通用"),
     EQUIP("装备"),
+    PERSON("人物"),
     MONSTER("怪物"),
+    /** @deprecated 兼容旧数据，新数据用 PERSON */
+    GENERAL("通用"),
+    /** @deprecated 兼容旧数据，新数据用 PERSON + L2 */
     PROFESSION("职业"),
+    /** @deprecated 兼容旧数据，新数据用 PERSON + L2 */
     CHARACTER("角色");
 
     private final String label;
@@ -23,12 +27,12 @@ public enum FinishedSkillCatL1 {
 
     public static FinishedSkillCatL1 parse(String code) {
         if (code == null || code.isBlank()) {
-            return GENERAL;
+            return EQUIP;
         }
         try {
             return valueOf(code.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {
-            return GENERAL;
+            return EQUIP;
         }
     }
 }

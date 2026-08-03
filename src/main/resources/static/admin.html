@@ -45,9 +45,9 @@
           </button>
           <div v-show="skillMenuOpen" class="sidebar-nav-sub">
             <div class="sidebar-nav-sub-group">
-              <div class="sidebar-nav-sub-group-label">战斗技能</div>
+              <div class="sidebar-nav-sub-group-label">装备技能</div>
               <button
-                v-for="t in battleSkillTabs"
+                v-for="t in equipSkillTabs"
                 :key="t.key"
                 type="button"
                 class="sidebar-nav-sub-item"
@@ -56,9 +56,9 @@
               >{{ t.label }}</button>
             </div>
             <div class="sidebar-nav-sub-group">
-              <div class="sidebar-nav-sub-group-label">被动技能</div>
+              <div class="sidebar-nav-sub-group-label">人物技能管理</div>
               <button
-                v-for="t in passiveSkillTabs"
+                v-for="t in personSkillTabs"
                 :key="t.key"
                 type="button"
                 class="sidebar-nav-sub-item"
@@ -71,7 +71,7 @@
               :key="t.key"
               type="button"
               class="sidebar-nav-sub-item"
-              :class="{ active: tab === t.key || (t.key === 'profession' && tab === 'professionSkill') }"
+              :class="{ active: tab === t.key }"
               @click="switchTab(t.key)"
             >{{ t.label }}</button>
           </div>
@@ -87,7 +87,7 @@
               :key="t.key"
               type="button"
               class="sidebar-nav-sub-item"
-              :class="{ active: tab === t.key || (t.key === 'playerCharacter' && tab === 'characterSkill') }"
+              :class="{ active: tab === t.key }"
               @click="switchTab(t.key)"
             >{{ t.label }}</button>
           </div>
@@ -595,44 +595,43 @@
 
     <div v-if="isFinishedSkillTab" class="admin-panel">
       <div class="panel-toolbar">
-        <h3>{{ finishedSkillPanelTitle }}</h3>
-        <div class="panel-toolbar-actions">
+        <div class="panel-toolbar-title">
+          <h3>{{ finishedSkillPanelTitle }}</h3>
+          <p v-if="tab === 'equipCustomSkill'" class="panel-page-remark">分类1固定「装备」；列表默认只筛分类1。新增在装备抽屉里配置；本页只做浏览与筛选</p>
+          <p v-else class="panel-page-remark">分类1=装备 · 分类2=通用</p>
+        </div>
+        <div class="panel-toolbar-actions" v-if="tab !== 'equipCustomSkill'">
           <button class="btn-primary btn-mini" @click="openDrawer('finishedSkill')">+ 新增</button>
-          <button class="btn-mini secondary" @click="loadFinishedSkills">刷新</button>
         </div>
       </div>
-      <div v-if="tab === 'characterSkill' && selectedCharacterTemplate" class="admin-breadcrumb">
-        <button type="button" @click="switchTab('playerCharacter')">← 玩家角色</button>
-        <span>/ {{ selectedCharacterTemplate.name || selectedCharacterTemplate.code }} · 专属技能</span>
-      </div>
-      <div class="level-tree-compact">组合高级效果 + 目标槽，可被装备扳机槽引用</div>
-      <div class="form-grid" style="margin-bottom:12px;max-width:720px">
-        <div class="field" v-if="!finishedSkillCatL1Locked"><label>分类1</label>
-          <admin-select v-model="finishedSkillFilter.catL1" :options="categoryMeta.catL1" value-key="code" label-key="label" placeholder="全部" clearable searchable @change="loadFinishedSkills" />
+
+      <div class="panel-filter-bar">
+        <div class="panel-filter-fields">
+          <div class="panel-filter-field" v-if="tab === 'equipCustomSkill'">
+            <label>分类2</label>
+            <admin-select v-model="finishedSkillFilter.catL2" :options="equipCatL2Options" value-key="code" label-key="label" placeholder="全部" clearable searchable />
+          </div>
+          <div class="panel-filter-field panel-filter-grow">
+            <label>关键词</label>
+            <input v-model.trim="finishedSkillFilter.keyword" placeholder="ID / 编码 / 名称" @keyup.enter="loadFinishedSkills">
+          </div>
         </div>
-        <div class="field"><label>分类2</label>
-          <admin-select v-model="finishedSkillFilter.catL2" :options="categoryMeta.catL2" value-key="code" label-key="label" placeholder="全部" clearable searchable @change="loadFinishedSkills" />
-        </div>
-        <div class="field"><label>分类3 入口</label>
-          <input v-model="finishedSkillFilter.catL3" placeholder="如 大剑" @keyup.enter="loadFinishedSkills">
-        </div>
-        <div class="field"><label>分类4</label>
-          <admin-select v-model="finishedSkillFilter.catL4" :options="categoryMeta.catL4" value-key="code" label-key="label" placeholder="全部" clearable searchable @change="loadFinishedSkills" />
-        </div>
-        <div class="field skill-filter-quick" v-if="tab === 'generalSkill' || !finishedSkillCatL1Locked">
-          <label>快捷</label>
-          <button type="button" class="btn-mini secondary" @click="filterFinishedSkillsGeneralOnly">仅通用 ×4</button>
+        <div class="panel-filter-actions">
+          <button type="button" class="btn-primary btn-mini" @click="loadFinishedSkills">查询</button>
+          <button type="button" class="btn-mini secondary" @click="resetFinishedSkillFilter">刷新</button>
         </div>
       </div>
+
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>目标</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>技能类型</th><th>目标</th><th>启用</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in finishedSkills" :key="s.id">
               <td class="col-id">{{ s.id }}</td>
               <td>{{ s.code }}</td>
               <td>{{ s.name }}</td>
-              <td>{{ formatSkillCategory(s) }}</td>
+              <td>{{ s.catL2Label || s.catL2 }}</td>
+              <td>{{ s.catL4Label || s.catL4 || '自定义' }}</td>
               <td>{{ s.targetType }}</td>
               <td>{{ s.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
@@ -640,7 +639,7 @@
                 <button class="btn-mini danger" @click="removeFinishedSkill(s)">删除</button>
               </td>
             </tr>
-            <tr v-if="!finishedSkills.length"><td colspan="7" class="empty-hint">暂无{{ finishedSkillPanelTitle }}</td></tr>
+            <tr v-if="!finishedSkills.length"><td colspan="8" class="empty-hint">暂无{{ finishedSkillPanelTitle }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -654,15 +653,24 @@
           <button class="btn-mini secondary" @click="loadPassiveSkills">刷新</button>
         </div>
       </div>
-      <div class="level-tree-compact">被动效果由技能徽章授予；可设置生效条件（如全身装备某件装备）</div>
+      <div class="level-tree-compact">分类1 固定「装备」；新增只需选分类2（部位/通用）与分类3（数值/机制）</div>
+      <div class="form-grid" style="margin-bottom:12px;max-width:520px">
+        <div class="field"><label>筛选 · 分类2</label>
+          <admin-select v-model="passiveListFilter.catL2" :options="equipCatL2Options" value-key="code" label-key="label" placeholder="全部" clearable searchable @change="loadPassiveSkills" />
+        </div>
+        <div class="field"><label>筛选 · 类型</label>
+          <admin-select v-model="passiveListFilter.passiveKind" :options="passiveKindOptions" value-key="value" label-key="label" placeholder="全部" clearable @change="loadPassiveSkills" />
+        </div>
+      </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>类型</th><th>条件</th><th>效果</th><th>数值</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>类型</th><th>条件</th><th>效果</th><th>数值</th><th>启用</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in passiveSkills" :key="s.id">
               <td class="col-id">{{ s.id }}</td>
               <td>{{ s.code }}</td>
               <td>{{ s.name }}</td>
+              <td>{{ s.catL2Label || s.catL2 || '—' }}</td>
               <td>{{ s.passiveKindLabel || s.passiveKind || '—' }}</td>
               <td>{{ s.conditionTypeLabel || s.conditionType }}{{ s.conditionEquipItemName ? ' · ' + s.conditionEquipItemName : '' }}</td>
               <td>{{ s.effectTypeLabel || s.effectType }}</td>
@@ -673,10 +681,70 @@
                 <button class="btn-mini danger" @click="removePassiveSkill(s)">删除</button>
               </td>
             </tr>
-            <tr v-if="!passiveSkills.length"><td colspan="9" class="empty-hint">暂无被动技能</td></tr>
+            <tr v-if="!passiveSkills.length"><td colspan="10" class="empty-hint">暂无装备被动技能</td></tr>
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div v-if="isPersonSkillTab" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>{{ personSkillPanelTitle }}</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" :disabled="!personOwnerReady" @click="openPersonSkillCreate('ACTIVE')">+ 主动</button>
+          <button class="btn-mini" :disabled="!personOwnerReady" @click="openPersonSkillCreate('NUMERIC')">+ 数值被动</button>
+          <button class="btn-mini" :disabled="!personOwnerReady" @click="openPersonSkillCreate('MECHANISM')">+ 机制被动</button>
+          <button class="btn-mini secondary" :disabled="!personOwnerReady" @click="loadPersonSkills">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">人物技能也是特殊物品（可进技能槽）。分类：人物 → 角色/职业/通用。列表区分主动 / 数值被动 / 机制被动。</div>
+
+      <div class="form-grid" style="margin-bottom:12px;max-width:720px" v-if="tab === 'personCharacterSkill'">
+        <div class="field"><label>选择角色</label>
+          <admin-select v-model="personSkillPick.characterCode" :options="characterSelectOptions" value-key="value" label-key="label" placeholder="请选择角色模板" searchable />
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end">
+          <button type="button" class="btn-primary btn-mini" @click="confirmPersonCharacterPick">确认</button>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px;max-width:720px" v-if="tab === 'personProfessionSkill'">
+        <div class="field"><label>选择职业</label>
+          <admin-select v-model="personSkillPick.professionId" :options="professionSelectOptions" value-key="value" label-key="label" placeholder="请选择职业" searchable />
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+          <button type="button" class="btn-primary btn-mini" @click="confirmPersonProfessionPick">确认</button>
+          <button type="button" class="btn-mini secondary" @click="openDrawer('profession')">管理职业</button>
+        </div>
+      </div>
+
+      <div v-if="!personOwnerReady" class="empty-hint">请先选择并确认上方对象</div>
+      <template v-else>
+        <div class="form-grid" style="margin-bottom:12px;max-width:320px">
+          <div class="field"><label>类型筛选</label>
+            <admin-select v-model="personSkillTypeFilter" :options="personSkillTypeFilterOptions" value-key="value" label-key="label" placeholder="全部" clearable />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>类型</th><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>启用</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="r in filteredPersonSkillRows" :key="r.rowKey">
+                <td>{{ r.skillTypeLabel }}</td>
+                <td class="col-id">{{ r.id }}</td>
+                <td>{{ r.code }}</td>
+                <td>{{ r.name }}</td>
+                <td>{{ r.categoryText }}</td>
+                <td>{{ r.enabled ? '是' : '否' }}</td>
+                <td class="col-actions">
+                  <button class="btn-mini" @click="editPersonSkillRow(r)">编辑</button>
+                  <button class="btn-mini danger" @click="removePersonSkillRow(r)">删除</button>
+                </td>
+              </tr>
+              <tr v-if="!filteredPersonSkillRows.length"><td colspan="7" class="empty-hint">暂无技能</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
     </div>
 
     <div v-if="tab === 'skillBadge'" class="admin-panel">
@@ -793,7 +861,7 @@
               <td>{{ c.actionValue }}</td>
               <td>{{ c.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
-                <button class="btn-mini secondary" @click="openCharacterSkills(c)">专属技能</button>
+                <button class="btn-mini secondary" @click="openCharacterSkills(c)">角色技能</button>
                 <button class="btn-mini" @click="openDrawer('characterTemplate', c)">编辑</button>
               </td>
             </tr>
@@ -1088,17 +1156,13 @@
             <admin-select v-model="finishedSkillForm.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
           </div>
           <div class="field"><label>目标参数 x</label><input v-model.number="finishedSkillForm.targetParam" type="number" placeholder="随机敌人数/重复次数"></div>
-          <div class="field" v-if="!finishedSkillCatL1Locked"><label>分类1</label>
-            <admin-select v-model="finishedSkillForm.catL1" :options="categoryMeta.catL1" value-key="code" label-key="label" />
+          <div class="field"><label>分类1</label><span class="field-value">{{ finishedSkillForm.catL1 === 'PERSON' ? '人物' : '装备' }}</span></div>
+          <div class="field" v-if="finishedSkillForm.catL1 !== 'PERSON'"><label>分类2</label>
+            <admin-select v-model="finishedSkillForm.catL2" :options="equipCatL2Options" value-key="code" label-key="label" :disabled="tab === 'equipGeneralSkill'" />
           </div>
-          <div class="field" v-else><label>分类1</label><span class="field-value">{{ finishedSkillForm.catL1 }}</span></div>
-          <div class="field"><label>分类2</label>
-            <admin-select v-model="finishedSkillForm.catL2" :options="categoryMeta.catL2" value-key="code" label-key="label" />
-          </div>
-          <div class="field"><label>分类3 入口</label><input v-model="finishedSkillForm.catL3" placeholder="如 大剑"></div>
-          <div class="field"><label>分类4</label>
-            <admin-select v-model="finishedSkillForm.catL4" :options="categoryMeta.catL4" value-key="code" label-key="label" />
-          </div>
+          <div class="field" v-else><label>分类2</label><span class="field-value">{{ finishedSkillForm.catL2 === 'CHARACTER' ? '角色' : (finishedSkillForm.catL2 === 'PROFESSION' ? '职业' : '通用') }}</span></div>
+          <div class="field"><label>分类3</label><span class="field-value">{{ finishedSkillForm.catL3 || '通用' }}</span></div>
+          <div class="field"><label>技能类型</label><span class="field-value">{{ finishedSkillForm.catL4 === 'ACTIVE' ? '主动' : (finishedSkillForm.catL4 === 'PASSIVE' ? '被动' : '自定义') }}</span></div>
           <div class="field"><label>启用</label>
             <admin-select v-model="finishedSkillForm.enabled" :options="yesNoOptions" />
           </div>
@@ -1138,10 +1202,15 @@
           <div class="field full"><label>ID</label><input v-model="passiveSkillForm.id" placeholder="留空自动生成"></div>
           <div class="field"><label>编码</label><input v-model="passiveSkillForm.code"></div>
           <div class="field"><label>名称</label><input v-model="passiveSkillForm.name"></div>
-          <div class="field"><label>被动类型</label>
-            <admin-select v-if="!passiveKindForTab(tab)" v-model="passiveSkillForm.passiveKind" :options="passiveKindOptions" value-key="value" label-key="label" />
-            <span v-else class="field-value">{{ passiveSkillForm.passiveKind === 'MECHANISM' ? '机制型' : '数值型' }}</span>
+          <div class="field"><label>分类1</label><span class="field-value">{{ passiveSkillForm.catL1 === 'PERSON' ? '人物' : '装备' }}</span></div>
+          <div class="field" v-if="passiveSkillForm.catL1 !== 'PERSON'"><label>分类2</label>
+            <admin-select v-model="passiveSkillForm.catL2" :options="equipCatL2Options" value-key="code" label-key="label" />
           </div>
+          <div class="field" v-else><label>分类2</label><span class="field-value">{{ passivePersonCatL2Label }}</span></div>
+          <div class="field"><label>分类3 · 类型</label>
+            <admin-select v-model="passiveSkillForm.passiveKind" :options="passiveKindOptions" value-key="value" label-key="label" />
+          </div>
+          <div class="field full" v-if="passiveSkillForm.ownerRef"><label>归属</label><span class="field-value">{{ passiveSkillForm.ownerRef }}</span></div>
           <div class="field full"><label>生效条件</label>
             <admin-select v-model="passiveSkillForm.conditionType" :options="passiveMeta.conditionTypes" value-key="code" label-key="label" />
           </div>
@@ -1659,22 +1728,48 @@ createApp({
         { key: 'material', label: '材料管理' },
         { key: 'recipe', label: '配方管理' }
       ],
-      battleSkillTabs: [
-        { key: 'equipSkill', label: '装备技能' },
-        { key: 'generalSkill', label: '通用技能' }
+      battleSkillTabs: [],
+      equipSkillTabs: [
+        { key: 'equipCustomSkill', label: '装备自定义技能' },
+        { key: 'equipGeneralSkill', label: '通用技能' },
+        { key: 'equipPassiveSkill', label: '被动技能' }
       ],
-      passiveSkillTabs: [
-        { key: 'passiveNumeric', label: '数值型被动技能' },
-        { key: 'passiveMechanism', label: '机制型被动技能' }
+      personSkillTabs: [
+        { key: 'personCharacterSkill', label: '角色技能' },
+        { key: 'personGeneralSkill', label: '通用技能' },
+        { key: 'personProfessionSkill', label: '职业技能' }
       ],
+      passiveSkillTabs: [],
       skillExtraTabs: [
-        { key: 'profession', label: '职业技能' },
         { key: 'skillBadge', label: '技能徽章' }
       ],
       characterTabs: [
         { key: 'monster', label: '怪兽管理' },
         { key: 'playerCharacter', label: '玩家角色管理' }
       ],
+      equipCatL2Options: [
+        { code: 'WEAPON', label: '武器' },
+        { code: 'ARMOR', label: '护甲' },
+        { code: 'GLOVES', label: '护手' },
+        { code: 'HELMET', label: '头盔' },
+        { code: 'LEGS', label: '护腿' },
+        { code: 'ACCESSORY', label: '饰品' },
+        { code: 'GENERAL', label: '通用' }
+      ],
+      skillTypeOptions: [
+        { code: 'CUSTOM', label: '自定义' },
+        { code: 'ACTIVE', label: '主动' },
+        { code: 'PASSIVE', label: '被动' }
+      ],
+      personSkillPick: { characterCode: '', professionId: '', confirmed: false },
+      personSkillRows: [],
+      personSkillTypeFilter: '',
+      personSkillTypeFilterOptions: [
+        { value: 'ACTIVE', label: '主动' },
+        { value: 'NUMERIC', label: '数值被动' },
+        { value: 'MECHANISM', label: '机制被动' }
+      ],
+      passiveListFilter: { catL2: '', passiveKind: '' },
       equipTabs: [
         { key: 'weapon', label: '武器管理' },
         { key: 'armor', label: '防具管理' },
@@ -1727,7 +1822,7 @@ createApp({
       accessories: [],
       allItems: [],
       finishedSkills: [],
-      finishedSkillFilter: { catL1: '', catL2: '', catL3: '', catL4: '' },
+      finishedSkillFilter: { catL1: '', catL2: '', catL3: '', catL4: '', keyword: '' },
       categoryMeta: { catL1: [], catL2: [], catL4: [] },
       skillPickers: {
         basicAttack: { mode: 'select', draft: null, previousValue: '' },
@@ -1780,7 +1875,7 @@ createApp({
       armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       finishedSkillForm: { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [] },
-      passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' },
+      passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' },
       skillBadgeForm: { id: '', itemId: '', code: '', name: '', icon: '🎖', passiveSkillId: '', sort: 0, enabled: 1, remark: '' },
       professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
       professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
@@ -1793,26 +1888,13 @@ createApp({
       var self = this;
       var pools = []
         .concat(this.navTabs || [])
-        .concat(this.battleSkillTabs || [])
-        .concat(this.passiveSkillTabs || [])
+        .concat(this.equipSkillTabs || [])
+        .concat(this.personSkillTabs || [])
         .concat(this.skillExtraTabs || [])
         .concat(this.characterTabs || [])
         .concat(this.equipTabs || []);
       var hit = pools.find(function (x) { return x.key === self.tab; });
-      if (hit) return hit.label;
-      if (this.tab === 'professionSkill') {
-        return this.selectedProfession
-          ? ('职业技能 · ' + (this.selectedProfession.name || this.selectedProfession.code))
-          : '职业技能绑定';
-      }
-      if (this.tab === 'characterSkill') {
-        return this.selectedCharacterTemplate
-          ? ('专属技能 · ' + (this.selectedCharacterTemplate.name || this.selectedCharacterTemplate.code))
-          : '专属技能';
-      }
-      if (this.tab === 'finishedSkill') return '主动技能';
-      if (this.tab === 'passiveSkill') return '被动技能';
-      return '后台管理';
+      return hit ? hit.label : '后台管理';
     },
     isEquipTabActive() {
       return this.isEquipTabKey(this.tab);
@@ -1824,24 +1906,54 @@ createApp({
       return this.isCharacterTabKey(this.tab);
     },
     isFinishedSkillTab() {
-      return ['equipSkill', 'generalSkill', 'characterSkill', 'finishedSkill'].indexOf(this.tab) >= 0;
+      return ['equipCustomSkill', 'equipGeneralSkill'].indexOf(this.tab) >= 0;
     },
     isPassiveSkillTab() {
-      return ['passiveNumeric', 'passiveMechanism', 'passiveSkill'].indexOf(this.tab) >= 0;
+      return this.tab === 'equipPassiveSkill';
+    },
+    isPersonSkillTab() {
+      return ['personCharacterSkill', 'personGeneralSkill', 'personProfessionSkill'].indexOf(this.tab) >= 0;
     },
     finishedSkillCatL1Locked() {
-      return !!this.finishedSkillCatL1ForTab(this.tab);
+      return true;
     },
     finishedSkillPanelTitle() {
-      if (this.tab === 'equipSkill') return '装备技能';
-      if (this.tab === 'generalSkill') return '通用技能';
-      if (this.tab === 'characterSkill') return '专属技能';
-      return '主动技能';
+      if (this.tab === 'equipCustomSkill') return '装备自定义技能';
+      if (this.tab === 'equipGeneralSkill') return '装备 · 通用技能';
+      return '技能';
     },
     passiveSkillPanelTitle() {
-      if (this.tab === 'passiveNumeric') return '数值型被动技能';
-      if (this.tab === 'passiveMechanism') return '机制型被动技能';
-      return '被动技能';
+      return '装备被动技能';
+    },
+    personOwnerReady() {
+      if (this.tab === 'personGeneralSkill') return true;
+      return !!this.personSkillPick.confirmed;
+    },
+    characterSelectOptions() {
+      return (this.characterTemplates || []).map(function (c) {
+        return { value: c.code, label: (c.name || c.code) + ' (' + c.code + ')' };
+      });
+    },
+    professionSelectOptions() {
+      return (this.professions || []).map(function (p) {
+        return { value: p.id, label: (p.name || p.code) + ' (' + p.code + ')' };
+      });
+    },
+    filteredPersonSkillRows() {
+      var type = this.personSkillTypeFilter;
+      var rows = this.personSkillRows || [];
+      if (!type) return rows;
+      return rows.filter(function (r) { return r.skillType === type; });
+    },
+    personSkillPanelTitle() {
+      if (this.tab === 'personCharacterSkill') return '人物 · 角色技能';
+      if (this.tab === 'personProfessionSkill') return '人物 · 职业技能';
+      return '人物 · 通用技能';
+    },
+    passivePersonCatL2Label() {
+      if (this.passiveSkillForm.catL2 === 'CHARACTER') return '角色';
+      if (this.passiveSkillForm.catL2 === 'PROFESSION') return '职业';
+      return '通用';
     },
     skillItemSelectOptions() {
       var badgeOpts = (this.allItems || []).filter(function (it) {
@@ -2005,21 +2117,32 @@ createApp({
       return ['weapon', 'armor', 'gloves', 'helmet', 'legs', 'accessory'].indexOf(key) >= 0;
     },
     isSkillTabKey(key) {
-      return ['equipSkill', 'generalSkill', 'passiveNumeric', 'passiveMechanism', 'profession', 'professionSkill', 'skillBadge', 'finishedSkill', 'passiveSkill'].indexOf(key) >= 0;
+      return ['equipCustomSkill', 'equipGeneralSkill', 'equipPassiveSkill',
+        'personCharacterSkill', 'personGeneralSkill', 'personProfessionSkill',
+        'skillBadge', 'profession'].indexOf(key) >= 0;
     },
     isCharacterTabKey(key) {
-      return ['monster', 'playerCharacter', 'characterSkill'].indexOf(key) >= 0;
+      return ['monster', 'playerCharacter'].indexOf(key) >= 0;
+    },
+    finishedSkillDefaultsForTab(key) {
+      if (key === 'equipCustomSkill') {
+        return { catL1: 'EQUIP', catL2: 'WEAPON', catL3: '通用', catL4: 'CUSTOM' };
+      }
+      if (key === 'equipGeneralSkill') {
+        return { catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM' };
+      }
+      return { catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM' };
     },
     finishedSkillCatL1ForTab(key) {
-      if (key === 'equipSkill') return 'EQUIP';
-      if (key === 'generalSkill') return 'GENERAL';
-      if (key === 'characterSkill') return 'CHARACTER';
-      return '';
+      return this.finishedSkillDefaultsForTab(key).catL1 || '';
     },
     passiveKindForTab(key) {
-      if (key === 'passiveNumeric') return 'NUMERIC';
-      if (key === 'passiveMechanism') return 'MECHANISM';
       return '';
+    },
+    personScopeForTab() {
+      if (this.tab === 'personCharacterSkill') return { catL2: 'CHARACTER', ownerRef: this.personSkillPick.characterCode };
+      if (this.tab === 'personProfessionSkill') return { catL2: 'PROFESSION', ownerRef: this.personSkillPick.professionId };
+      return { catL2: 'GENERAL', ownerRef: '' };
     },
     toggleEquipMenu() {
       this.equipMenuOpen = !this.equipMenuOpen;
@@ -2077,11 +2200,10 @@ createApp({
       else if (key === 'helmet') this.switchEquipPart('helmet');
       else if (key === 'legs') this.switchEquipPart('legs');
       else if (key === 'accessory') this.switchEquipPart('accessory');
-      else if (key === 'equipSkill' || key === 'generalSkill' || key === 'characterSkill' || key === 'finishedSkill') this.switchFinishedSkill();
-      else if (key === 'passiveNumeric' || key === 'passiveMechanism' || key === 'passiveSkill') this.switchPassiveSkill();
+      else if (key === 'equipCustomSkill' || key === 'equipGeneralSkill') this.switchFinishedSkill();
+      else if (key === 'equipPassiveSkill') this.switchPassiveSkill();
+      else if (key === 'personCharacterSkill' || key === 'personGeneralSkill' || key === 'personProfessionSkill') this.switchPersonSkill();
       else if (key === 'skillBadge') this.switchSkillBadge();
-      else if (key === 'profession') this.switchProfession();
-      else if (key === 'professionSkill') this.switchProfessionSkill();
       else if (key === 'playerCharacter') this.switchPlayerCharacter();
     },
     loadMembers() {
@@ -3223,31 +3345,50 @@ createApp({
       return payload;
     },
     switchFinishedSkill() {
-      var locked = this.finishedSkillCatL1ForTab(this.tab);
-      if (locked) {
-        this.finishedSkillFilter = Object.assign({}, this.finishedSkillFilter, { catL1: locked });
-      }
+      this.finishedSkillFilter = {
+        catL1: 'EQUIP',
+        catL2: this.tab === 'equipGeneralSkill' ? 'GENERAL' : '',
+        catL3: '',
+        catL4: '',
+        keyword: ''
+      };
       this.loadFinishedSkills();
       this.loadV2Meta();
     },
+    resetFinishedSkillFilter() {
+      this.finishedSkillFilter.catL2 = this.tab === 'equipGeneralSkill' ? 'GENERAL' : '';
+      this.finishedSkillFilter.catL3 = '';
+      this.finishedSkillFilter.catL4 = '';
+      this.finishedSkillFilter.keyword = '';
+      this.loadFinishedSkills();
+    },
     loadFinishedSkills() {
-      var filter = {};
-      var locked = this.finishedSkillCatL1ForTab(this.tab);
-      if (locked) {
-        filter.catL1 = locked;
-        this.finishedSkillFilter.catL1 = locked;
-      } else if (this.finishedSkillFilter.catL1) {
-        filter.catL1 = this.finishedSkillFilter.catL1;
+      var filter = { catL1: 'EQUIP' };
+      if (this.tab === 'equipGeneralSkill') {
+        filter.catL2 = 'GENERAL';
+      } else if (this.finishedSkillFilter.catL2) {
+        filter.catL2 = this.finishedSkillFilter.catL2;
       }
-      if (this.finishedSkillFilter.catL2) filter.catL2 = this.finishedSkillFilter.catL2;
       if (this.finishedSkillFilter.catL3) filter.catL3 = this.finishedSkillFilter.catL3;
       if (this.finishedSkillFilter.catL4) filter.catL4 = this.finishedSkillFilter.catL4;
-      AdminApi.finishedSkillList({ current: 1, size: 100 }, filter)
-        .then((res) => { this.finishedSkills = res.data || []; })
+      var keyword = (this.finishedSkillFilter.keyword || '').trim().toLowerCase();
+      var self = this;
+      AdminApi.finishedSkillList({ current: 1, size: 200 }, filter)
+        .then((res) => {
+          var list = res.data || [];
+          if (keyword) {
+            list = list.filter(function (s) {
+              return String(s.id || '').toLowerCase().indexOf(keyword) >= 0
+                || String(s.code || '').toLowerCase().indexOf(keyword) >= 0
+                || String(s.name || '').toLowerCase().indexOf(keyword) >= 0;
+            });
+          }
+          self.finishedSkills = list;
+        })
         .catch((err) => this.showToast(err.message));
     },
     generalSkillCategoryFilter() {
-      return { catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL' };
+      return { catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM' };
     },
     filterFinishedSkillsGeneralOnly() {
       this.finishedSkillFilter = this.generalSkillCategoryFilter();
@@ -3263,7 +3404,7 @@ createApp({
       AdminApi.finishedSkillDetail(s.id)
         .then((res) => {
           this.finishedSkillForm = Object.assign({
-            catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', effects: []
+            catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM', effects: []
           }, res.data || {});
           if (!this.finishedSkillForm.effects) this.finishedSkillForm.effects = [];
           this.openDrawer('finishedSkill');
@@ -3273,18 +3414,24 @@ createApp({
     removeFinishedSkill(s) {
       if (!confirm('删除主动技能 ' + s.name + '?')) return;
       AdminApi.removeFinishedSkill(s.id)
-        .then(() => { this.showToast('已删除', 'success'); this.loadFinishedSkills(); this.loadV2Meta(); })
+        .then(() => {
+          this.showToast('已删除', 'success');
+          if (this.isPersonSkillTab) this.loadPersonSkills();
+          else this.loadFinishedSkills();
+          this.loadV2Meta();
+        })
         .catch((err) => this.showToast(err.message));
     },
     switchPassiveSkill() {
+      this.passiveListFilter = { catL2: '', passiveKind: '' };
       this.loadPassiveSkills();
       this.loadPassiveMeta();
       if (!this.allItems.length) this.loadAllItems();
     },
     loadPassiveSkills() {
-      var filter = {};
-      var kind = this.passiveKindForTab(this.tab);
-      if (kind) filter.passiveKind = kind;
+      var filter = { catL1: 'EQUIP' };
+      if (this.passiveListFilter && this.passiveListFilter.catL2) filter.catL2 = this.passiveListFilter.catL2;
+      if (this.passiveListFilter && this.passiveListFilter.passiveKind) filter.passiveKind = this.passiveListFilter.passiveKind;
       AdminApi.passiveSkillList({ current: 1, size: 200 }, filter)
         .then((res) => { this.passiveSkills = res.data || []; })
         .catch((err) => this.showToast(err.message));
@@ -3292,8 +3439,118 @@ createApp({
     removePassiveSkill(s) {
       if (!confirm('删除被动技能 ' + s.name + '?')) return;
       AdminApi.removePassiveSkill(s.id)
-        .then(() => { this.showToast('已删除', 'success'); this.loadPassiveSkills(); this.loadPassiveMeta(); })
+        .then(() => {
+          this.showToast('已删除', 'success');
+          if (this.isPersonSkillTab) this.loadPersonSkills();
+          else this.loadPassiveSkills();
+          this.loadPassiveMeta();
+        })
         .catch((err) => this.showToast(err.message));
+    },
+    switchPersonSkill() {
+      this.personSkillPick.confirmed = this.tab === 'personGeneralSkill';
+      this.personSkillRows = [];
+      this.personSkillTypeFilter = '';
+      if (!this.characterTemplates.length) this.loadCharacterTemplates();
+      if (!this.professions.length) this.loadProfessions();
+      if (this.tab === 'personGeneralSkill') this.loadPersonSkills();
+    },
+    confirmPersonCharacterPick() {
+      if (!this.personSkillPick.characterCode) {
+        this.showToast('请选择角色');
+        return;
+      }
+      this.personSkillPick.confirmed = true;
+      this.loadPersonSkills();
+    },
+    confirmPersonProfessionPick() {
+      if (!this.personSkillPick.professionId) {
+        this.showToast('请选择职业');
+        return;
+      }
+      this.personSkillPick.confirmed = true;
+      this.loadPersonSkills();
+    },
+    loadPersonSkills() {
+      var scope = this.personScopeForTab();
+      var self = this;
+      var activeFilter = { catL1: 'PERSON', catL2: scope.catL2, catL4: 'ACTIVE' };
+      if (scope.ownerRef) activeFilter.catL3 = scope.ownerRef;
+      var passiveFilter = { catL1: 'PERSON', catL2: scope.catL2 };
+      if (scope.ownerRef) passiveFilter.ownerRef = scope.ownerRef;
+      Promise.all([
+        AdminApi.finishedSkillList({ current: 1, size: 200 }, activeFilter),
+        AdminApi.passiveSkillList({ current: 1, size: 200 }, passiveFilter)
+      ]).then(function (results) {
+        var actives = (results[0].data || []).map(function (s) {
+          return {
+            rowKey: 'A-' + s.id,
+            kind: 'ACTIVE_FINISHED',
+            skillType: 'ACTIVE',
+            skillTypeLabel: '主动',
+            id: s.id,
+            code: s.code,
+            name: s.name,
+            enabled: s.enabled,
+            categoryText: '人物 · ' + (s.catL2Label || scope.catL2) + ' · ' + (s.catL3 || '通用'),
+            raw: s
+          };
+        });
+        var passives = (results[1].data || []).map(function (s) {
+          var isMech = s.passiveKind === 'MECHANISM';
+          return {
+            rowKey: 'P-' + s.id,
+            kind: 'PASSIVE',
+            skillType: isMech ? 'MECHANISM' : 'NUMERIC',
+            skillTypeLabel: isMech ? '机制被动' : '数值被动',
+            id: s.id,
+            code: s.code,
+            name: s.name,
+            enabled: s.enabled,
+            categoryText: '人物 · ' + (s.catL2Label || scope.catL2) + (s.ownerRef ? (' · ' + s.ownerRef) : ''),
+            raw: s
+          };
+        });
+        self.personSkillRows = actives.concat(passives);
+      }).catch(function (err) { self.showToast(err.message); });
+    },
+    openPersonSkillCreate(type) {
+      if (!this.personOwnerReady) {
+        this.showToast('请先确认选择');
+        return;
+      }
+      var scope = this.personScopeForTab();
+      if (type === 'ACTIVE') {
+        this.finishedSkillForm = {
+          id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null,
+          catL1: 'PERSON', catL2: scope.catL2, catL3: scope.ownerRef || '通用', catL4: 'ACTIVE',
+          enabled: 1, remark: '', effects: [this.newEffectRow()]
+        };
+        this.drawerTitle = '新增人物主动技能';
+        this.drawerType = 'finishedSkill';
+        this.drawerOpen = true;
+        if (!this.categoryMeta.catL1.length) this.loadV2Meta();
+        return;
+      }
+      this.passiveSkillForm = {
+        id: '', code: '', name: '',
+        passiveKind: type === 'MECHANISM' ? 'MECHANISM' : 'NUMERIC',
+        catL1: 'PERSON', catL2: scope.catL2, ownerRef: scope.ownerRef || '',
+        conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT',
+        effectValue: 0, sort: 0, enabled: 1, remark: ''
+      };
+      this.drawerTitle = type === 'MECHANISM' ? '新增人物机制被动' : '新增人物数值被动';
+      this.drawerType = 'passiveSkill';
+      this.drawerOpen = true;
+      this.loadPassiveMeta();
+    },
+    editPersonSkillRow(row) {
+      if (row.kind === 'PASSIVE') this.openDrawer('passiveSkill', row.raw);
+      else this.editFinishedSkill(row.raw);
+    },
+    removePersonSkillRow(row) {
+      if (row.kind === 'PASSIVE') this.removePassiveSkill(row.raw);
+      else this.removeFinishedSkill(row.raw);
     },
     switchSkillBadge() {
       this.loadSkillBadges();
@@ -3360,8 +3617,10 @@ createApp({
         .catch((err) => this.showToast(err.message));
     },
     openCharacterSkills(c) {
-      this.selectedCharacterTemplate = c;
-      this.switchTab('characterSkill');
+      this.personSkillPick.characterCode = c.code;
+      this.personSkillPick.confirmed = false;
+      this.switchTab('personCharacterSkill');
+      this.$nextTick(() => { this.confirmPersonCharacterPick(); });
     },
     loadItemTriggers(ownerId) {
       if (!ownerId) {
@@ -3716,27 +3975,25 @@ createApp({
           if (!this.allItems.length) this.loadAllItems();
         }
       } else if (type === 'finishedSkill') {
-        var lockedCat = this.finishedSkillCatL1ForTab(this.tab);
         if (!row && !this.finishedSkillForm.id && !this.finishedSkillForm.code) {
-          var cat = lockedCat || 'GENERAL';
-          var defaults = cat === 'GENERAL'
-            ? { catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL' }
-            : { catL1: cat, catL2: 'GENERAL', catL3: '', catL4: 'GENERAL' };
+          var d = this.finishedSkillDefaultsForTab(this.tab);
+          if (this.tab === 'equipGeneralSkill') d.catL2 = 'GENERAL';
           this.finishedSkillForm = Object.assign({
             id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null,
             enabled: 1, remark: '', effects: [this.newEffectRow()]
-          }, defaults);
-        } else if (!row && lockedCat) {
-          this.finishedSkillForm.catL1 = lockedCat;
+          }, d);
         }
         if (!this.categoryMeta.catL1.length) this.loadV2Meta();
-        this.drawerTitle = this.finishedSkillForm.id ? ('编辑' + this.finishedSkillPanelTitle) : ('新增' + this.finishedSkillPanelTitle);
+        this.drawerTitle = this.finishedSkillForm.id
+          ? ('编辑' + (this.finishedSkillForm.catL1 === 'PERSON' ? '人物主动技能' : this.finishedSkillPanelTitle))
+          : ('新增' + (this.finishedSkillForm.catL1 === 'PERSON' ? '人物主动技能' : this.finishedSkillPanelTitle));
       } else if (type === 'passiveSkill') {
-        var defaultKind = this.passiveKindForTab(this.tab) || 'NUMERIC';
-        this.drawerTitle = row ? ('编辑' + this.passiveSkillPanelTitle) : ('新增' + this.passiveSkillPanelTitle);
+        this.drawerTitle = row
+          ? ('编辑' + ((row.catL1 === 'PERSON') ? '人物被动' : this.passiveSkillPanelTitle))
+          : ('新增' + this.passiveSkillPanelTitle);
         this.passiveSkillForm = row
-          ? Object.assign({ passiveKind: defaultKind }, row)
-          : { id: '', code: '', name: '', passiveKind: defaultKind, conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' };
+          ? Object.assign({ passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '' }, row)
+          : { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' };
         this.loadPassiveMeta();
         if (!this.allItems.length) this.loadAllItems();
       } else if (type === 'skillBadge') {
@@ -3871,13 +4128,24 @@ createApp({
           self.loadAllItems();
         });
       } else if (this.drawerType === 'finishedSkill') {
-        var lockedCat = this.finishedSkillCatL1ForTab(this.tab);
-        if (lockedCat) this.finishedSkillForm.catL1 = lockedCat;
-        p = AdminApi.saveFinishedSkill(this.finishedSkillForm).then(() => { this.loadFinishedSkills(); this.loadV2Meta(); });
+        if (this.finishedSkillForm.catL1 !== 'PERSON') {
+          this.finishedSkillForm.catL1 = 'EQUIP';
+          this.finishedSkillForm.catL3 = '通用';
+          this.finishedSkillForm.catL4 = 'CUSTOM';
+          if (this.tab === 'equipGeneralSkill') this.finishedSkillForm.catL2 = 'GENERAL';
+        }
+        p = AdminApi.saveFinishedSkill(this.finishedSkillForm).then(() => {
+          if (this.isPersonSkillTab) this.loadPersonSkills();
+          else this.loadFinishedSkills();
+          this.loadV2Meta();
+        });
       } else if (this.drawerType === 'passiveSkill') {
-        var lockedKind = this.passiveKindForTab(this.tab);
-        if (lockedKind) this.passiveSkillForm.passiveKind = lockedKind;
-        p = AdminApi.savePassiveSkill(this.passiveSkillForm).then(() => { this.loadPassiveSkills(); this.loadPassiveMeta(); });
+        if (!this.passiveSkillForm.catL1) this.passiveSkillForm.catL1 = 'EQUIP';
+        p = AdminApi.savePassiveSkill(this.passiveSkillForm).then(() => {
+          if (this.isPersonSkillTab) this.loadPersonSkills();
+          else this.loadPassiveSkills();
+          this.loadPassiveMeta();
+        });
       } else if (this.drawerType === 'skillBadge') {
         p = AdminApi.saveSkillBadge(this.skillBadgeForm).then(() => { this.loadSkillBadges(); this.loadAllItems(); this.loadPassiveMeta(); });
       } else if (this.drawerType === 'profession') {

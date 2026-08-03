@@ -9,6 +9,7 @@ import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBase.factory.PageFactory;
 import org.wx.core.wxBase.unit.WordUnit;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL2;
 import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
@@ -70,6 +71,11 @@ public class GamePassiveSkillAdminService {
         entity.setName(vo.getName().trim());
         PassiveSkillKind kind = PassiveSkillKind.parse(vo.getPassiveKind());
         entity.setPassiveKind(kind.name());
+        String catL1 = vo.getCatL1() != null && !vo.getCatL1().isBlank() ? vo.getCatL1().trim().toUpperCase() : "EQUIP";
+        entity.setCatL1(catL1);
+        String catL2 = vo.getCatL2() != null && !vo.getCatL2().isBlank() ? vo.getCatL2().trim().toUpperCase() : "GENERAL";
+        entity.setCatL2(catL2);
+        entity.setOwnerRef(vo.getOwnerRef() != null && !vo.getOwnerRef().isBlank() ? vo.getOwnerRef().trim() : null);
         entity.setConditionType(conditionType.name());
         entity.setConditionEquipItemId(conditionType == PassiveConditionType.REQUIRE_EQUIP
                 ? vo.getConditionEquipItemId() : null);
@@ -256,6 +262,11 @@ public class GamePassiveSkillAdminService {
         PassiveSkillKind kind = PassiveSkillKind.parse(skill.getPassiveKind());
         vo.setPassiveKind(kind.name());
         vo.setPassiveKindLabel(kind.getLabel());
+        vo.setCatL1(skill.getCatL1() != null ? skill.getCatL1() : "EQUIP");
+        vo.setCatL2(skill.getCatL2() != null ? skill.getCatL2() : "GENERAL");
+        FinishedSkillCatL2 c2 = FinishedSkillCatL2.parse(vo.getCatL2());
+        vo.setCatL2Label(c2.getLabel());
+        vo.setOwnerRef(skill.getOwnerRef());
         vo.setConditionType(skill.getConditionType());
         PassiveConditionType ct = PassiveConditionType.parse(skill.getConditionType());
         if (ct != null) {

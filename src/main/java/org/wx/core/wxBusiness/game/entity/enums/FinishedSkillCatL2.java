@@ -12,6 +12,8 @@ public enum FinishedSkillCatL2 {
     HELMET("头盔"),
     LEGS("护腿"),
     ACCESSORY("饰品"),
+    CHARACTER("角色"),
+    PROFESSION("职业"),
     MONSTER("怪物");
 
     private final String label;
@@ -24,6 +26,10 @@ public enum FinishedSkillCatL2 {
         if (code == null || code.isBlank()) {
             return GENERAL;
         }
-        return valueOf(code.trim().toUpperCase());
+        try {
+            return valueOf(code.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return GENERAL;
+        }
     }
 }

@@ -1,1 +1,4 @@
-﻿{ "batchSize": 5, "completedCount": 0 }
+﻿{
+  "batchSize": 5,
+  "completedCount": 0
+}

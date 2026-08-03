@@ -1,13 +1,11 @@
 package org.wx.core.wxBusiness.game.entity;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 /** 扳机绑定（完整技能组 + 装备扳机槽） */
 @Data
-@AllArgsConstructor
 public class TriggerBinding {
 
     private String triggerSlotType;
@@ -28,4 +26,14 @@ public class TriggerBinding {
 
     /** 来源物品 ID（怪物扳机为 null） */
     private String sourceItemId;
+
+    /** BASIC_ATTACK / ULTIMATE / TRAIT_ACTIVE */
+    private String slotKind;
+
+    /** PRECISE / QUICK */
+    private String triggerMode;
+
+    private String quickPreset;
+
+    private String conditionsJson;
 }

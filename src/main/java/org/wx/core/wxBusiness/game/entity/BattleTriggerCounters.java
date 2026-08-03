@@ -16,6 +16,9 @@ public class BattleTriggerCounters {
     /** 成品技能释放次数 unitId -> skillId -> count */
     private Map<String, Map<String, Integer>> finishedSkillCastCount = new HashMap<>();
 
+    /** 成品技能被命中次数 unitId(victim) -> skillId -> count */
+    private Map<String, Map<String, Integer>> finishedSkillHitCount = new HashMap<>();
+
     /** 累计造成伤害 */
     private Map<String, BigDecimal> accumulatedDealDamage = new HashMap<>();
 

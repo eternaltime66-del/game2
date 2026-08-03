@@ -1173,33 +1173,37 @@
                     </div>
                     <div class="form-grid" v-for="(it, ii) in g.items" :key="'ui'+ii">
                       <div class="field"><label>左</label>
-                        <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                        <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
                       </div>
-                      <div class="field" v-if="it.leftKind === 'READ'"><label>左·读取</label>
-                        <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="onConditionReadChange(it, 'left')" />
-                      </div>
-                      <div class="field full" v-if="it.leftKind === 'READ' && readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
-                        <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="onConditionFilterChange(it, 'left')" />
-                      </div>
-                      <div class="field full" v-if="it.leftKind === 'READ' && scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
-                        <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                      </div>
+                      <template v-if="it.leftKind === 'READ'">
+                        <div class="field"><label>左·读取</label>
+                          <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
+                        </div>
+                        <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
+                          <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
+                        </div>
+                        <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
+                          <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                        </div>
+                      </template>
                       <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
                       <div class="field"><label>判定</label>
                         <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
                       </div>
                       <div class="field"><label>右</label>
-                        <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                        <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
                       </div>
-                      <div class="field" v-if="it.rightKind === 'READ'"><label>右·读取</label>
-                        <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="onConditionReadChange(it, 'right')" />
-                      </div>
-                      <div class="field full" v-if="it.rightKind === 'READ' && readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
-                        <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="onConditionFilterChange(it, 'right')" />
-                      </div>
-                      <div class="field full" v-if="it.rightKind === 'READ' && scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
-                        <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                      </div>
+                      <template v-if="it.rightKind === 'READ'">
+                        <div class="field"><label>右·读取</label>
+                          <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
+                        </div>
+                        <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
+                          <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
+                        </div>
+                        <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
+                          <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                        </div>
+                      </template>
                       <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
                       <div class="field full" style="display:flex;gap:8px">
                         <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
@@ -1255,33 +1259,37 @@
                     </div>
                     <div class="form-grid" v-for="(it, ii) in g.items" :key="'ti'+ii">
                       <div class="field"><label>左</label>
-                        <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                        <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
                       </div>
-                      <div class="field" v-if="it.leftKind === 'READ'"><label>左·读取</label>
-                        <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="onConditionReadChange(it, 'left')" />
-                      </div>
-                      <div class="field full" v-if="it.leftKind === 'READ' && readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
-                        <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="onConditionFilterChange(it, 'left')" />
-                      </div>
-                      <div class="field full" v-if="it.leftKind === 'READ' && scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
-                        <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                      </div>
+                      <template v-if="it.leftKind === 'READ'">
+                        <div class="field"><label>左·读取</label>
+                          <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
+                        </div>
+                        <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
+                          <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
+                        </div>
+                        <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
+                          <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                        </div>
+                      </template>
                       <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
                       <div class="field"><label>判定</label>
                         <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
                       </div>
                       <div class="field"><label>右</label>
-                        <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                        <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
                       </div>
-                      <div class="field" v-if="it.rightKind === 'READ'"><label>右·读取</label>
-                        <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="onConditionReadChange(it, 'right')" />
-                      </div>
-                      <div class="field full" v-if="it.rightKind === 'READ' && readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
-                        <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="onConditionFilterChange(it, 'right')" />
-                      </div>
-                      <div class="field full" v-if="it.rightKind === 'READ' && scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
-                        <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                      </div>
+                      <template v-if="it.rightKind === 'READ'">
+                        <div class="field"><label>右·读取</label>
+                          <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
+                        </div>
+                        <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
+                          <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
+                        </div>
+                        <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
+                          <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                        </div>
+                      </template>
                       <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
                       <div class="field full" style="display:flex;gap:8px">
                         <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
@@ -1487,10 +1495,10 @@
                 </div>
                 <div class="formula-param-input formula-param-input-stack" v-else>
                   <div class="formula-param-select">
-                    <admin-select v-model="fg._readDraft" :options="meta.readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="onFormulaReadDraftChange(fg)" />
+                    <admin-select v-model="fg._readDraft" :options="meta.readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onFormulaReadDraftChange(fg, v)" />
                   </div>
                   <div class="formula-param-select" v-if="readNeedsSkillFilter(fg._readDraft)">
-                    <admin-select v-model="fg._filterDraft" :options="skillScopeOptionsForRead(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="onFormulaFilterDraftChange(fg)" />
+                    <admin-select v-model="fg._filterDraft" :options="skillScopeOptionsForRead(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFormulaFilterDraftChange(fg, v)" />
                   </div>
                   <div class="formula-param-select" v-if="scopeNeedsSkillRef(fg._filterDraft)">
                     <admin-select v-model="fg._filterRefDraft" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
@@ -1530,33 +1538,37 @@
                 </div>
                 <template v-if="c.type === 'COMPARE'">
                   <div class="field"><label>左·类型</label>
-                    <admin-select v-model="c.leftKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                    <admin-select v-model="c.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(c, 'left', v)" />
                   </div>
-                  <div class="field" v-if="c.leftKind === 'READ'"><label>左·读取</label>
-                    <admin-select v-model="c.leftRead" :options="meta.readTypes" value-key="code" label-key="label" @update:modelValue="onConditionReadChange(c, 'left')" />
-                  </div>
-                  <div class="field full" v-if="c.leftKind === 'READ' && readNeedsSkillFilter(c.leftRead)"><label>左·技能范围</label>
-                    <admin-select v-model="c.leftFilter" :options="skillScopeOptionsForRead(c.leftRead)" value-key="code" label-key="label" @update:modelValue="onConditionFilterChange(c, 'left')" />
-                  </div>
-                  <div class="field full" v-if="c.leftKind === 'READ' && scopeNeedsSkillRef(c.leftFilter)"><label>左·指定技能</label>
-                    <admin-select v-model="c.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                  </div>
+                  <template v-if="c.leftKind === 'READ'">
+                    <div class="field"><label>左·读取</label>
+                      <admin-select v-model="c.leftRead" :options="meta.readTypes" value-key="code" label-key="label" @update:modelValue="(v) => onConditionReadChange(c, 'left', v)" />
+                    </div>
+                    <div class="field full" v-if="readNeedsSkillFilter(c.leftRead)"><label>左·技能范围</label>
+                      <admin-select v-model="c.leftFilter" :options="skillScopeOptionsForRead(c.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(c, 'left', v)" />
+                    </div>
+                    <div class="field full" v-if="scopeNeedsSkillRef(c.leftFilter)"><label>左·指定技能</label>
+                      <admin-select v-model="c.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                    </div>
+                  </template>
                   <div class="field" v-else><label>左·定值</label><input v-model.number="c.leftConst" type="number" step="0.01"></div>
                   <div class="field"><label>判定</label>
                     <admin-select v-model="c.op" :options="meta.compareOps" value-key="code" label-key="label" />
                   </div>
                   <div class="field"><label>右·类型</label>
-                    <admin-select v-model="c.rightKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                    <admin-select v-model="c.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(c, 'right', v)" />
                   </div>
-                  <div class="field" v-if="c.rightKind === 'READ'"><label>右·读取</label>
-                    <admin-select v-model="c.rightRead" :options="meta.readTypes" value-key="code" label-key="label" @update:modelValue="onConditionReadChange(c, 'right')" />
-                  </div>
-                  <div class="field full" v-if="c.rightKind === 'READ' && readNeedsSkillFilter(c.rightRead)"><label>右·技能范围</label>
-                    <admin-select v-model="c.rightFilter" :options="skillScopeOptionsForRead(c.rightRead)" value-key="code" label-key="label" @update:modelValue="onConditionFilterChange(c, 'right')" />
-                  </div>
-                  <div class="field full" v-if="c.rightKind === 'READ' && scopeNeedsSkillRef(c.rightFilter)"><label>右·指定技能</label>
-                    <admin-select v-model="c.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                  </div>
+                  <template v-if="c.rightKind === 'READ'">
+                    <div class="field"><label>右·读取</label>
+                      <admin-select v-model="c.rightRead" :options="meta.readTypes" value-key="code" label-key="label" @update:modelValue="(v) => onConditionReadChange(c, 'right', v)" />
+                    </div>
+                    <div class="field full" v-if="readNeedsSkillFilter(c.rightRead)"><label>右·技能范围</label>
+                      <admin-select v-model="c.rightFilter" :options="skillScopeOptionsForRead(c.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(c, 'right', v)" />
+                    </div>
+                    <div class="field full" v-if="scopeNeedsSkillRef(c.rightFilter)"><label>右·指定技能</label>
+                      <admin-select v-model="c.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                    </div>
+                  </template>
                   <div class="field" v-else><label>右·定值</label><input v-model.number="c.rightConst" type="number" step="0.01"></div>
                 </template>
               </div>
@@ -2017,10 +2029,10 @@
           </div>
           <div class="formula-param-input formula-param-input-stack" v-else>
             <div class="formula-param-select">
-              <admin-select v-model="fg._readDraft" :options="meta.readTypes || []" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="onReadDraftChange(fg)" />
+              <admin-select v-model="fg._readDraft" :options="meta.readTypes || []" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraftChange(fg, v)" />
             </div>
             <div class="formula-param-select" v-if="readNeedsFilter(fg._readDraft)">
-              <admin-select v-model="fg._filterDraft" :options="scopeOptions(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="onFilterDraftChange(fg)" />
+              <admin-select v-model="fg._filterDraft" :options="scopeOptions(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraftChange(fg, v)" />
             </div>
             <div class="formula-param-select" v-if="scopeNeedsRef(fg._filterDraft)">
               <admin-select v-model="fg._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
@@ -2142,6 +2154,7 @@ const SkillCustomInline = {
       return '';
     },
     readNeedsFilter: function (code) {
+      if (code === 'ACCUM_SKILL_CAST' || code === 'ACCUM_SKILL_HIT') return true;
       var o = ((this.meta && this.meta.readTypes) || []).find(function (x) { return x.code === code; });
       return !!(o && (o.needParam || o.flag === 'FILTER'));
     },
@@ -2152,16 +2165,19 @@ const SkillCustomInline = {
     },
     scopeNeedsRef: function (filterCode) {
       if (!filterCode) return false;
+      if (String(filterCode).indexOf('SPECIFIC_') === 0) return true;
       var lists = [].concat((this.meta && this.meta.skillScopeCast) || [], (this.meta && this.meta.skillScopeHit) || []);
       var o = lists.find(function (x) { return x.code === filterCode; });
       return !!(o && o.needParam);
     },
-    onReadDraftChange: function (fg) {
+    onReadDraftChange: function (fg, value) {
+      if (value !== undefined) fg._readDraft = value;
       var opts = this.scopeOptions(fg._readDraft);
       fg._filterDraft = this.readNeedsFilter(fg._readDraft) && opts.length ? opts[0].code : '';
       fg._filterRefDraft = '';
     },
-    onFilterDraftChange: function (fg) {
+    onFilterDraftChange: function (fg, value) {
+      if (value !== undefined) fg._filterDraft = value;
       if (!this.scopeNeedsRef(fg._filterDraft)) fg._filterRefDraft = '';
     },
     pushRead: function (fg) {
@@ -3276,6 +3292,15 @@ createApp({
         })
         .catch((err) => this.showToast(err.message));
     },
+    ensureSkillMetaLoaded() {
+      if (!(this.meta.readTypes || []).length
+          || !(this.meta.skillScopeCast || []).length
+          || !(this.meta.skillScopeHit || []).length
+          || !(this.meta.triggerModes || []).length
+          || !(this.meta.compareOps || []).length) {
+        this.loadV2Meta();
+      }
+    },
     loadV2Meta() {
       Promise.all([
         AdminApi.v2TriggerTypes(),
@@ -3692,6 +3717,7 @@ createApp({
       };
     },
     readNeedsSkillFilter(code) {
+      if (code === 'ACCUM_SKILL_CAST' || code === 'ACCUM_SKILL_HIT') return true;
       var o = (this.meta.readTypes || []).find(function (x) { return x.code === code; });
       return !!(o && (o.needParam || o.flag === 'FILTER'));
     },
@@ -3702,6 +3728,7 @@ createApp({
     },
     scopeNeedsSkillRef(filterCode) {
       if (!filterCode) return false;
+      if (filterCode.indexOf('SPECIFIC_') === 0) return true;
       var lists = [].concat(this.meta.skillScopeCast || [], this.meta.skillScopeHit || []);
       var o = lists.find(function (x) { return x.code === filterCode; });
       return !!(o && o.needParam);
@@ -3710,10 +3737,11 @@ createApp({
       var opts = this.skillScopeOptionsForRead(code);
       return opts.length ? opts[0].code : '';
     },
-    onConditionReadChange(item, side) {
+    onConditionReadChange(item, side, value) {
       var readKey = side === 'right' ? 'rightRead' : 'leftRead';
       var filterKey = side === 'right' ? 'rightFilter' : 'leftFilter';
       var refKey = side === 'right' ? 'rightFilterRef' : 'leftFilterRef';
+      if (value !== undefined) item[readKey] = value;
       if (this.readNeedsSkillFilter(item[readKey])) {
         item[filterKey] = this.defaultScopeForRead(item[readKey]);
       } else {
@@ -3721,12 +3749,32 @@ createApp({
       }
       item[refKey] = '';
     },
-    onConditionFilterChange(item, side) {
+    onConditionFilterChange(item, side, value) {
       var filterKey = side === 'right' ? 'rightFilter' : 'leftFilter';
       var refKey = side === 'right' ? 'rightFilterRef' : 'leftFilterRef';
+      if (value !== undefined) item[filterKey] = value;
       if (!this.scopeNeedsSkillRef(item[filterKey])) item[refKey] = '';
     },
-    onFormulaReadDraftChange(fg) {
+    onConditionKindChange(item, side, value) {
+      var kindKey = side === 'right' ? 'rightKind' : 'leftKind';
+      var readKey = side === 'right' ? 'rightRead' : 'leftRead';
+      var filterKey = side === 'right' ? 'rightFilter' : 'leftFilter';
+      var refKey = side === 'right' ? 'rightFilterRef' : 'leftFilterRef';
+      var constKey = side === 'right' ? 'rightConst' : 'leftConst';
+      if (value !== undefined) item[kindKey] = value;
+      if (item[kindKey] === 'READ') {
+        if (!item[readKey]) item[readKey] = '';
+        item[filterKey] = this.readNeedsSkillFilter(item[readKey]) ? this.defaultScopeForRead(item[readKey]) : '';
+        item[refKey] = '';
+      } else {
+        item[readKey] = '';
+        item[filterKey] = '';
+        item[refKey] = '';
+        if (item[constKey] == null) item[constKey] = 0;
+      }
+    },
+    onFormulaReadDraftChange(fg, value) {
+      if (value !== undefined) fg._readDraft = value;
       if (this.readNeedsSkillFilter(fg._readDraft)) {
         fg._filterDraft = this.defaultScopeForRead(fg._readDraft);
       } else {
@@ -3734,7 +3782,8 @@ createApp({
       }
       fg._filterRefDraft = '';
     },
-    onFormulaFilterDraftChange(fg) {
+    onFormulaFilterDraftChange(fg, value) {
+      if (value !== undefined) fg._filterDraft = value;
       if (!this.scopeNeedsSkillRef(fg._filterDraft)) fg._filterRefDraft = '';
     },
     emptyConditionGroup() {
@@ -4799,7 +4848,8 @@ createApp({
         this.drawerTitle = row ? '编辑武器' : '新增武器';
         this.weaponForm = row ? Object.assign({ consumable: 0, maxUses: null }, row) : { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, consumable: 0, maxUses: null, sort: 0, enabled: 1, remark: '' };
         this.weaponBasicAttackForm = this.applyWeaponBasicAttackForm(null);
-      this.weaponUltimateForm = this.applyWeaponUltimateForm(null);
+        this.weaponUltimateForm = this.applyWeaponUltimateForm(null);
+        this.ensureSkillMetaLoaded();
         if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
         if (initialEquipTab === 'recipe') {
           this.ensureRecipesLoaded();
@@ -4808,6 +4858,7 @@ createApp({
       } else if (type === 'armor') {
         this.drawerTitle = row ? '编辑防具' : '新增防具';
         this.armorForm = row ? Object.assign({}, row) : this.emptyEquipPartForm();
+        this.ensureSkillMetaLoaded();
         if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
         if (initialEquipTab === 'recipe') {
           this.ensureRecipesLoaded();
@@ -4817,6 +4868,7 @@ createApp({
         var cfg = this.equipPartConfig[type];
         this.drawerTitle = row ? ('编辑' + cfg.label) : ('新增' + cfg.label);
         this.equipPartForm = row ? Object.assign({}, row) : this.emptyEquipPartForm();
+        this.ensureSkillMetaLoaded();
         if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
         if (initialEquipTab === 'recipe') {
           this.ensureRecipesLoaded();
@@ -4887,6 +4939,7 @@ createApp({
         return;
       } else if (type === 'monster') {
         this.drawerTitle = row ? '编辑怪物' : '新增怪物';
+        this.ensureSkillMetaLoaded();
         this.monsterForm = row ? Object.assign({
           rankType: 'NORMAL', footprintW: 1, footprintH: 1, remark: ''
         }, row) : { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, rankType: 'NORMAL', footprintW: 1, footprintH: 1, sort: 0, enabled: 1, remark: '' };

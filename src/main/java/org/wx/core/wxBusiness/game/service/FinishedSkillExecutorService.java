@@ -167,10 +167,6 @@ public class FinishedSkillExecutorService {
         }
         var reader = skillExpressionService.unitReader(caster, Map.of());
         BigDecimal amount = skillExpressionService.evalFormula(formula, reader);
-        if (SkillFormulaOutcome.DAMAGE.name().equals(formula.getOutcome())
-                && caster.getWeaponDamageRatio() != null) {
-            amount = amount.multiply(caster.getWeaponDamageRatio());
-        }
         amount = amount.setScale(1, RoundingMode.CEILING);
         SkillFormulaOutcome outcome = SkillFormulaOutcome.parse(formula.getOutcome());
         if (outcome == null) {

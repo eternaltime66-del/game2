@@ -3,9 +3,15 @@ package org.wx.core.wxBusiness.game.service;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.wx.core.wxBusiness.game.engine.BattleEngine;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL1;
+import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL4;
+import org.wx.core.wxBusiness.game.entity.enums.SkillOperandKind;
+import org.wx.core.wxBusiness.game.entity.enums.SkillReadType;
+import org.wx.core.wxBusiness.game.entity.enums.SkillScopeFilter;
 import org.wx.core.wxBusiness.game.entity.enums.TriggerSlotType;
+import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
+import org.wx.core.wxBusiness.game.entity.skill.SkillConditionItemVo;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -27,6 +33,12 @@ public class GameTriggerSlotEngineService {
     private FinishedSkillExecutorService finishedSkillExecutorService;
     @Resource
     private ConsumableWeaponService consumableWeaponService;
+    @Resource
+    private SkillJsonHelper skillJsonHelper;
+    @Resource
+    private SkillExpressionService skillExpressionService;
+    @Resource
+    private GameFinishedSkillService finishedSkillService;
 
     public List<BattleLog> onActionValueFull(BattleState state, BattleUnit unit) {
         TriggerEventContext ctx = new TriggerEventContext();
@@ -101,6 +113,9 @@ public class GameTriggerSlotEngineService {
 
         List<BattleLog> logs = new ArrayList<>();
         for (TriggerBinding binding : listBindingsForUnit(state, caster)) {
+            if (isConditionDriven(binding)) {
+                continue;
+            }
             if (!TriggerSlotType.FINISHED_SKILL_CAST_COUNT.name().equals(binding.getTriggerSlotType())) {
                 continue;
             }
@@ -110,6 +125,7 @@ public class GameTriggerSlotEngineService {
             }
             logs.addAll(fireThresholdOnce(state, caster, binding, counters, ctx));
         }
+        logs.addAll(fireConditionDrivenOnCast(state, caster, finishedSkillId, ctx));
         return logs;
     }
 
@@ -148,10 +164,152 @@ public class GameTriggerSlotEngineService {
         return List.of();
     }
 
+    private List<BattleLog> fireConditionDrivenOnCast(BattleState state, BattleUnit caster,
+                                                        String finishedSkillId, TriggerEventContext ctx) {
+        GameFinishedSkill castSkill = finishedSkillService.getById(finishedSkillId);
+        List<BattleLog> logs = new ArrayList<>();
+        for (TriggerBinding binding : listBindingsForUnit(state, caster)) {
+            if (!isConditionDriven(binding)) {
+                continue;
+            }
+            if (finishedSkillId != null && finishedSkillId.equals(binding.getFinishedSkillId())) {
+                continue;
+            }
+            List<SkillConditionGroupVo> groups = skillJsonHelper.resolveSlotConditions(
+                    binding.getTriggerMode(), binding.getQuickPreset(), binding.getConditionsJson());
+            if (!conditionDependsOnCast(groups, castSkill)) {
+                continue;
+            }
+            SkillExpressionService.SkillValueReader reader = battleReader(state, caster);
+            if (skillExpressionService.anyGroupMatch(groups, reader)) {
+                logs.addAll(tryCastFromBinding(state, caster, binding, ctx));
+            }
+        }
+        return logs;
+    }
+
+    private boolean isConditionDriven(TriggerBinding binding) {
+        return binding != null && binding.getTriggerMode() != null && !binding.getTriggerMode().isBlank();
+    }
+
+    private boolean conditionDependsOnCast(List<SkillConditionGroupVo> groups, GameFinishedSkill castSkill) {
+        if (groups == null || castSkill == null) {
+            return false;
+        }
+        for (SkillConditionGroupVo group : groups) {
+            if (group == null || group.getItems() == null) {
+                continue;
+            }
+            for (SkillConditionItemVo item : group.getItems()) {
+                if (operandDependsOnCast(item.getLeftKind(), item.getLeftRead(), item.getLeftFilter(),
+                        item.getLeftFilterRef(), castSkill)
+                        || operandDependsOnCast(item.getRightKind(), item.getRightRead(), item.getRightFilter(),
+                        item.getRightFilterRef(), castSkill)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean operandDependsOnCast(String kind, String read, String filter, String filterRef,
+                                         GameFinishedSkill castSkill) {
+        if (SkillOperandKind.parse(kind) != SkillOperandKind.READ) {
+            return false;
+        }
+        if (SkillReadType.parse(read) != SkillReadType.ACCUM_SKILL_CAST) {
+            return false;
+        }
+        return matchesScope(castSkill, SkillScopeFilter.parse(filter), filterRef);
+    }
+
+    private SkillExpressionService.SkillValueReader battleReader(BattleState state, BattleUnit unit) {
+        SkillExpressionService.SkillValueReader base = skillExpressionService.unitReader(unit, Map.of());
+        return (type, filter, filterRef) -> {
+            if (type == SkillReadType.ACCUM_SKILL_CAST) {
+                return BigDecimal.valueOf(sumCastCount(state, unit, filter, filterRef));
+            }
+            if (type == SkillReadType.ACCUM_SKILL_HIT) {
+                return BigDecimal.valueOf(sumHitCount(state, unit, filter, filterRef));
+            }
+            return base.read(type, filter, filterRef);
+        };
+    }
+
+    private int sumCastCount(BattleState state, BattleUnit unit, String filter, String filterRef) {
+        Map<String, Integer> casts = ensureCounters(state).getFinishedSkillCastCount()
+                .getOrDefault(unit.getUnitId(), Map.of());
+        SkillScopeFilter scope = SkillScopeFilter.parse(filter);
+        int sum = 0;
+        for (Map.Entry<String, Integer> e : casts.entrySet()) {
+            if (e.getValue() == null || e.getValue() <= 0) {
+                continue;
+            }
+            GameFinishedSkill skill = finishedSkillService.getById(e.getKey());
+            if (matchesScope(skill, scope, filterRef)) {
+                sum += e.getValue();
+            }
+        }
+        return sum;
+    }
+
+    private int sumHitCount(BattleState state, BattleUnit unit, String filter, String filterRef) {
+        Map<String, Integer> hits = ensureCounters(state).getFinishedSkillHitCount()
+                .getOrDefault(unit.getUnitId(), Map.of());
+        SkillScopeFilter scope = SkillScopeFilter.parse(filter);
+        int sum = 0;
+        for (Map.Entry<String, Integer> e : hits.entrySet()) {
+            if (e.getValue() == null || e.getValue() <= 0) {
+                continue;
+            }
+            GameFinishedSkill skill = finishedSkillService.getById(e.getKey());
+            if (matchesScope(skill, scope, filterRef)) {
+                sum += e.getValue();
+            }
+        }
+        return sum;
+    }
+
+    boolean matchesScope(GameFinishedSkill skill, SkillScopeFilter filter, String filterRef) {
+        if (skill == null) {
+            return false;
+        }
+        if (filter == null) {
+            return true;
+        }
+        FinishedSkillCatL1 l1 = FinishedSkillCatL1.parse(skill.getCatL1());
+        FinishedSkillCatL4 l4 = FinishedSkillCatL4.parse(skill.getCatL4());
+        boolean person = l1 == FinishedSkillCatL1.PERSON
+                || l1 == FinishedSkillCatL1.GENERAL
+                || l1 == FinishedSkillCatL1.PROFESSION
+                || l1 == FinishedSkillCatL1.CHARACTER;
+        boolean equip = l1 == FinishedSkillCatL1.EQUIP;
+        boolean basic = l4 == FinishedSkillCatL4.BASIC_ATTACK;
+        boolean triggerLike = l4 == FinishedSkillCatL4.CUSTOM
+                || l4 == FinishedSkillCatL4.ULTIMATE
+                || l4 == FinishedSkillCatL4.TRAIT_ACTIVE
+                || l4 == FinishedSkillCatL4.ACTIVE
+                || l4 == FinishedSkillCatL4.GENERAL
+                || basic;
+        return switch (filter) {
+            case ANY_SKILL -> true;
+            case ANY_BASIC_ATTACK -> basic;
+            case ANY_EQUIP_TRIGGER -> equip && !basic;
+            case ANY_PERSON_TRIGGER -> person && !basic;
+            case ANY_TRIGGER -> triggerLike;
+            case ANY_PERSON_SKILL -> person;
+            case SPECIFIC_EQUIP_TRIGGER, SPECIFIC_PERSON_TRIGGER, SPECIFIC_TRIGGER, SPECIFIC_PERSON_SKILL ->
+                    filterRef != null && filterRef.equals(skill.getId());
+        };
+    }
+
     private List<BattleLog> fireForUnit(BattleState state, BattleUnit unit, TriggerSlotType type,
                                           TriggerEventContext ctx, BigDecimal amount) {
         List<BattleLog> logs = new ArrayList<>();
         for (TriggerBinding binding : listBindingsForUnit(state, unit)) {
+            if (isConditionDriven(binding)) {
+                continue;
+            }
             TriggerSlotType slotType = TriggerSlotType.parse(binding.getTriggerSlotType());
             if (slotType != type) {
                 continue;
@@ -181,6 +339,9 @@ public class GameTriggerSlotEngineService {
         List<BattleLog> logs = new ArrayList<>();
         BigDecimal remaining = total;
         for (TriggerBinding binding : listBindingsForUnit(state, unit)) {
+            if (isConditionDriven(binding)) {
+                continue;
+            }
             if (!type.name().equals(binding.getTriggerSlotType())) {
                 continue;
             }
@@ -207,6 +368,9 @@ public class GameTriggerSlotEngineService {
         List<BattleLog> logs = new ArrayList<>();
         int remaining = count;
         for (TriggerBinding binding : listBindingsForUnit(state, unit)) {
+            if (isConditionDriven(binding)) {
+                continue;
+            }
             if (!type.name().equals(binding.getTriggerSlotType())) {
                 continue;
             }
@@ -294,10 +458,20 @@ public class GameTriggerSlotEngineService {
     }
 
     private TriggerBinding toBinding(GameTriggerSlot slot) {
-        return new TriggerBinding(
-                slot.getTriggerSlotType(), slot.getTriggerParam(), slot.getTriggerRefId(),
-                slot.getFinishedSkillId(), slot.getSort(), slot.getId(), slot.getMaxCastCount(),
-                slot.getItemId());
+        TriggerBinding binding = new TriggerBinding();
+        binding.setTriggerSlotType(slot.getTriggerSlotType());
+        binding.setTriggerParam(slot.getTriggerParam());
+        binding.setTriggerRefId(slot.getTriggerRefId());
+        binding.setFinishedSkillId(slot.getFinishedSkillId());
+        binding.setSort(slot.getSort());
+        binding.setTriggerSlotId(slot.getId());
+        binding.setMaxCastCount(slot.getMaxCastCount());
+        binding.setSourceItemId(slot.getItemId());
+        binding.setSlotKind(slot.getSlotKind());
+        binding.setTriggerMode(slot.getTriggerMode());
+        binding.setQuickPreset(slot.getQuickPreset());
+        binding.setConditionsJson(slot.getConditionsJson());
+        return binding;
     }
 
     private List<String> listEquippedItemIds(BattleState state, BattleUnit unit) {
@@ -323,6 +497,9 @@ public class GameTriggerSlotEngineService {
         }
         if (counters.getFinishedSkillCastCount() == null) {
             counters.setFinishedSkillCastCount(new java.util.HashMap<>());
+        }
+        if (counters.getFinishedSkillHitCount() == null) {
+            counters.setFinishedSkillHitCount(new java.util.HashMap<>());
         }
         if (counters.getAccumulatedDealDamage() == null) {
             counters.setAccumulatedDealDamage(new java.util.HashMap<>());

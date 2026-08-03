@@ -17,13 +17,17 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /** 条件判定 + 公式求值 */
 @Component
 public class SkillExpressionService {
 
-    public boolean anyGroupMatch(List<SkillConditionGroupVo> groups, Function<SkillReadType, BigDecimal> reader) {
+    @FunctionalInterface
+    public interface SkillValueReader {
+        BigDecimal read(SkillReadType type, String filter, String filterRef);
+    }
+
+    public boolean anyGroupMatch(List<SkillConditionGroupVo> groups, SkillValueReader reader) {
         if (groups == null || groups.isEmpty()) {
             return true;
         }
@@ -35,7 +39,7 @@ public class SkillExpressionService {
         return false;
     }
 
-    public boolean groupMatch(SkillConditionGroupVo group, Function<SkillReadType, BigDecimal> reader) {
+    public boolean groupMatch(SkillConditionGroupVo group, SkillValueReader reader) {
         if (group == null || group.getItems() == null || group.getItems().isEmpty()) {
             return true;
         }
@@ -47,7 +51,7 @@ public class SkillExpressionService {
         return true;
     }
 
-    public boolean itemMatch(SkillConditionItemVo item, Function<SkillReadType, BigDecimal> reader) {
+    public boolean itemMatch(SkillConditionItemVo item, SkillValueReader reader) {
         if (item == null || item.getOp() == null) {
             return true;
         }
@@ -73,14 +77,14 @@ public class SkillExpressionService {
         };
     }
 
-    public BigDecimal evalFormula(SkillFormulaGroupVo formula, Function<SkillReadType, BigDecimal> reader) {
+    public BigDecimal evalFormula(SkillFormulaGroupVo formula, SkillValueReader reader) {
         if (formula == null || formula.getTokens() == null || formula.getTokens().isEmpty()) {
             return BigDecimal.ZERO;
         }
         return evalTokens(formula.getTokens(), reader);
     }
 
-    public BigDecimal evalTokens(List<SkillFormulaTokenVo> tokens, Function<SkillReadType, BigDecimal> reader) {
+    public BigDecimal evalTokens(List<SkillFormulaTokenVo> tokens, SkillValueReader reader) {
         List<String> rpn = toRpn(tokens, reader);
         Deque<BigDecimal> stack = new ArrayDeque<>();
         for (String t : rpn) {
@@ -102,8 +106,8 @@ public class SkillExpressionService {
         return stack.isEmpty() ? BigDecimal.ZERO : stack.pop();
     }
 
-    public Function<SkillReadType, BigDecimal> unitReader(BattleUnit unit, Map<SkillReadType, BigDecimal> eventValues) {
-        return type -> {
+    public SkillValueReader unitReader(BattleUnit unit, Map<SkillReadType, BigDecimal> eventValues) {
+        return (type, filter, filterRef) -> {
             if (type == null) {
                 return null;
             }
@@ -128,20 +132,19 @@ public class SkillExpressionService {
     }
 
     private BigDecimal resolveOperand(String kind, String read, String filter, String filterRef, BigDecimal constant,
-                                      Function<SkillReadType, BigDecimal> reader) {
+                                      SkillValueReader reader) {
         SkillOperandKind k = SkillOperandKind.parse(kind);
         if (k == SkillOperandKind.CONST) {
             return constant;
         }
         SkillReadType rt = SkillReadType.parse(read);
-        if (rt == null) {
+        if (rt == null || reader == null) {
             return null;
         }
-        // filter/filterRef 由上层 reader 扩展时使用；当前 unitReader 忽略并返回基础值
-        return reader.apply(rt);
+        return reader.read(rt, filter, filterRef);
     }
 
-    private List<String> toRpn(List<SkillFormulaTokenVo> tokens, Function<SkillReadType, BigDecimal> reader) {
+    private List<String> toRpn(List<SkillFormulaTokenVo> tokens, SkillValueReader reader) {
         List<String> output = new ArrayList<>();
         Deque<String> ops = new ArrayDeque<>();
         for (SkillFormulaTokenVo token : tokens) {

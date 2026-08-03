@@ -14,7 +14,7 @@ public class SkillConditionItemVo {
     private String leftFilterRef;
     private BigDecimal leftConst;
 
-    /** GT/LT/GTE/LTE/EQ/MOD */
+    /** GT/LT/GTE/LTE/EQ/MOD(取模等于0) */
     private String op;
 
     private String rightKind;

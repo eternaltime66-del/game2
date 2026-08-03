@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.MonsterRank;
 
 import jakarta.annotation.Resource;
 import java.util.ArrayList;
@@ -37,6 +38,14 @@ public class GameBattleService {
         if (entity.getMaxHp() == null) entity.setMaxHp(entity.getHp());
         if (entity.getAttack() == null) entity.setAttack(10);
         if (entity.getActionValue() == null) entity.setActionValue(100);
+        MonsterRank rank = MonsterRank.parse(entity.getRankType());
+        entity.setRankType(rank.name());
+        if (entity.getFootprintW() == null || entity.getFootprintW() < 1) {
+            entity.setFootprintW(rank.getFootprintW());
+        }
+        if (entity.getFootprintH() == null || entity.getFootprintH() < 1) {
+            entity.setFootprintH(rank.getFootprintH());
+        }
         if (entity.getEnabled() == null) entity.setEnabled(1);
         if (entity.getSort() == null) entity.setSort(0);
         monsterService.saveOrUpdate(entity);
@@ -71,6 +80,12 @@ public class GameBattleService {
             entity.setQuantity(1);
         }
         if (entity.getSort() == null) entity.setSort(0);
+        if (entity.getSlotCol() != null) {
+            entity.setSlotCol(Math.max(0, Math.min(3, entity.getSlotCol())));
+        }
+        if (entity.getSlotRow() != null) {
+            entity.setSlotRow(Math.max(0, Math.min(2, entity.getSlotRow())));
+        }
         waveMonsterService.saveOrUpdate(entity);
     }
 

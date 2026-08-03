@@ -93,6 +93,129 @@
   min-height: 12px;
 }
 
+.formation-side {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.formation-label {
+  font-size: 11px;
+  color: rgba(245, 247, 255, 0.45);
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.formation-board {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 4px 6px;
+  width: 100%;
+  max-width: 740px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.formation-row-tags {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(40px, 1fr));
+  gap: 6px;
+  align-items: center;
+  justify-items: center;
+  font-size: 11px;
+  color: rgba(245, 247, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.formation-board.ally .formation-row-tags {
+  grid-template-rows: repeat(3, minmax(36px, 1fr));
+}
+
+.formation-col-tags {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  justify-items: center;
+  font-size: 11px;
+  color: rgba(245, 247, 255, 0.4);
+}
+
+.formation-grid {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(40px, 1fr));
+  gap: 6px;
+  width: 100%;
+  min-height: 148px;
+  align-items: stretch;
+}
+
+.formation-grid.ally {
+  min-height: 128px;
+  grid-template-rows: repeat(3, minmax(36px, 1fr));
+}
+
+.formation-cell {
+  box-sizing: border-box;
+  min-height: 40px;
+  border: 1px dashed rgba(245, 247, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.formation-grid.ally .formation-cell {
+  min-height: 36px;
+  border-color: rgba(120, 200, 255, 0.28);
+}
+
+.formation-grid .battle-unit-wrap {
+  min-width: 0;
+  height: auto;
+  align-self: center;
+  justify-self: stretch;
+  position: relative;
+  z-index: 1;
+}
+
+.formation-grid .battle-unit {
+  height: auto;
+  width: 100%;
+}
+
+.formation-grid .battle-unit-wrap.rank-elite .battle-unit {
+  border-color: rgba(255, 193, 7, 0.45);
+}
+
+.formation-grid .battle-unit-wrap.rank-boss .battle-unit {
+  border-color: rgba(255, 107, 138, 0.55);
+}
+
+.unit-rank {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(245, 247, 255, 0.75);
+}
+
+.battle-unit-wrap.rank-elite .unit-rank {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffd666;
+}
+
+.battle-unit-wrap.rank-boss .unit-rank {
+  background: rgba(255, 107, 138, 0.22);
+  color: #ff8fab;
+}
+
 .hero-slot {
   flex-shrink: 0;
   margin-top: auto;
@@ -172,17 +295,34 @@
 .battle-unit {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 12px;
   transition: box-shadow 0.25s ease, transform 0.25s ease, opacity 0.3s ease;
+}
+
+.battle-unit.slim {
+  padding: 5px 6px;
+  border-radius: 8px;
+}
+
+.battle-unit.slim.monster {
+  padding: 4px 5px;
 }
 
 .battle-unit.compact {
   padding: 10px;
 }
 
+.battle-unit.slim.compact {
+  padding: 4px 5px;
+}
+
 .battle-unit.compact .unit-name {
   font-size: 13px;
+}
+
+.battle-unit.slim .unit-name {
+  font-size: 12px;
 }
 
 .battle-unit.compact .unit-side {
@@ -195,6 +335,10 @@
 
 .battle-unit.compact .bar-track {
   height: 8px;
+}
+
+.battle-unit.slim .bar-track.hp-track {
+  height: 14px;
 }
 
 .battle-unit.compact .bar-track.action-track {
@@ -279,6 +423,11 @@
   gap: 6px;
 }
 
+.unit-head.hero-only {
+  margin-bottom: 4px;
+  justify-content: center;
+}
+
 .unit-name {
   font-weight: 600;
   overflow: hidden;
@@ -296,6 +445,10 @@
   margin-top: 6px;
 }
 
+.bar-row.hp-only {
+  margin-top: 0;
+}
+
 .bar-label {
   display: flex;
   justify-content: space-between;
@@ -310,6 +463,31 @@
   background: rgba(0, 0, 0, 0.35);
   border-radius: 999px;
   overflow: hidden;
+}
+
+.bar-track.hp-track {
+  height: 14px;
+  overflow: hidden;
+}
+
+.bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+  z-index: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle-unit.slim.hero .bar-text {
+  font-size: 11px;
 }
 
 .bar-track.action-track {

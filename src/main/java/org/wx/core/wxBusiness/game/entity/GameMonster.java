@@ -27,6 +27,15 @@ public class GameMonster extends WxBaseEntity<GameMonster> {
 
     private Integer actionValue;
 
+    /** NORMAL / ELITE / BOSS */
+    private String rankType;
+
+    /** 占地宽（列数） */
+    private Integer footprintW;
+
+    /** 占地高（行数） */
+    private Integer footprintH;
+
     private Integer sort;
 
     private Integer enabled;

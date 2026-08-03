@@ -293,18 +293,22 @@ public class FinishedSkillExecutorService {
     }
 
     /**
-     * 与战斗 UI 站位一致：1~3 怪单行（前/后排均指全部）；4 怪 2+2；5+ 怪前排 2、后排其余。
+     * 前排：从 1 排往 3 排扫，第一排有存活敌人为前排；
+     * 后排：从 3 排往 1 排扫，第一排有存活敌人为后排。
+     * 无站位数据时回退为全体敌人。
      */
     private List<BattleUnit> listEnemiesInRow(BattleState state, BattleUnit caster, boolean frontRow) {
         List<BattleUnit> enemies = listEnemies(state, caster);
-        int count = enemies.size();
-        if (count <= 3) {
+        if (enemies.isEmpty()) {
             return enemies;
         }
-        if (count == 4) {
-            return frontRow ? enemies.subList(0, 2) : enemies.subList(2, 4);
+        boolean anySlot = enemies.stream().anyMatch(u -> u.getSlotRow() != null);
+        if (!anySlot) {
+            return enemies;
         }
-        return frontRow ? enemies.subList(0, 2) : enemies.subList(2, count);
+        return frontRow
+                ? BattleFormation.unitsOnFrontRow(enemies)
+                : BattleFormation.unitsOnBackRow(enemies);
     }
 
     private List<BattleUnit> pickRandomEnemies(BattleState state, BattleUnit caster, int count) {
@@ -318,6 +322,7 @@ public class FinishedSkillExecutorService {
     }
 
     private List<BattleUnit> pickRandomEnemiesFromRow(BattleState state, BattleUnit caster, boolean frontRow, int count) {
+        // 前/后排扫描本身已含「该方向无人则继续往里找」，不再弹性改打另一排
         List<BattleUnit> row = listEnemiesInRow(state, caster, frontRow);
         if (row.isEmpty() || count <= 0) {
             return List.of();

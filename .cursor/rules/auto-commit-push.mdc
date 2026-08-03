@@ -32,12 +32,13 @@ alwaysApply: true
 - 达到 5 次时 git 操作**直接执行**，无需用户确认
 - 不要为 git 操作请求额外审批；push 失败按失败处理流程重试
 - push 前如存在无效 `GH_TOKEN`，先清除，优先使用 `gh auth login` 的 keyring
+- **禁止**在推送前后执行会清空工作区的命令：`git reset --hard`、`git clean -fd`、强制 checkout
 
 ## 提交流程（仅计数满 5 时）
 
 1. 并行执行：`git status`、`git diff`、`git log -3 --oneline`
 2. 只 `git add` 相关源码文件，**禁止**提交：
-   - `BOOT-INF/`、`target/`、`.env`、密钥/凭证文件
+   - `BOOT-INF/`、`target/`、`.env`、密钥/凭证文件、`.reloadtrigger`
 3. 写 1～2 句 commit message，概括这 5 轮内的主要改动
 4. `git commit`（含 `.cursor/git-batch-state.json` 的重置状态）
 5. `git push origin main`

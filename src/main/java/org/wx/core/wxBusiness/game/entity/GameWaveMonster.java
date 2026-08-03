@@ -24,6 +24,12 @@ public class GameWaveMonster extends WxBaseEntity<GameWaveMonster> {
 
     private Integer sort;
 
+    /** 站位列 0-3，空则战斗开始时自动排布 */
+    private Integer slotCol;
+
+    /** 站位行 0-2（0=前排），空则自动排布 */
+    private Integer slotRow;
+
     @TableField(exist = false)
     private String monsterName;
 

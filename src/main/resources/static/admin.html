@@ -228,7 +228,10 @@
             </div>
             <div class="wave-card-body" v-if="selectedWaveId === wave.wave.id">
               <div class="wave-monster-row" v-for="wm in wave.monsters" :key="wm.id">
-                <span>{{ wm.monsterName || wm.monsterId }} × {{ wm.quantity }}</span>
+                <span>{{ wm.monsterName || wm.monsterId }} × {{ wm.quantity }}
+                  <span class="muted" v-if="wm.slotCol != null && wm.slotRow != null"> · {{ (wm.slotRow||0)+1 }}{{ ['A','B','C','D'][wm.slotCol] || wm.slotCol }}</span>
+                  <span class="muted" v-else> · 自动站位</span>
+                </span>
               </div>
               <div v-if="!wave.monsters.length" class="empty-hint">本波暂无怪物</div>
               <div class="wave-add-row">
@@ -239,6 +242,14 @@
                 <div class="field" style="margin:0">
                   <label>数量</label>
                   <input v-model.number="waveMonsterDraft.quantity" type="number" min="1">
+                </div>
+                <div class="field" style="margin:0">
+                  <label>列 0=A … 3=D</label>
+                  <input v-model.number="waveMonsterDraft.slotCol" type="number" min="0" max="3" placeholder="自动">
+                </div>
+                <div class="field" style="margin:0">
+                  <label>行 0=1前 … 2=3后</label>
+                  <input v-model.number="waveMonsterDraft.slotRow" type="number" min="0" max="2" placeholder="自动">
                 </div>
                 <button type="button" class="btn-primary btn-mini" @click="addMonsterToSelectedWave(wave.wave.id)">添加</button>
               </div>
@@ -259,18 +270,20 @@
         <div class="table-wrap">
           <table class="admin-table">
             <thead>
-              <tr><th>名称</th><th>编码</th><th>生命</th><th>攻击</th><th>行动值</th><th class="col-actions">操作</th></tr>
+              <tr><th>名称</th><th>编码</th><th>难度</th><th>占地</th><th>生命</th><th>攻击</th><th>行动值</th><th class="col-actions">操作</th></tr>
             </thead>
             <tbody>
               <tr v-for="m in monsters" :key="m.id">
                 <td>{{ m.name }}</td>
                 <td>{{ m.code }}</td>
+                <td>{{ monsterRankLabel(m.rankType) }}</td>
+                <td>{{ (m.footprintW || 1) }}×{{ (m.footprintH || 1) }}</td>
                 <td>{{ m.hp }}/{{ m.maxHp }}</td>
                 <td>{{ m.attack }}</td>
                 <td>{{ m.actionValue }}</td>
                 <td class="col-actions"><button type="button" class="btn-mini" @click="openDrawer('monster', m)">编辑</button></td>
               </tr>
-              <tr v-if="!monsters.length"><td colspan="6" class="empty-hint">暂无怪物</td></tr>
+              <tr v-if="!monsters.length"><td colspan="8" class="empty-hint">暂无怪物</td></tr>
             </tbody>
           </table>
         </div>
@@ -288,12 +301,14 @@
       <div class="level-tree-compact">配置战斗怪物属性；关卡波次中引用此处怪兽</div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>行动值</th><th>排序</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>难度</th><th>占地</th><th>生命</th><th>攻击</th><th>行动值</th><th>排序</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
           <tbody>
             <tr v-for="m in monsters" :key="m.id">
               <td class="col-id">{{ m.id }}</td>
               <td>{{ m.code }}</td>
               <td>{{ m.name }}</td>
+              <td>{{ monsterRankLabel(m.rankType) }}</td>
+              <td>{{ (m.footprintW || 1) }}×{{ (m.footprintH || 1) }}</td>
               <td>{{ m.hp }}/{{ m.maxHp }}</td>
               <td>{{ m.attack }}</td>
               <td>{{ m.actionValue }}</td>
@@ -304,7 +319,7 @@
                 <button type="button" class="btn-mini danger" @click="removeMonster(m)">删除</button>
               </td>
             </tr>
-            <tr v-if="!monsters.length"><td colspan="9" class="empty-hint">暂无怪兽</td></tr>
+            <tr v-if="!monsters.length"><td colspan="11" class="empty-hint">暂无怪兽</td></tr>
           </tbody>
         </table>
       </div>
@@ -635,6 +650,11 @@
               <div class="field"><label>最大生命</label><input v-model.number="monsterForm.maxHp" type="number"></div>
               <div class="field"><label>攻击</label><input v-model.number="monsterForm.attack" type="number"></div>
               <div class="field"><label>行动值</label><input v-model.number="monsterForm.actionValue" type="number"></div>
+              <div class="field"><label>难度分类</label>
+                <admin-select v-model="monsterForm.rankType" :options="monsterRankOptions" value-key="value" label-key="label" @update:modelValue="onMonsterRankChange" />
+              </div>
+              <div class="field"><label>占地宽(列)</label><input v-model.number="monsterForm.footprintW" type="number" min="1" max="4"></div>
+              <div class="field"><label>占地高(行)</label><input v-model.number="monsterForm.footprintH" type="number" min="1" max="3"></div>
               <div class="field"><label>排序</label><input v-model.number="monsterForm.sort" type="number"></div>
               <div class="field"><label>启用</label>
                 <admin-select v-model="monsterForm.enabled" :options="yesNoOptions" />
@@ -1405,9 +1425,14 @@ createApp({
       selectedWaveId: null,
       addingWave: false,
       inlineWaveForm: { waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
-      waveMonsterDraft: { monsterId: '', quantity: 1 },
+      waveMonsterDraft: { monsterId: '', quantity: 1, slotCol: null, slotRow: null },
       waveForm: { id: '', stageId: '', waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
-      monsterForm: { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, sort: 0, enabled: 1 },
+      monsterForm: { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, rankType: 'NORMAL', footprintW: 1, footprintH: 1, sort: 0, enabled: 1, remark: '' },
+      monsterRankOptions: [
+        { value: 'NORMAL', label: '小怪 (1×1)' },
+        { value: 'ELITE', label: '精英 (2×1)' },
+        { value: 'BOSS', label: 'Boss (2×2)' }
+      ],
       materials: [],
       recipes: [],
       recipeForm: { id: '', outputItemId: '', sort: 0, enabled: 1, remark: '', materials: [] },
@@ -1948,7 +1973,7 @@ createApp({
     },
     selectWave(waveId) {
       this.selectedWaveId = this.selectedWaveId === waveId ? null : waveId;
-      this.waveMonsterDraft = { monsterId: '', quantity: 1 };
+      this.waveMonsterDraft = { monsterId: '', quantity: 1, slotCol: null, slotRow: null };
     },
     startAddWave() {
       if (!this.levelPick.stageId) return;
@@ -1979,15 +2004,22 @@ createApp({
       }
       var wave = (this.stageBattle.waves || []).find(function (w) { return w.wave.id === waveId; });
       var sort = wave && wave.monsters ? wave.monsters.length + 1 : 1;
-      AdminApi.saveWaveMonster({
+      var payload = {
         waveId: waveId,
         monsterId: this.waveMonsterDraft.monsterId,
         quantity: this.waveMonsterDraft.quantity || 1,
         sort: sort
-      })
+      };
+      if (this.waveMonsterDraft.slotCol != null && this.waveMonsterDraft.slotCol !== '') {
+        payload.slotCol = this.waveMonsterDraft.slotCol;
+      }
+      if (this.waveMonsterDraft.slotRow != null && this.waveMonsterDraft.slotRow !== '') {
+        payload.slotRow = this.waveMonsterDraft.slotRow;
+      }
+      AdminApi.saveWaveMonster(payload)
         .then(() => {
           this.showToast('已添加怪物', 'success');
-          this.waveMonsterDraft = { monsterId: '', quantity: 1 };
+          this.waveMonsterDraft = { monsterId: '', quantity: 1, slotCol: null, slotRow: null };
           this.loadStageBattleForPick();
           this.selectedWaveId = waveId;
         })
@@ -1997,6 +2029,16 @@ createApp({
       AdminApi.monsterList({ current: 1, size: 200 })
         .then((res) => { this.monsters = res.data || []; })
         .catch((err) => this.showToast(err.message));
+    },
+    monsterRankLabel(rank) {
+      var map = { NORMAL: '小怪', ELITE: '精英', BOSS: 'Boss' };
+      return map[rank] || rank || '小怪';
+    },
+    onMonsterRankChange() {
+      var r = this.monsterForm.rankType;
+      if (r === 'ELITE') { this.monsterForm.footprintW = 2; this.monsterForm.footprintH = 1; }
+      else if (r === 'BOSS') { this.monsterForm.footprintW = 2; this.monsterForm.footprintH = 2; }
+      else { this.monsterForm.footprintW = 1; this.monsterForm.footprintH = 1; }
     },
     removeMonster(m) {
       if (!confirm('删除怪兽 ' + m.name + '？已配置在波次中的引用也会移除')) return;
@@ -3118,7 +3160,15 @@ createApp({
         return;
       } else if (type === 'monster') {
         this.drawerTitle = row ? '编辑怪物' : '新增怪物';
-        this.monsterForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, sort: 0, enabled: 1, remark: '' };
+        this.monsterForm = row ? Object.assign({
+          rankType: 'NORMAL', footprintW: 1, footprintH: 1, remark: ''
+        }, row) : { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, rankType: 'NORMAL', footprintW: 1, footprintH: 1, sort: 0, enabled: 1, remark: '' };
+        if (this.monsterForm.rankType === 'ELITE' && (!row || row.footprintW == null)) {
+          this.monsterForm.footprintW = 2; this.monsterForm.footprintH = 1;
+        }
+        if (this.monsterForm.rankType === 'BOSS' && (!row || row.footprintW == null)) {
+          this.monsterForm.footprintW = 2; this.monsterForm.footprintH = 2;
+        }
         this.weaponBasicAttackForm = this.applyWeaponBasicAttackForm(null);
         this.weaponUltimateForm = this.applyWeaponUltimateForm(null);
         if (row && row.id) {

@@ -8,6 +8,7 @@ import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBase.unit.WordUnit;
 import org.wx.core.wxBusiness.game.engine.BattleEngine;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.MonsterRank;
 import org.wx.core.wxBusiness.game.service.GameBattleService.StageBattleDetail;
 import org.wx.core.wxBusiness.game.service.GameBattleService.WaveDetailNode;
 
@@ -55,6 +56,8 @@ public class PveBattleService {
     private GamePrepService gamePrepService;
     @Resource
     private MonsterCombatService monsterCombatService;
+    @Resource
+    private BattleFormationService battleFormationService;
 
     public BattleState startBattle(String uid, String stageId) {
         GameHero hero = gameHeroService.getOrInitHero(uid);
@@ -294,6 +297,11 @@ public class PveBattleService {
         vo.setMaxHp(monster.getMaxHp());
         vo.setAttack(monster.getAttack());
         vo.setActionValue(monster.getActionValue());
+        MonsterRank rank = MonsterRank.parse(monster.getRankType());
+        vo.setRankType(rank.name());
+        vo.setRankLabel(rank.getLabel());
+        vo.setFootprintW(monster.getFootprintW() != null ? monster.getFootprintW() : rank.getFootprintW());
+        vo.setFootprintH(monster.getFootprintH() != null ? monster.getFootprintH() : rank.getFootprintH());
         vo.setRemark(monster.getRemark());
 
         java.util.LinkedHashMap<String, BattleMonsterDropItemVo> dropMap = new java.util.LinkedHashMap<>();
@@ -407,6 +415,7 @@ public class PveBattleService {
         unit.initActionBar();
         state.setHeroEquippedItemIds(gameHeroEquipService.getOrInit(state.getUid()).listEquippedItemIds());
         applyHeroWeaponRatio(state, unit);
+        battleFormationService.placeHero(unit);
         state.getUnits().add(unit);
     }
 
@@ -426,9 +435,11 @@ public class PveBattleService {
 
     private void spawnWaveMonsters(BattleState state, WaveDetailNode waveNode, int waveNo) {
         int idx = 0;
+        List<BattleUnit> spawned = new ArrayList<>();
         for (GameWaveMonster wm : waveNode.getMonsters()) {
             int quantity = wm.getQuantity() != null ? wm.getQuantity() : 1;
             String baseName = wm.getMonsterName() != null ? wm.getMonsterName() : "怪物";
+            GameMonster template = gameMonsterService.getById(wm.getMonsterId());
             for (int q = 0; q < quantity; q++) {
                 BattleUnit unit = new BattleUnit();
                 unit.setUnitId("mon_" + waveNo + "_" + idx++);
@@ -442,10 +453,18 @@ public class PveBattleService {
                 unit.setActionValue(wm.getActionValue());
                 unit.setAlive(true);
                 unit.initActionBar();
+                battleFormationService.applyMonsterTemplate(unit, template);
+                // quantity>1 时仅第一个实例使用配置站位，其余自动找空位
+                if (q == 0 && wm.getSlotCol() != null && wm.getSlotRow() != null) {
+                    unit.setSlotCol(wm.getSlotCol());
+                    unit.setSlotRow(wm.getSlotRow());
+                }
                 monsterCombatService.applyPassives(unit, wm.getMonsterId());
-                state.getUnits().add(unit);
+                spawned.add(unit);
             }
         }
+        battleFormationService.placeMonsters(spawned);
+        state.getUnits().addAll(spawned);
     }
 
     private BattleState requireBattle(String uid, String battleId) {

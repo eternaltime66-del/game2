@@ -95,93 +95,91 @@
     </div>
 
     <div class="battle-scene" :class="{ dimmed: battle.status !== 'RUNNING' }">
-      <div
-        v-if="monsterUnits.length"
-        class="monster-grid"
-        :class="'monster-count-' + monsterLayoutCount"
-      >
-        <div
-          v-for="unit in monsterUnits"
-          :key="unit.unitId"
-          class="battle-unit-wrap clickable"
-          @click="openMonsterDetail(unit)"
-        >
-          <div
-            class="battle-unit monster compact"
-            :class="unitClasses(unit)"
-          >
-            <div class="unit-head">
-              <span class="unit-name">{{ unit.name }}</span>
-              <span class="unit-side">怪物</span>
-            </div>
-            <div class="bar-row">
-              <div class="bar-label">
-                <span>生命</span>
-                <span>{{ unit.hp }}/{{ unit.maxHp }}</span>
-              </div>
-              <div class="bar-track">
-                <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
-              </div>
-            </div>
-            <div class="bar-row">
-              <div class="bar-label">
-                <span>行动条</span>
-                <span>{{ Math.round(unit.actionBar) }}/{{ unit.actionValue }}</span>
-              </div>
-              <div class="bar-track action-track">
-                <div
-                  class="bar-fill action"
-                  :class="actionBarClasses(unit)"
-                  :style="{ width: actionPercent(unit) + '%' }"
-                ></div>
-              </div>
-            </div>
+      <div class="formation-side enemy" v-if="monsterUnits.length">
+        <div class="formation-label">敌方 · 下行1前排 / 上行3后排（A–D）</div>
+        <div class="formation-board enemy">
+          <div class="formation-row-tags">
+            <span>3</span><span>2</span><span>1</span>
           </div>
+          <div class="formation-grid enemy">
           <div
-            v-for="df in floatsForUnit(unit.unitId)"
-            :key="df.id"
-            class="damage-float"
-          >-{{ df.text }}</div>
+            v-for="n in 12"
+            :key="'ecell-' + n"
+            class="formation-cell"
+            aria-hidden="true"
+          ></div>
+          <div
+            v-for="unit in monsterUnits"
+            :key="unit.unitId"
+            class="battle-unit-wrap clickable"
+            :class="'rank-' + (unit.rankType || 'NORMAL').toLowerCase()"
+            :style="enemyFormationStyle(unit)"
+            @click="openMonsterDetail(unit)"
+          >
+            <div
+              class="battle-unit monster compact slim"
+              :class="unitClasses(unit)"
+            >
+              <div class="bar-row hp-only">
+                <div class="bar-track hp-track">
+                  <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
+                  <span class="bar-text">{{ unit.hp }}/{{ unit.maxHp }}</span>
+                </div>
+              </div>
+            </div>
+            <div
+              v-for="df in floatsForUnit(unit.unitId)"
+              :key="df.id"
+              class="damage-float"
+            >-{{ df.text }}</div>
+          </div>
+          </div>
+          <div class="formation-col-tags">
+            <span>A</span><span>B</span><span>C</span><span>D</span>
+          </div>
         </div>
       </div>
 
       <div class="scene-spacer"></div>
 
-      <div class="hero-slot" v-if="heroUnit">
-        <div class="battle-unit-wrap">
-          <div class="battle-unit hero" :class="unitClasses(heroUnit)">
-            <div class="unit-head">
-              <span class="unit-name">{{ heroUnit.name }}</span>
-              <span class="unit-side">主角</span>
-            </div>
-            <div class="bar-row">
-              <div class="bar-label">
-                <span>生命</span>
-                <span>{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
-              </div>
-              <div class="bar-track">
-                <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
-              </div>
-            </div>
-            <div class="bar-row">
-              <div class="bar-label">
-                <span>行动条</span>
-                <span>{{ Math.round(heroUnit.actionBar) }}/{{ heroUnit.actionValue }}</span>
-              </div>
-              <div class="bar-track action-track">
-                <div
-                  class="bar-fill action"
-                  :class="actionBarClasses(heroUnit)"
-                  :style="{ width: actionPercent(heroUnit) + '%' }"
-                ></div>
-              </div>
-            </div>
+      <div class="formation-side ally" v-if="heroUnit">
+        <div class="formation-label">己方 · 上行1前排 / 下行3后排（镜像）</div>
+        <div class="formation-board ally">
+          <div class="formation-row-tags">
+            <span>1</span><span>2</span><span>3</span>
           </div>
+          <div class="formation-grid ally">
           <div
-            v-for="df in floatsForUnit(heroUnit.unitId)"
-            :key="df.id"
-            class="damage-float"
-          >-{{ df.text }}</div>
+            v-for="n in 12"
+            :key="'acell-' + n"
+            class="formation-cell"
+            aria-hidden="true"
+          ></div>
+          <div
+            class="battle-unit-wrap"
+            :style="allyFormationStyle(heroUnit)"
+          >
+            <div class="battle-unit hero slim" :class="unitClasses(heroUnit)">
+              <div class="unit-head hero-only">
+                <span class="unit-name">{{ heroUnit.name }}</span>
+              </div>
+              <div class="bar-row hp-only">
+                <div class="bar-track hp-track">
+                  <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
+                  <span class="bar-text">{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
+                </div>
+              </div>
+            </div>
+            <div
+              v-for="df in floatsForUnit(heroUnit.unitId)"
+              :key="df.id"
+              class="damage-float"
+            >-{{ df.text }}</div>
+          </div>
+          </div>
+          <div class="formation-col-tags">
+            <span>A</span><span>B</span><span>C</span><span>D</span>
+          </div>
         </div>
       </div>
     </div>
@@ -222,6 +220,14 @@
           <div class="monster-stat-item">
             <span class="label">行动值</span>
             <span class="value">{{ monsterDetail.actionValue }}</span>
+          </div>
+          <div class="monster-stat-item" v-if="monsterDetail.rankLabel">
+            <span class="label">难度</span>
+            <span class="value">{{ monsterDetail.rankLabel }}</span>
+          </div>
+          <div class="monster-stat-item" v-if="monsterDetail.footprintW">
+            <span class="label">占地</span>
+            <span class="value">{{ monsterDetail.footprintW }}×{{ monsterDetail.footprintH }}</span>
           </div>
         </div>
         <div class="monster-drop-section">
@@ -379,6 +385,34 @@ createApp({
       this.toast = { show: true, text: text, type: type || 'error' };
       var self = this;
       setTimeout(function () { self.toast.show = false; }, 2200);
+    },
+    rankShort(rank) {
+      if (rank === 'BOSS') return 'Boss';
+      if (rank === 'ELITE') return '精英';
+      return '小怪';
+    },
+    /** 敌方：逻辑行0(前排)画在网格底部，靠近己方 */
+    enemyFormationStyle(unit) {
+      var col = (unit.slotCol != null ? unit.slotCol : 0) + 1;
+      var row = unit.slotRow != null ? unit.slotRow : 0;
+      var w = unit.footprintW || 1;
+      var h = unit.footprintH || 1;
+      var visualRow = 3 - row - h + 1;
+      return {
+        gridColumn: col + ' / span ' + w,
+        gridRow: visualRow + ' / span ' + h
+      };
+    },
+    /** 己方：逻辑行0(前排)画在网格顶部，靠近敌方 */
+    allyFormationStyle(unit) {
+      var col = (unit.slotCol != null ? unit.slotCol : 1) + 1;
+      var row = (unit.slotRow != null ? unit.slotRow : 0) + 1;
+      var w = unit.footprintW || 2;
+      var h = unit.footprintH || 1;
+      return {
+        gridColumn: col + ' / span ' + w,
+        gridRow: row + ' / span ' + h
+      };
     },
     unitClasses(unit) {
       return {

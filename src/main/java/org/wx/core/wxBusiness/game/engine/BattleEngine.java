@@ -1,5 +1,6 @@
 package org.wx.core.wxBusiness.game.engine;
 
+import org.wx.core.wxBusiness.game.entity.BattleFormation;
 import org.wx.core.wxBusiness.game.entity.BattleLog;
 import org.wx.core.wxBusiness.game.entity.BattleState;
 import org.wx.core.wxBusiness.game.entity.BattleUnit;
@@ -76,6 +77,7 @@ public class BattleEngine {
         return damage.setScale(0, RoundingMode.CEILING).intValue();
     }
 
+    /** 默认选敌：优先当前前排随机 1 个；前排无人则全体随机 */
     public static BattleUnit pickTarget(BattleState state, BattleUnit actor) {
         if (BattleUnit.SIDE_HERO.equals(actor.getSide())) {
             List<BattleUnit> monsters = state.getUnits().stream()
@@ -85,7 +87,9 @@ public class BattleEngine {
             if (monsters.isEmpty()) {
                 return null;
             }
-            return monsters.get(ThreadLocalRandom.current().nextInt(monsters.size()));
+            List<BattleUnit> front = BattleFormation.unitsOnFrontRow(monsters);
+            List<BattleUnit> pool = front.isEmpty() ? monsters : front;
+            return pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
         }
         return state.getUnits().stream()
                 .filter(u -> BattleUnit.SIDE_HERO.equals(u.getSide()))

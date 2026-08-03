@@ -22,6 +22,15 @@ public class BattleMonsterDetailVo {
 
     private Integer actionValue;
 
+    /** NORMAL / ELITE / BOSS */
+    private String rankType;
+
+    private String rankLabel;
+
+    private Integer footprintW;
+
+    private Integer footprintH;
+
     private String remark;
 
     private List<BattleMonsterDropItemVo> drops = new ArrayList<>();

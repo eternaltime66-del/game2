@@ -39,8 +39,28 @@ public class BattleUnit {
 
     private Boolean alive;
 
+    /** 站位列 0-3（左上角） */
+    private Integer slotCol;
+
+    /** 站位行 0-2（0=前排） */
+    private Integer slotRow;
+
+    /** 占地宽（列） */
+    private Integer footprintW;
+
+    /** 占地高（行） */
+    private Integer footprintH;
+
+    /** NORMAL / ELITE / BOSS；主角为 HERO */
+    private String rankType;
+
     public void initActionBar() {
         this.actionBar = 0;
+    }
+
+    public void applyFootprint(int w, int h) {
+        this.footprintW = Math.max(1, w);
+        this.footprintH = Math.max(1, h);
     }
 
     @JSONField(serialize = false, deserialize = false)

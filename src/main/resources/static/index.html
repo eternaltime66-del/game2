@@ -163,6 +163,20 @@
           <template v-else>
             <div class="prep-hero-card" v-if="hero">
               <div class="prep-equip-body">
+                <div class="prep-skill-side prep-skill-side-left">
+                  <div
+                    v-for="sb in leftSkillSlots"
+                    :key="sb.slot"
+                    class="prep-equip-slot prep-equip-slot-sm prep-skill-slot"
+                    :class="{ filled: slotFilled(sb.slot) }"
+                    @click="onEquipSlotClick(sb.slot)"
+                  >
+                    <span class="prep-equip-slot-label">{{ sb.label }}</span>
+                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
+                    <span v-else class="prep-equip-slot-empty">空</span>
+                    <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
+                  </div>
+                </div>
                 <div class="prep-equip-panel prep-equip-panel-top">
                   <div class="prep-equip-row prep-equip-row-center">
                     <div
@@ -257,6 +271,20 @@
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName(acc.slot)" class="prep-equip-slot-name">{{ slotItemName(acc.slot) }}</span>
                     </div>
+                  </div>
+                </div>
+                <div class="prep-skill-side prep-skill-side-right">
+                  <div
+                    v-for="sb in rightSkillSlots"
+                    :key="sb.slot"
+                    class="prep-equip-slot prep-equip-slot-sm prep-skill-slot"
+                    :class="{ filled: slotFilled(sb.slot) }"
+                    @click="onEquipSlotClick(sb.slot)"
+                  >
+                    <span class="prep-equip-slot-label">{{ sb.label }}</span>
+                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
+                    <span v-else class="prep-equip-slot-empty">空</span>
+                    <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
                   </div>
                 </div>
               </div>
@@ -1220,13 +1248,22 @@ createApp({
         { slot: 'ACCESSORY_2', label: '饰品2' },
         { slot: 'ACCESSORY_3', label: '饰品3' }
       ],
+      leftSkillSlots: [
+        { slot: 'SKILL_1', label: '技能1' },
+        { slot: 'SKILL_2', label: '技能2' }
+      ],
+      rightSkillSlots: [
+        { slot: 'SKILL_3', label: '技能3' },
+        { slot: 'SKILL_4', label: '技能4' }
+      ],
       tagSlotMap: {
         WEAPON: ['WEAPON'],
         ARMOR: ['ARMOR'],
         GLOVES: ['GLOVES'],
         LEGS: ['LEGS'],
         HELMET: ['HELMET'],
-        ACCESSORY: ['ACCESSORY_1', 'ACCESSORY_2', 'ACCESSORY_3']
+        ACCESSORY: ['ACCESSORY_1', 'ACCESSORY_2', 'ACCESSORY_3'],
+        SKILL: ['SKILL_1', 'SKILL_2', 'SKILL_3', 'SKILL_4']
       },
       slotLabelMap: {
         WEAPON: '武器',
@@ -1236,7 +1273,11 @@ createApp({
         HELMET: '头盔',
         ACCESSORY_1: '饰品1',
         ACCESSORY_2: '饰品2',
-        ACCESSORY_3: '饰品3'
+        ACCESSORY_3: '饰品3',
+        SKILL_1: '技能1',
+        SKILL_2: '技能2',
+        SKILL_3: '技能3',
+        SKILL_4: '技能4'
       }
     };
   },
@@ -1647,7 +1688,8 @@ createApp({
         GLOVES: 'tag-gloves',
         LEGS: 'tag-legs',
         HELMET: 'tag-helmet',
-        ACCESSORY: 'tag-accessory'
+        ACCESSORY: 'tag-accessory',
+        SKILL: 'tag-skill'
       };
       return map[code] || this.tagClass(code);
     },
@@ -1793,7 +1835,7 @@ createApp({
     },
     isEquipableItem: function (detail) {
       if (!detail || !detail.itemTagCodes) return false;
-      var equipTags = ['WEAPON', 'ARMOR', 'GLOVES', 'LEGS', 'HELMET', 'ACCESSORY'];
+      var equipTags = ['WEAPON', 'ARMOR', 'GLOVES', 'LEGS', 'HELMET', 'ACCESSORY', 'SKILL'];
       return detail.itemTagCodes.some(function (code) {
         return equipTags.indexOf(code) >= 0;
       });

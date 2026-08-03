@@ -19,7 +19,8 @@ public enum GameItemTag {
     GLOVES("护手", 3),
     LEGS("护腿", 4),
     HELMET("头盔", 5),
-    ACCESSORY("饰品", 6);
+    ACCESSORY("饰品", 6),
+    SKILL("技能", 7);
 
     private final String label;
     private final int sort;

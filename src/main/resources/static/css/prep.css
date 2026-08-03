@@ -144,6 +144,31 @@
   flex-shrink: 0;
 }
 
+.prep-skill-side {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  align-self: stretch;
+}
+
+.prep-skill-slot {
+  width: 48px;
+  min-height: 48px;
+}
+
+.prep-skill-slot-img {
+  width: 26px;
+  height: 26px;
+}
+
+.prep-skill-side .prep-equip-slot-name {
+  font-size: 9px;
+  -webkit-line-clamp: 2;
+}
+
 .prep-equip-panel {
   flex: 1;
   min-width: 0;
@@ -1301,6 +1326,12 @@
   color: #ffd43b;
   background: rgba(255, 212, 59, 0.08);
   border: 1px solid rgba(255, 212, 59, 0.22);
+}
+
+.item-tag.tag-skill {
+  color: #63e6be;
+  background: rgba(99, 230, 190, 0.08);
+  border: 1px solid rgba(99, 230, 190, 0.22);
 }
 
 html:has(.home-page),

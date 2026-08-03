@@ -367,6 +367,8 @@ public class GameTriggerV2AdminService {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
             vo.setLabel(type.getLabel());
+            vo.setNeedParam(type.needsSkillRef());
+            vo.setFlag(type.needsSkillRef() ? "SKILL_REF" : null);
             return vo;
         }).collect(Collectors.toList());
     }
@@ -376,6 +378,8 @@ public class GameTriggerV2AdminService {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
             vo.setLabel(type.getLabel());
+            vo.setNeedParam(type.needsSkillRef());
+            vo.setFlag(type.needsSkillRef() ? "SKILL_REF" : null);
             return vo;
         }).collect(Collectors.toList());
     }

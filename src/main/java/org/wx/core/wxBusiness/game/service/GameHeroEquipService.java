@@ -129,6 +129,10 @@ public class GameHeroEquipService extends WxServiceImpl<GameHeroEquipMapper, Gam
             case ACCESSORY_1 -> wrapper.set(GameHeroEquip::getAccessory1ItemId, itemId);
             case ACCESSORY_2 -> wrapper.set(GameHeroEquip::getAccessory2ItemId, itemId);
             case ACCESSORY_3 -> wrapper.set(GameHeroEquip::getAccessory3ItemId, itemId);
+            case SKILL_1 -> wrapper.set(GameHeroEquip::getSkillBadge1ItemId, itemId);
+            case SKILL_2 -> wrapper.set(GameHeroEquip::getSkillBadge2ItemId, itemId);
+            case SKILL_3 -> wrapper.set(GameHeroEquip::getSkillBadge3ItemId, itemId);
+            case SKILL_4 -> wrapper.set(GameHeroEquip::getSkillBadge4ItemId, itemId);
         }
         this.update(wrapper);
     }

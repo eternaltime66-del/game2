@@ -51,8 +51,10 @@ public class SkillExpressionService {
         if (item == null || item.getOp() == null) {
             return true;
         }
-        BigDecimal left = resolveOperand(item.getLeftKind(), item.getLeftRead(), item.getLeftConst(), reader);
-        BigDecimal right = resolveOperand(item.getRightKind(), item.getRightRead(), item.getRightConst(), reader);
+        BigDecimal left = resolveOperand(item.getLeftKind(), item.getLeftRead(), item.getLeftFilter(),
+                item.getLeftFilterRef(), item.getLeftConst(), reader);
+        BigDecimal right = resolveOperand(item.getRightKind(), item.getRightRead(), item.getRightFilter(),
+                item.getRightFilterRef(), item.getRightConst(), reader);
         if (left == null || right == null) {
             return false;
         }
@@ -125,7 +127,7 @@ public class SkillExpressionService {
         };
     }
 
-    private BigDecimal resolveOperand(String kind, String read, BigDecimal constant,
+    private BigDecimal resolveOperand(String kind, String read, String filter, String filterRef, BigDecimal constant,
                                       Function<SkillReadType, BigDecimal> reader) {
         SkillOperandKind k = SkillOperandKind.parse(kind);
         if (k == SkillOperandKind.CONST) {
@@ -135,6 +137,7 @@ public class SkillExpressionService {
         if (rt == null) {
             return null;
         }
+        // filter/filterRef 由上层 reader 扩展时使用；当前 unitReader 忽略并返回基础值
         return reader.apply(rt);
     }
 
@@ -149,7 +152,8 @@ public class SkillExpressionService {
             switch (kind) {
                 case "CONST" -> output.add(token.getValue() != null ? token.getValue().toPlainString() : "0");
                 case "READ" -> {
-                    BigDecimal v = resolveOperand("READ", token.getRead(), null, reader);
+                    BigDecimal v = resolveOperand("READ", token.getRead(), token.getFilter(), token.getFilterRef(),
+                            null, reader);
                     output.add(v != null ? v.toPlainString() : "0");
                 }
                 case "LPAREN" -> ops.push("(");

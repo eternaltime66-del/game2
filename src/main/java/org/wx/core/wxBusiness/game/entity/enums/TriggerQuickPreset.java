@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public enum TriggerQuickPreset {
 
     ON_HIT_BY_SKILL("每次受到技能", SkillReadType.ACCUM_SKILL_HIT, SkillScopeFilter.ANY_TRIGGER),
-    ON_CAST_SKILL("每释放技能", SkillReadType.ACCUM_SKILL_CAST, SkillScopeFilter.ANY_TRIGGER),
+    ON_CAST_SKILL("每释放技能", SkillReadType.ACCUM_SKILL_CAST, SkillScopeFilter.ANY_SKILL),
     ACTION_VALUE_FULL("能量值满", SkillReadType.CHAR_CUR_ACTION, null);
 
     private final String label;

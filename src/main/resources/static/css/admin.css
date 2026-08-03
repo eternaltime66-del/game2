@@ -166,6 +166,21 @@ body.admin-body .bg-glow {
   font-size: 12px;
 }
 
+.sidebar-nav-sub-group.nested {
+  margin: 2px 0 6px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav-sub-group.nested > .sidebar-nav-sub-group-label {
+  padding-left: 18px;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.sidebar-nav-sub-group.nested .sidebar-nav-sub-item {
+  padding-left: 34px;
+}
+
 .admin-breadcrumb {
   display: flex;
   align-items: center;
@@ -1007,19 +1022,44 @@ body.admin-body .bg-glow {
 }
 
 .formula-param-input {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+  width: 100%;
 }
 
-.formula-param-input .admin-select {
-  flex: 1;
+.formula-param-input-stack {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.formula-param-input-stack .formula-add-btn {
+  justify-self: start;
+}
+
+.formula-param-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.formula-param-input .admin-select,
+.formula-param-select .admin-select {
+  width: 100%;
   min-width: 0;
 }
 
 .formula-param-input input[type="number"] {
-  flex: 1;
+  width: 100% !important;
   min-width: 0;
+}
+
+.formula-add-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 64px;
+  height: 40px;
+  padding: 0 14px;
 }
 
 /* ========== 自定义下拉 AdminSelect ========== */

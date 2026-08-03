@@ -9,7 +9,7 @@ public enum SkillScopeFilter {
 
     ANY_SKILL("任意技能"),
     ANY_EQUIP_TRIGGER("任意装备扳机技能"),
-    ANY_BASIC_ATTACK("任意普攻（含空手）"),
+    ANY_BASIC_ATTACK("任意普攻（含装备与空手）"),
     SPECIFIC_EQUIP_TRIGGER("指定装备扳机技能"),
     ANY_PERSON_TRIGGER("任意人物扳机技能"),
     SPECIFIC_PERSON_TRIGGER("指定人物扳机技能"),
@@ -26,6 +26,14 @@ public enum SkillScopeFilter {
 
     public String getLabel() {
         return label;
+    }
+
+    /** 是否需要再选一个具体技能 ID */
+    public boolean needsSkillRef() {
+        return this == SPECIFIC_EQUIP_TRIGGER
+                || this == SPECIFIC_PERSON_TRIGGER
+                || this == SPECIFIC_TRIGGER
+                || this == SPECIFIC_PERSON_SKILL;
     }
 
     public static SkillScopeFilter parse(String code) {

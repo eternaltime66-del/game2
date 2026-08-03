@@ -26,6 +26,9 @@ public class GameHeroEquip extends WxBaseEntity<GameHeroEquip> {
 
     private String weaponItemId;
 
+    /** 消耗型武器剩余次数 */
+    private Integer weaponUsesLeft;
+
     private String armorItemId;
 
     private String glovesItemId;

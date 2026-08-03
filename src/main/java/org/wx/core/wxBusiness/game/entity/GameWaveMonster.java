@@ -47,4 +47,16 @@ public class GameWaveMonster extends WxBaseEntity<GameWaveMonster> {
 
     @TableField(exist = false)
     private Integer actionValue;
+
+    @TableField(exist = false)
+    private String rankType;
+
+    @TableField(exist = false)
+    private String rankLabel;
+
+    @TableField(exist = false)
+    private Integer footprintW;
+
+    @TableField(exist = false)
+    private Integer footprintH;
 }

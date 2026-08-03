@@ -121,6 +121,40 @@ public final class BattleFormation {
     }
 
     /**
+     * 对称优先落位：前排优先，同排优先居中（小体型更靠前由调用方排序保证）。
+     */
+    public static int[] findSymmetricFit(boolean[][] occupied, int w, int h) {
+        List<Integer> colOrder = centeredColOrder(w);
+        for (int row = 0; row <= ROWS - h; row++) {
+            for (int col : colOrder) {
+                if (!overlaps(occupied, col, row, w, h)) {
+                    return new int[]{col, row};
+                }
+            }
+        }
+        return findFirstFit(occupied, w, h);
+    }
+
+    /** 以棋盘中线为优先的列起点顺序 */
+    public static List<Integer> centeredColOrder(int w) {
+        int maxCol = COLS - Math.max(1, w);
+        int ideal = Math.max(0, (COLS - w) / 2);
+        List<Integer> order = new ArrayList<>();
+        order.add(ideal);
+        for (int d = 1; d <= COLS; d++) {
+            int left = ideal - d;
+            int right = ideal + d;
+            if (left >= 0 && left <= maxCol) {
+                order.add(left);
+            }
+            if (right >= 0 && right <= maxCol && right != left) {
+                order.add(right);
+            }
+        }
+        return order;
+    }
+
+    /**
      * 前排：从行0(1排)往行2(3排)扫，第一排有存活单位的格子即为当前前排。
      */
     public static List<BattleUnit> unitsOnFrontRow(List<BattleUnit> units) {

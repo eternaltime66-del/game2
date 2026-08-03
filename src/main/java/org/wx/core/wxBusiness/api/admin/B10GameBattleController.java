@@ -102,6 +102,23 @@ public class B10GameBattleController {
         return WxResult.success();
     }
 
+    @PostMapping("/wave-monster/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> waveMonsterRemove(@RequestBody CommonIdVo vo) {
+        gameBattleService.removeWaveMonster(vo.stringId());
+        return WxResult.success();
+    }
+
+    @PostMapping("/wave-monster/auto-place")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<GameWaveMonster>> waveMonsterAutoPlace(
+            @ParamCheck(msg = "波次ID") String waveId
+    ) {
+        return WxResult.success(gameBattleService.autoPlaceWaveMonsters(waveId));
+    }
+
     @PostMapping("/stage/detail")
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.ADMIN)

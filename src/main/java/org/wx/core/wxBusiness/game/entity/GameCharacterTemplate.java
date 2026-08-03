@@ -7,12 +7,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.wx.core.wxBase.base.WxBaseEntity;
 
-import java.math.BigDecimal;
-
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("app_game_passive_skill")
-public class GamePassiveSkill extends WxBaseEntity<GamePassiveSkill> {
+@TableName("app_game_character_template")
+public class GameCharacterTemplate extends WxBaseEntity<GameCharacterTemplate> {
+
+    public static final String CODE_PROTAGONIST = "PROTAGONIST";
 
     @TableId(type = IdType.INPUT)
     private String id;
@@ -21,18 +21,15 @@ public class GamePassiveSkill extends WxBaseEntity<GamePassiveSkill> {
 
     private String name;
 
-    /** NUMERIC / MECHANISM */
-    private String passiveKind;
+    private Integer maxHp;
 
-    private String conditionType;
+    private Integer attack;
 
-    private String conditionEquipItemId;
+    private Integer defense;
 
-    private String effectType;
+    private Integer actionValue;
 
-    private BigDecimal effectValue;
-
-    private Integer sort;
+    private Integer templateVersion;
 
     private Integer enabled;
 

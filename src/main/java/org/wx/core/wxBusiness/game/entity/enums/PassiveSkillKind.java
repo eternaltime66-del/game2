@@ -1,19 +1,13 @@
 package org.wx.core.wxBusiness.game.entity.enums;
 
-import lombok.Getter;
-
-@Getter
-public enum FinishedSkillCatL1 {
-
-    GENERAL("通用"),
-    EQUIP("装备"),
-    MONSTER("怪物"),
-    PROFESSION("职业"),
-    CHARACTER("角色");
+/** 被动技能大类 */
+public enum PassiveSkillKind {
+    NUMERIC("数值型"),
+    MECHANISM("机制型");
 
     private final String label;
 
-    FinishedSkillCatL1(String label) {
+    PassiveSkillKind(String label) {
         this.label = label;
     }
 
@@ -21,14 +15,14 @@ public enum FinishedSkillCatL1 {
         return label;
     }
 
-    public static FinishedSkillCatL1 parse(String code) {
+    public static PassiveSkillKind parse(String code) {
         if (code == null || code.isBlank()) {
-            return GENERAL;
+            return NUMERIC;
         }
         try {
             return valueOf(code.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {
-            return GENERAL;
+            return NUMERIC;
         }
     }
 }

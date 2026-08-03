@@ -32,6 +32,12 @@ public class GameHero extends WxBaseEntity<GameHero> {
 
     private String name;
 
+    /** 角色模板编码，默认 PROTAGONIST */
+    private String templateCode;
+
+    /** 已同步的模板版本 */
+    private Integer templateVersion;
+
     private Integer hp;
 
     private Integer maxHp;
@@ -55,6 +61,8 @@ public class GameHero extends WxBaseEntity<GameHero> {
         hero.setId(WordUnit.randomKey(10, 1));
         hero.setUid(uid);
         hero.setName(DEFAULT_NAME);
+        hero.setTemplateCode(GameCharacterTemplate.CODE_PROTAGONIST);
+        hero.setTemplateVersion(0);
         hero.setMaxHp(DEFAULT_MAX_HP);
         hero.setHp(DEFAULT_MAX_HP);
         hero.setAttack(DEFAULT_ATTACK);

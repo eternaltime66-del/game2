@@ -72,6 +72,17 @@ public class GameHeroEquipService extends WxServiceImpl<GameHeroEquipMapper, Gam
 
         slot.setItemId(equip, itemId);
         persistSlotItemId(equip, slot, itemId);
+        if (slot == HeroEquipSlot.WEAPON) {
+            GameWeapon weapon = gameWeaponService.getByItemId(itemId);
+            Integer uses = null;
+            if (weapon != null && weapon.getConsumable() != null && weapon.getConsumable() == 1) {
+                uses = weapon.getMaxUses() != null && weapon.getMaxUses() > 0 ? weapon.getMaxUses() : 1;
+            }
+            equip.setWeaponUsesLeft(uses);
+            this.update(updateWrapper()
+                    .eq(GameHeroEquip::getId, equip.getId())
+                    .set(GameHeroEquip::getWeaponUsesLeft, uses));
+        }
         return equip;
     }
 
@@ -93,6 +104,12 @@ public class GameHeroEquipService extends WxServiceImpl<GameHeroEquipMapper, Gam
         String itemName = item != null ? item.getName() : itemId;
 
         slot.setItemId(equip, null);
+        if (slot == HeroEquipSlot.WEAPON) {
+            equip.setWeaponUsesLeft(null);
+            this.update(updateWrapper()
+                    .eq(GameHeroEquip::getId, equip.getId())
+                    .set(GameHeroEquip::getWeaponUsesLeft, null));
+        }
         int beforeQty = battleBagService.grantQuantity(uid, itemId, 1);
         inventoryService.saveItemLog(uid, itemId, itemName, 1, beforeQty, beforeQty + 1,
                 GameItemLog.REASON_UNEQUIP, slot.name(), "从" + slot.getLabel() + "卸下");

@@ -91,7 +91,7 @@ createApp({
   },
   mounted() {
     if (GameApi.getToken()) {
-      location.href = APP_CONFIG.homePage;
+      location.href = APP_CONFIG.loadingPage || '/loading.html';
     }
   },
   beforeUnmount() {
@@ -147,7 +147,7 @@ createApp({
           .then((res) => {
             GameApi.saveToken(res.token);
             this.showToast('登录成功', 'success');
-            setTimeout(() => { location.href = APP_CONFIG.homePage; }, 500);
+            setTimeout(() => { location.href = APP_CONFIG.loadingPage || '/loading.html'; }, 500);
           })
           .catch((err) => this.showToast(err.message))
           .finally(() => { this.loading = false; });
@@ -163,7 +163,7 @@ createApp({
         .then((res) => {
           GameApi.saveToken(res.token);
           this.showToast('登录成功', 'success');
-          setTimeout(() => { location.href = APP_CONFIG.homePage; }, 500);
+          setTimeout(() => { location.href = APP_CONFIG.loadingPage || '/loading.html'; }, 500);
         })
         .catch((err) => this.showToast(err.message))
         .finally(() => { this.loading = false; });

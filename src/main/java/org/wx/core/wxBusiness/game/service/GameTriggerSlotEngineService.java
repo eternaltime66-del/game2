@@ -25,6 +25,8 @@ public class GameTriggerSlotEngineService {
     @Lazy
     @Resource
     private FinishedSkillExecutorService finishedSkillExecutorService;
+    @Resource
+    private ConsumableWeaponService consumableWeaponService;
 
     public List<BattleLog> onActionValueFull(BattleState state, BattleUnit unit) {
         TriggerEventContext ctx = new TriggerEventContext();
@@ -35,7 +37,9 @@ public class GameTriggerSlotEngineService {
     private List<BattleLog> fireActionValueFull(BattleState state, BattleUnit unit, TriggerEventContext ctx) {
         if (BattleUnit.SIDE_HERO.equals(unit.getSide())) {
             String skillId = basicAttackService.resolveSkillId(state.getHeroEquippedItemIds());
-            return castFinishedSkill(state, unit, skillId, ctx);
+            List<BattleLog> logs = new ArrayList<>(castFinishedSkill(state, unit, skillId, ctx));
+            logs.addAll(consumableWeaponService.afterBasicAttack(state));
+            return logs;
         }
         if (BattleUnit.SIDE_MONSTER.equals(unit.getSide())) {
             String skillId = basicAttackService.resolveMonsterSkillId(unit.getMonsterId());
@@ -292,7 +296,8 @@ public class GameTriggerSlotEngineService {
     private TriggerBinding toBinding(GameTriggerSlot slot) {
         return new TriggerBinding(
                 slot.getTriggerSlotType(), slot.getTriggerParam(), slot.getTriggerRefId(),
-                slot.getFinishedSkillId(), slot.getSort(), slot.getId(), slot.getMaxCastCount());
+                slot.getFinishedSkillId(), slot.getSort(), slot.getId(), slot.getMaxCastCount(),
+                slot.getItemId());
     }
 
     private List<String> listEquippedItemIds(BattleState state, BattleUnit unit) {

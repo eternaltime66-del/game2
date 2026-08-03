@@ -58,6 +58,8 @@ public class PveBattleService {
     private MonsterCombatService monsterCombatService;
     @Resource
     private BattleFormationService battleFormationService;
+    @Resource
+    private ConsumableWeaponService consumableWeaponService;
 
     public BattleState startBattle(String uid, String stageId) {
         GameHero hero = gameHeroService.getOrInitHero(uid);
@@ -109,6 +111,9 @@ public class PveBattleService {
     public BattleState skipBattle(String uid, String battleId) {
         requireBattle(uid, battleId);
         BattleState finalState = awaitFinalState(uid, battleId);
+        if (finalState != null) {
+            hydrateFormation(finalState);
+        }
         if (BattleState.STATUS_WIN.equals(finalState.getStatus())) {
             applyLootGrant(uid, finalState);
         }
@@ -414,6 +419,7 @@ public class PveBattleService {
         unit.setAlive(true);
         unit.initActionBar();
         state.setHeroEquippedItemIds(gameHeroEquipService.getOrInit(state.getUid()).listEquippedItemIds());
+        consumableWeaponService.initBattleState(state);
         applyHeroWeaponRatio(state, unit);
         battleFormationService.placeHero(unit, hero);
         state.getUnits().add(unit);
@@ -488,7 +494,58 @@ public class PveBattleService {
         if (state != null && state.getTriggerCounters() == null) {
             state.setTriggerCounters(new BattleTriggerCounters());
         }
+        if (state != null && hydrateFormation(state)) {
+            // 旧战局补站位后写回，避免前端空白格 / 前后排失效
+            Wx.RedisFactory.setStrBuyHour(redisKey(uid), JSON.toJSONString(state), REDIS_HOURS);
+        }
         return state;
+    }
+
+    /**
+     * 兼容旧 Redis 战局：缺站位/占地时按当前规则补齐，不挪动已有合法坐标。
+     * @return 是否改动了单位数据
+     */
+    private boolean hydrateFormation(BattleState state) {
+        if (state == null || state.getUnits() == null || state.getUnits().isEmpty()) {
+            return false;
+        }
+        boolean dirty = false;
+        GameHero heroTemplate = null;
+        for (BattleUnit unit : state.getUnits()) {
+            if (unit == null) {
+                continue;
+            }
+            if (BattleUnit.SIDE_HERO.equals(unit.getSide())) {
+                boolean missing = unit.getSlotCol() == null || unit.getSlotRow() == null
+                        || unit.getFootprintW() == null || unit.getFootprintH() == null;
+                if (missing) {
+                    if (heroTemplate == null) {
+                        heroTemplate = state.getUid() != null
+                                ? gameHeroService.getOrInitHero(state.getUid()) : null;
+                    }
+                    battleFormationService.placeHero(unit, heroTemplate);
+                    dirty = true;
+                }
+                continue;
+            }
+            if (unit.getRankType() == null || unit.getRankType().isBlank()
+                    || unit.getFootprintW() == null || unit.getFootprintH() == null) {
+                GameMonster template = unit.getMonsterId() != null
+                        ? gameMonsterService.getById(unit.getMonsterId()) : null;
+                battleFormationService.applyMonsterTemplate(unit, template);
+                dirty = true;
+            }
+        }
+        List<BattleUnit> monsters = state.getUnits().stream()
+                .filter(u -> u != null && BattleUnit.SIDE_MONSTER.equals(u.getSide()))
+                .collect(Collectors.toList());
+        boolean anyMonsterMissingSlot = monsters.stream()
+                .anyMatch(u -> u.getSlotCol() == null || u.getSlotRow() == null);
+        if (anyMonsterMissingSlot && !monsters.isEmpty()) {
+            battleFormationService.placeMonsters(monsters);
+            dirty = true;
+        }
+        return dirty;
     }
 
     /** 兼容 RedisTemplate 二次序列化后的旧数据 */

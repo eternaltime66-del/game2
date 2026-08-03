@@ -25,4 +25,7 @@ public class TriggerBinding {
 
     /** 装备扳机槽单场释放上限，null=无限 */
     private Integer maxCastCount;
+
+    /** 来源物品 ID（怪物扳机为 null） */
+    private String sourceItemId;
 }

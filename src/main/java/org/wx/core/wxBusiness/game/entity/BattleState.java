@@ -52,6 +52,12 @@ public class BattleState {
     /** 主角已装备物品 ID（扳机槽来源） */
     private List<String> heroEquippedItemIds = new ArrayList<>();
 
+    /** 本场消耗型武器物品 ID（非消耗型为 null） */
+    private String consumableWeaponItemId;
+
+    /** 消耗型武器剩余使用次数 */
+    private Integer weaponUsesLeft;
+
     @JSONField(serialize = false, deserialize = false)
     public boolean isRunning() {
         return STATUS_RUNNING.equals(status);

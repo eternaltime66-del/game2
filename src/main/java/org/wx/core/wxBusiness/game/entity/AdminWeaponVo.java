@@ -28,6 +28,12 @@ public class AdminWeaponVo {
 
     private BigDecimal damageRatio;
 
+    /** 是否消耗型武器 */
+    private Integer consumable;
+
+    /** 最大使用次数 */
+    private Integer maxUses;
+
     private Integer enabled;
 
     private String remark;

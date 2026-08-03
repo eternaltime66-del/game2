@@ -38,6 +38,60 @@
       <div class="sidebar-brand">Game2 后台</div>
       <nav class="sidebar-nav">
         <button v-for="t in navTabs" :key="t.key" type="button" class="sidebar-nav-item" :class="{ active: tab === t.key }" @click="switchTab(t.key)">{{ t.label }}</button>
+        <div class="sidebar-nav-group" :class="{ open: skillMenuOpen, 'has-active': isSkillTabActive }">
+          <button type="button" class="sidebar-nav-group-head" @click="toggleSkillMenu">
+            <span>技能管理</span>
+            <span class="sidebar-nav-chevron">{{ skillMenuOpen ? '▾' : '▸' }}</span>
+          </button>
+          <div v-show="skillMenuOpen" class="sidebar-nav-sub">
+            <div class="sidebar-nav-sub-group">
+              <div class="sidebar-nav-sub-group-label">战斗技能</div>
+              <button
+                v-for="t in battleSkillTabs"
+                :key="t.key"
+                type="button"
+                class="sidebar-nav-sub-item"
+                :class="{ active: tab === t.key }"
+                @click="switchTab(t.key)"
+              >{{ t.label }}</button>
+            </div>
+            <div class="sidebar-nav-sub-group">
+              <div class="sidebar-nav-sub-group-label">被动技能</div>
+              <button
+                v-for="t in passiveSkillTabs"
+                :key="t.key"
+                type="button"
+                class="sidebar-nav-sub-item"
+                :class="{ active: tab === t.key }"
+                @click="switchTab(t.key)"
+              >{{ t.label }}</button>
+            </div>
+            <button
+              v-for="t in skillExtraTabs"
+              :key="t.key"
+              type="button"
+              class="sidebar-nav-sub-item"
+              :class="{ active: tab === t.key || (t.key === 'profession' && tab === 'professionSkill') }"
+              @click="switchTab(t.key)"
+            >{{ t.label }}</button>
+          </div>
+        </div>
+        <div class="sidebar-nav-group" :class="{ open: characterMenuOpen, 'has-active': isCharacterTabActive }">
+          <button type="button" class="sidebar-nav-group-head" @click="toggleCharacterMenu">
+            <span>角色管理</span>
+            <span class="sidebar-nav-chevron">{{ characterMenuOpen ? '▾' : '▸' }}</span>
+          </button>
+          <div v-show="characterMenuOpen" class="sidebar-nav-sub">
+            <button
+              v-for="t in characterTabs"
+              :key="t.key"
+              type="button"
+              class="sidebar-nav-sub-item"
+              :class="{ active: tab === t.key || (t.key === 'playerCharacter' && tab === 'characterSkill') }"
+              @click="switchTab(t.key)"
+            >{{ t.label }}</button>
+          </div>
+        </div>
         <div class="sidebar-nav-group" :class="{ open: equipMenuOpen, 'has-active': isEquipTabActive }">
           <button type="button" class="sidebar-nav-group-head" @click="toggleEquipMenu">
             <span>装备管理</span>
@@ -227,13 +281,77 @@
               <button type="button" class="btn-mini" @click.stop="editWave(wave.wave)">编辑</button>
             </div>
             <div class="wave-card-body" v-if="selectedWaveId === wave.wave.id">
-              <div class="wave-monster-row" v-for="wm in wave.monsters" :key="wm.id">
-                <span>{{ wm.monsterName || wm.monsterId }} × {{ wm.quantity }}
-                  <span class="muted" v-if="wm.slotCol != null && wm.slotRow != null"> · {{ (wm.slotRow||0)+1 }}{{ ['A','B','C','D'][wm.slotCol] || wm.slotCol }}</span>
-                  <span class="muted" v-else> · 自动站位</span>
-                </span>
+              <div class="wm-toolbar">
+                <div class="wm-mode-tabs">
+                  <button type="button" class="btn-mini" :class="{ active: wavePlaceMode === 'precise' }" @click="wavePlaceMode = 'precise'">精确调整</button>
+                  <button type="button" class="btn-mini" :class="{ active: wavePlaceMode === 'auto' }" @click="wavePlaceMode = 'auto'">一键布置</button>
+                </div>
+                <button
+                  v-if="wavePlaceMode === 'auto'"
+                  type="button"
+                  class="btn-primary btn-mini"
+                  :disabled="wmActing"
+                  @click="autoPlaceWave(wave.wave.id)"
+                >执行对称布置</button>
               </div>
-              <div v-if="!wave.monsters.length" class="empty-hint">本波暂无怪物</div>
+              <p class="wm-hint" v-if="wavePlaceMode === 'precise'">按住怪物拖到格子松手落位；右上角红叉移除</p>
+              <p class="wm-hint" v-else>按占地从小到大靠前，同排优先居中对称；会把「数量>1」拆成单体</p>
+
+              <div
+                class="wm-board"
+                :ref="'wmBoard_' + wave.wave.id"
+                @pointermove="onWmPointerMove($event, wave)"
+                @pointerup="onWmPointerUp($event, wave)"
+                @pointercancel="onWmPointerUp($event, wave)"
+              >
+                <div class="wm-cells" aria-hidden="true">
+                  <div
+                    v-for="n in 12"
+                    :key="'wmcell-' + wave.wave.id + '-' + n"
+                    class="wm-cell"
+                    :class="{ hot: isWmCellHot(n - 1, wave) }"
+                  ></div>
+                </div>
+                <div class="wm-units">
+                  <div
+                    v-for="wm in wave.monsters"
+                    :key="wm.id"
+                    class="wm-unit-wrap"
+                    :class="[
+                      'rank-' + (wm.rankType || 'NORMAL').toLowerCase(),
+                      { dragging: wmDrag && wmDrag.id === wm.id, unplaced: wm.slotCol == null || wm.slotRow == null }
+                    ]"
+                    :style="wmUnitStyle(wm)"
+                    @pointerdown.prevent="onWmPointerDown($event, wm, wave)"
+                    @pointermove="onWmPointerMove($event, wave)"
+                    @pointerup="onWmPointerUp($event, wave)"
+                    @pointercancel="onWmPointerUp($event, wave)"
+                  >
+                    <button type="button" class="wm-remove" title="移除" @pointerdown.stop @click.stop="removeWaveMonster(wm, wave.wave.id)">×</button>
+                    <div class="wm-unit">
+                      <div class="wm-unit-name">{{ wm.monsterName || wm.monsterId }}</div>
+                      <div class="wm-unit-meta">{{ (wm.footprintW || 1) }}×{{ (wm.footprintH || 1) }} · {{ monsterRankLabel(wm.rankType) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wm-unplaced" v-if="unplacedWaveMonsters(wave).length">
+                <span class="muted">未落位（拖入上方格子）：</span>
+                <div
+                  v-for="wm in unplacedWaveMonsters(wave)"
+                  :key="'up-' + wm.id"
+                  class="wm-chip"
+                  @pointerdown.prevent="onWmUnplacedDown($event, wm, wave)"
+                  @pointermove="onWmPointerMove($event, wave)"
+                  @pointerup="onWmPointerUp($event, wave)"
+                  @pointercancel="onWmPointerUp($event, wave)"
+                >
+                  <button type="button" class="wm-remove" title="移除" @pointerdown.stop @click.stop="removeWaveMonster(wm, wave.wave.id)">×</button>
+                  {{ wm.monsterName || wm.monsterId }}
+                </div>
+              </div>
+
               <div class="wave-add-row">
                 <div class="field" style="margin:0">
                   <label>添加怪物</label>
@@ -243,15 +361,7 @@
                   <label>数量</label>
                   <input v-model.number="waveMonsterDraft.quantity" type="number" min="1">
                 </div>
-                <div class="field" style="margin:0">
-                  <label>列 0=A … 3=D</label>
-                  <input v-model.number="waveMonsterDraft.slotCol" type="number" min="0" max="3" placeholder="自动">
-                </div>
-                <div class="field" style="margin:0">
-                  <label>行 0=1前 … 2=3后</label>
-                  <input v-model.number="waveMonsterDraft.slotRow" type="number" min="0" max="2" placeholder="自动">
-                </div>
-                <button type="button" class="btn-primary btn-mini" @click="addMonsterToSelectedWave(wave.wave.id)">添加</button>
+                <button type="button" class="btn-primary btn-mini" :disabled="wmActing" @click="addMonsterToSelectedWave(wave.wave.id)">添加</button>
               </div>
             </div>
           </div>
@@ -395,7 +505,7 @@
       <div class="level-tree-compact">先保存武器属性，再自动同步 app_game_item（标签 WEAPON）</div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>武器ID</th><th>物品ID</th><th>名称</th><th>攻击</th><th>行动值</th><th>伤害比</th><th>配方</th><th class="col-actions">操作</th></tr></thead>
+          <thead><tr><th>武器ID</th><th>物品ID</th><th>名称</th><th>攻击</th><th>行动值</th><th>伤害比</th><th>消耗型</th><th>配方</th><th class="col-actions">操作</th></tr></thead>
           <tbody>
             <tr v-for="w in weapons" :key="w.id">
               <td class="col-id">{{ w.id }}</td>
@@ -404,6 +514,7 @@
               <td>{{ w.attack }}</td>
               <td>{{ w.baseActionValue }}</td>
               <td>{{ w.damageRatio }}</td>
+              <td>{{ w.consumable ? ('是 · ' + (w.maxUses != null ? w.maxUses : '—') + '次') : '否' }}</td>
               <td class="col-recipe">{{ recipeSummaryForItem(w.itemId) }}</td>
               <td class="col-actions">
                 <button type="button" class="btn-mini" @click="openDrawer('weapon', w)">编辑</button>
@@ -411,7 +522,7 @@
                 <button type="button" class="btn-mini danger" @click="removeWeapon(w)">删除</button>
               </td>
             </tr>
-            <tr v-if="!weapons.length"><td colspan="8" class="empty-hint">暂无武器</td></tr>
+            <tr v-if="!weapons.length"><td colspan="9" class="empty-hint">暂无武器</td></tr>
           </tbody>
         </table>
       </div>
@@ -482,17 +593,21 @@
       </div>
     </div>
 
-    <div v-if="tab === 'finishedSkill'" class="admin-panel">
+    <div v-if="isFinishedSkillTab" class="admin-panel">
       <div class="panel-toolbar">
-        <h3>主动技能</h3>
+        <h3>{{ finishedSkillPanelTitle }}</h3>
         <div class="panel-toolbar-actions">
           <button class="btn-primary btn-mini" @click="openDrawer('finishedSkill')">+ 新增</button>
           <button class="btn-mini secondary" @click="loadFinishedSkills">刷新</button>
         </div>
       </div>
+      <div v-if="tab === 'characterSkill' && selectedCharacterTemplate" class="admin-breadcrumb">
+        <button type="button" @click="switchTab('playerCharacter')">← 玩家角色</button>
+        <span>/ {{ selectedCharacterTemplate.name || selectedCharacterTemplate.code }} · 专属技能</span>
+      </div>
       <div class="level-tree-compact">组合高级效果 + 目标槽，可被装备扳机槽引用</div>
       <div class="form-grid" style="margin-bottom:12px;max-width:720px">
-        <div class="field"><label>分类1</label>
+        <div class="field" v-if="!finishedSkillCatL1Locked"><label>分类1</label>
           <admin-select v-model="finishedSkillFilter.catL1" :options="categoryMeta.catL1" value-key="code" label-key="label" placeholder="全部" clearable searchable @change="loadFinishedSkills" />
         </div>
         <div class="field"><label>分类2</label>
@@ -504,7 +619,7 @@
         <div class="field"><label>分类4</label>
           <admin-select v-model="finishedSkillFilter.catL4" :options="categoryMeta.catL4" value-key="code" label-key="label" placeholder="全部" clearable searchable @change="loadFinishedSkills" />
         </div>
-        <div class="field skill-filter-quick">
+        <div class="field skill-filter-quick" v-if="tab === 'generalSkill' || !finishedSkillCatL1Locked">
           <label>快捷</label>
           <button type="button" class="btn-mini secondary" @click="filterFinishedSkillsGeneralOnly">仅通用 ×4</button>
         </div>
@@ -525,15 +640,15 @@
                 <button class="btn-mini danger" @click="removeFinishedSkill(s)">删除</button>
               </td>
             </tr>
-            <tr v-if="!finishedSkills.length"><td colspan="7" class="empty-hint">暂无主动技能</td></tr>
+            <tr v-if="!finishedSkills.length"><td colspan="7" class="empty-hint">暂无{{ finishedSkillPanelTitle }}</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <div v-if="tab === 'passiveSkill'" class="admin-panel">
+    <div v-if="isPassiveSkillTab" class="admin-panel">
       <div class="panel-toolbar">
-        <h3>被动技能</h3>
+        <h3>{{ passiveSkillPanelTitle }}</h3>
         <div class="panel-toolbar-actions">
           <button class="btn-primary btn-mini" @click="openDrawer('passiveSkill')">+ 新增</button>
           <button class="btn-mini secondary" @click="loadPassiveSkills">刷新</button>
@@ -542,12 +657,13 @@
       <div class="level-tree-compact">被动效果由技能徽章授予；可设置生效条件（如全身装备某件装备）</div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>条件</th><th>效果</th><th>数值</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>类型</th><th>条件</th><th>效果</th><th>数值</th><th>启用</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in passiveSkills" :key="s.id">
               <td class="col-id">{{ s.id }}</td>
               <td>{{ s.code }}</td>
               <td>{{ s.name }}</td>
+              <td>{{ s.passiveKindLabel || s.passiveKind || '—' }}</td>
               <td>{{ s.conditionTypeLabel || s.conditionType }}{{ s.conditionEquipItemName ? ' · ' + s.conditionEquipItemName : '' }}</td>
               <td>{{ s.effectTypeLabel || s.effectType }}</td>
               <td>{{ s.effectValue }}</td>
@@ -557,7 +673,7 @@
                 <button class="btn-mini danger" @click="removePassiveSkill(s)">删除</button>
               </td>
             </tr>
-            <tr v-if="!passiveSkills.length"><td colspan="8" class="empty-hint">暂无被动技能</td></tr>
+            <tr v-if="!passiveSkills.length"><td colspan="9" class="empty-hint">暂无被动技能</td></tr>
           </tbody>
         </table>
       </div>
@@ -588,6 +704,100 @@
               </td>
             </tr>
             <tr v-if="!skillBadges.length"><td colspan="6" class="empty-hint">暂无技能徽章</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'profession'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>职业技能 · 职业列表</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" @click="openDrawer('profession')">+ 新增</button>
+          <button class="btn-mini secondary" @click="loadProfessions">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">管理职业定义，再进入「技能管理」绑定技能物品</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>编码</th><th>名称</th><th>技能数</th><th>启用</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="p in professions" :key="p.id">
+              <td>{{ p.code }}</td>
+              <td>{{ p.name }}</td>
+              <td>{{ p.skillCount != null ? p.skillCount : 0 }}</td>
+              <td>{{ p.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button class="btn-mini secondary" @click="openProfessionSkills(p)">技能管理</button>
+                <button class="btn-mini" @click="openDrawer('profession', p)">编辑</button>
+                <button class="btn-mini danger" @click="removeProfession(p)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!professions.length"><td colspan="5" class="empty-hint">暂无职业</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'professionSkill'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>职业技能绑定</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" @click="openDrawer('professionSkill')">+ 绑定技能</button>
+          <button class="btn-mini secondary" @click="loadProfessionSkills">刷新</button>
+        </div>
+      </div>
+      <div class="admin-breadcrumb">
+        <button type="button" @click="switchTab('profession')">← 职业列表</button>
+        <span v-if="selectedProfession">/ {{ selectedProfession.name || selectedProfession.code }}</span>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>物品ID</th><th>名称</th><th>排序</th><th>启用</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="s in professionSkills" :key="s.id">
+              <td class="col-id">{{ s.itemId }}</td>
+              <td>{{ s.itemName || s.itemCode || '—' }}</td>
+              <td>{{ s.sort }}</td>
+              <td>{{ s.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button class="btn-mini" @click="openDrawer('professionSkill', s)">编辑</button>
+                <button class="btn-mini danger" @click="removeProfessionSkill(s)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!professionSkills.length"><td colspan="5" class="empty-hint">暂无绑定技能</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'playerCharacter'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>玩家角色模板</h3>
+        <div class="panel-toolbar-actions">
+          <button class="btn-primary btn-mini" @click="openDrawer('characterTemplate')">+ 新增</button>
+          <button class="btn-mini secondary" @click="loadCharacterTemplates">刷新</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">配置角色基础属性；「专属技能」进入 CHARACTER 分类主动技能</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>编码</th><th>名称</th><th>生命</th><th>攻击</th><th>防御</th><th>行动值</th><th>启用</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="c in characterTemplates" :key="c.id">
+              <td>{{ c.code }}</td>
+              <td>{{ c.name }}</td>
+              <td>{{ c.maxHp }}</td>
+              <td>{{ c.attack }}</td>
+              <td>{{ c.defense }}</td>
+              <td>{{ c.actionValue }}</td>
+              <td>{{ c.enabled ? '是' : '否' }}</td>
+              <td class="col-actions">
+                <button class="btn-mini secondary" @click="openCharacterSkills(c)">专属技能</button>
+                <button class="btn-mini" @click="openDrawer('characterTemplate', c)">编辑</button>
+              </td>
+            </tr>
+            <tr v-if="!characterTemplates.length"><td colspan="8" class="empty-hint">暂无角色模板</td></tr>
           </tbody>
         </table>
       </div>
@@ -636,6 +846,10 @@
               <div class="field"><label>攻击力</label><input v-model.number="weaponForm.attack" type="number"></div>
               <div class="field"><label>基础行动值</label><input v-model.number="weaponForm.baseActionValue" type="number"></div>
               <div class="field"><label>伤害比例</label><input v-model.number="weaponForm.damageRatio" type="number" step="0.01"></div>
+              <div class="field"><label>消耗型</label>
+                <admin-select v-model="weaponForm.consumable" :options="yesNoOptions" />
+              </div>
+              <div class="field" v-if="weaponForm.consumable === 1"><label>最大使用次数</label><input v-model.number="weaponForm.maxUses" type="number" min="1"></div>
               <div class="field"><label>排序</label><input v-model.number="weaponForm.sort" type="number"></div>
               <div class="field"><label>启用</label>
                 <admin-select v-model="weaponForm.enabled" :options="yesNoOptions" />
@@ -874,9 +1088,10 @@
             <admin-select v-model="finishedSkillForm.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
           </div>
           <div class="field"><label>目标参数 x</label><input v-model.number="finishedSkillForm.targetParam" type="number" placeholder="随机敌人数/重复次数"></div>
-          <div class="field"><label>分类1</label>
+          <div class="field" v-if="!finishedSkillCatL1Locked"><label>分类1</label>
             <admin-select v-model="finishedSkillForm.catL1" :options="categoryMeta.catL1" value-key="code" label-key="label" />
           </div>
+          <div class="field" v-else><label>分类1</label><span class="field-value">{{ finishedSkillForm.catL1 }}</span></div>
           <div class="field"><label>分类2</label>
             <admin-select v-model="finishedSkillForm.catL2" :options="categoryMeta.catL2" value-key="code" label-key="label" />
           </div>
@@ -923,6 +1138,10 @@
           <div class="field full"><label>ID</label><input v-model="passiveSkillForm.id" placeholder="留空自动生成"></div>
           <div class="field"><label>编码</label><input v-model="passiveSkillForm.code"></div>
           <div class="field"><label>名称</label><input v-model="passiveSkillForm.name"></div>
+          <div class="field"><label>被动类型</label>
+            <admin-select v-if="!passiveKindForTab(tab)" v-model="passiveSkillForm.passiveKind" :options="passiveKindOptions" value-key="value" label-key="label" />
+            <span v-else class="field-value">{{ passiveSkillForm.passiveKind === 'MECHANISM' ? '机制型' : '数值型' }}</span>
+          </div>
           <div class="field full"><label>生效条件</label>
             <admin-select v-model="passiveSkillForm.conditionType" :options="passiveMeta.conditionTypes" value-key="code" label-key="label" />
           </div>
@@ -958,6 +1177,42 @@
             <admin-select v-model="skillBadgeForm.enabled" :options="yesNoOptions" />
           </div>
           <div class="field full"><label>备注</label><input v-model="skillBadgeForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'profession'" class="form-grid">
+          <div class="field full" v-if="professionForm.id"><label>ID</label><span class="field-value">{{ professionForm.id }}</span></div>
+          <div class="field"><label>编码</label><input v-model="professionForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="professionForm.name"></div>
+          <div class="field"><label>排序</label><input v-model.number="professionForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="professionForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="professionForm.remark"></div>
+        </div>
+
+        <div v-if="drawerType === 'professionSkill'" class="form-grid">
+          <div class="field full"><label>职业</label><span class="field-value">{{ selectedProfession ? (selectedProfession.name + ' (' + selectedProfession.id + ')') : '—' }}</span></div>
+          <div class="field full"><label>技能物品</label>
+            <admin-select v-model="professionSkillForm.itemId" :options="skillItemSelectOptions" value-key="value" label-key="label" placeholder="选择技能物品" searchable />
+          </div>
+          <div class="field"><label>排序</label><input v-model.number="professionSkillForm.sort" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="professionSkillForm.enabled" :options="yesNoOptions" />
+          </div>
+        </div>
+
+        <div v-if="drawerType === 'characterTemplate'" class="form-grid">
+          <div class="field full" v-if="characterTemplateForm.id"><label>ID</label><span class="field-value">{{ characterTemplateForm.id }}</span></div>
+          <div class="field"><label>编码</label><input v-model="characterTemplateForm.code"></div>
+          <div class="field"><label>名称</label><input v-model="characterTemplateForm.name"></div>
+          <div class="field"><label>最大生命</label><input v-model.number="characterTemplateForm.maxHp" type="number"></div>
+          <div class="field"><label>攻击</label><input v-model.number="characterTemplateForm.attack" type="number"></div>
+          <div class="field"><label>防御</label><input v-model.number="characterTemplateForm.defense" type="number"></div>
+          <div class="field"><label>行动值</label><input v-model.number="characterTemplateForm.actionValue" type="number"></div>
+          <div class="field"><label>启用</label>
+            <admin-select v-model="characterTemplateForm.enabled" :options="yesNoOptions" />
+          </div>
+          <div class="field full"><label>备注</label><input v-model="characterTemplateForm.remark"></div>
         </div>
 
         <div v-if="drawerType === 'mode'" class="form-grid">
@@ -1051,6 +1306,11 @@
   </div>
 
   <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
+  <div
+    v-if="wmGhost.show"
+    class="wm-finger-ghost"
+    :style="{ left: wmGhost.x + 'px', top: wmGhost.y + 'px' }"
+  >{{ wmGhost.name }}</div>
 
   <div v-if="memberGrant.open" class="admin-drawer-mask" @click.self="closeGrantMember">
     <div class="admin-drawer member-grant-drawer" @click.stop>
@@ -1391,15 +1651,29 @@ createApp({
       loading: false,
       tab: 'member',
       equipMenuOpen: false,
+      skillMenuOpen: false,
+      characterMenuOpen: false,
       navTabs: [
         { key: 'member', label: '用户管理' },
         { key: 'level', label: '关卡管理' },
-        { key: 'monster', label: '怪兽管理' },
         { key: 'material', label: '材料管理' },
-        { key: 'recipe', label: '配方管理' },
-        { key: 'finishedSkill', label: '主动技能' },
-        { key: 'passiveSkill', label: '被动技能' },
+        { key: 'recipe', label: '配方管理' }
+      ],
+      battleSkillTabs: [
+        { key: 'equipSkill', label: '装备技能' },
+        { key: 'generalSkill', label: '通用技能' }
+      ],
+      passiveSkillTabs: [
+        { key: 'passiveNumeric', label: '数值型被动技能' },
+        { key: 'passiveMechanism', label: '机制型被动技能' }
+      ],
+      skillExtraTabs: [
+        { key: 'profession', label: '职业技能' },
         { key: 'skillBadge', label: '技能徽章' }
+      ],
+      characterTabs: [
+        { key: 'monster', label: '怪兽管理' },
+        { key: 'playerCharacter', label: '玩家角色管理' }
       ],
       equipTabs: [
         { key: 'weapon', label: '武器管理' },
@@ -1408,6 +1682,10 @@ createApp({
         { key: 'helmet', label: '头盔管理' },
         { key: 'legs', label: '护腿管理' },
         { key: 'accessory', label: '饰品管理' }
+      ],
+      passiveKindOptions: [
+        { value: 'NUMERIC', label: '数值型' },
+        { value: 'MECHANISM', label: '机制型' }
       ],
       loginForm: { account: '', password: '' },
       members: [],
@@ -1423,9 +1701,14 @@ createApp({
       monsters: [],
       stageBattle: { stage: null, waves: [] },
       selectedWaveId: null,
+      wavePlaceMode: 'precise',
+      wmActing: false,
+      wmDrag: null,
+      wmHover: null,
+      wmGhost: { show: false, x: 0, y: 0, name: '' },
       addingWave: false,
       inlineWaveForm: { waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
-      waveMonsterDraft: { monsterId: '', quantity: 1, slotCol: null, slotRow: null },
+      waveMonsterDraft: { monsterId: '', quantity: 1 },
       waveForm: { id: '', stageId: '', waveNo: 1, name: '第1波', sort: 1, enabled: 1 },
       monsterForm: { id: '', code: '', name: '', hp: 100, maxHp: 100, attack: 10, actionValue: 100, rankType: 'NORMAL', footprintW: 1, footprintH: 1, sort: 0, enabled: 1, remark: '' },
       monsterRankOptions: [
@@ -1472,6 +1755,11 @@ createApp({
       },
       passiveSkills: [],
       skillBadges: [],
+      professions: [],
+      professionSkills: [],
+      selectedProfession: null,
+      characterTemplates: [],
+      selectedCharacterTemplate: null,
       itemTriggers: [],
       itemPassives: [],
       equipDrawerTab: 'base',
@@ -1486,26 +1774,83 @@ createApp({
       drawerType: '',
       drawerTitle: '',
       materialForm: { id: '', code: '', name: '', icon: '📦', maxStack: 99, sort: 0, enabled: 1, remark: '' },
-      weaponForm: { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, sort: 0, enabled: 1, remark: '' },
+      weaponForm: { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, consumable: 0, maxUses: null, sort: 0, enabled: 1, remark: '' },
       weaponBasicAttackForm: { id: '', itemId: '', finishedSkillId: '', castLimitMode: 'unlimited', maxCastCount: 1, enabled: 1, remark: '' },
       weaponUltimateForm: { id: '', itemId: '', triggerSlotType: 'ON_ATTACK', triggerParam: null, triggerRefId: '', finishedSkillId: '', castLimitMode: 'unlimited', maxCastCount: 1, enabled: 1, remark: '' },
       armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       finishedSkillForm: { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [] },
-      passiveSkillForm: { id: '', code: '', name: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' },
+      passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' },
       skillBadgeForm: { id: '', itemId: '', code: '', name: '', icon: '🎖', passiveSkillId: '', sort: 0, enabled: 1, remark: '' },
+      professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
+      professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
+      characterTemplateForm: { id: '', code: '', name: '', maxHp: 100, attack: 10, defense: 0, actionValue: 100, enabled: 1, remark: '' },
       toast: { show: false, text: '', type: 'error' }
     };
   },
   computed: {
     currentTabLabel() {
-      var equip = this.equipTabs.find(function (x) { return x.key === this.tab; }.bind(this));
-      if (equip) return equip.label;
-      var nav = this.navTabs.find(function (x) { return x.key === this.tab; }.bind(this));
-      return nav ? nav.label : '后台管理';
+      var self = this;
+      var pools = []
+        .concat(this.navTabs || [])
+        .concat(this.battleSkillTabs || [])
+        .concat(this.passiveSkillTabs || [])
+        .concat(this.skillExtraTabs || [])
+        .concat(this.characterTabs || [])
+        .concat(this.equipTabs || []);
+      var hit = pools.find(function (x) { return x.key === self.tab; });
+      if (hit) return hit.label;
+      if (this.tab === 'professionSkill') {
+        return this.selectedProfession
+          ? ('职业技能 · ' + (this.selectedProfession.name || this.selectedProfession.code))
+          : '职业技能绑定';
+      }
+      if (this.tab === 'characterSkill') {
+        return this.selectedCharacterTemplate
+          ? ('专属技能 · ' + (this.selectedCharacterTemplate.name || this.selectedCharacterTemplate.code))
+          : '专属技能';
+      }
+      if (this.tab === 'finishedSkill') return '主动技能';
+      if (this.tab === 'passiveSkill') return '被动技能';
+      return '后台管理';
     },
     isEquipTabActive() {
       return this.isEquipTabKey(this.tab);
+    },
+    isSkillTabActive() {
+      return this.isSkillTabKey(this.tab);
+    },
+    isCharacterTabActive() {
+      return this.isCharacterTabKey(this.tab);
+    },
+    isFinishedSkillTab() {
+      return ['equipSkill', 'generalSkill', 'characterSkill', 'finishedSkill'].indexOf(this.tab) >= 0;
+    },
+    isPassiveSkillTab() {
+      return ['passiveNumeric', 'passiveMechanism', 'passiveSkill'].indexOf(this.tab) >= 0;
+    },
+    finishedSkillCatL1Locked() {
+      return !!this.finishedSkillCatL1ForTab(this.tab);
+    },
+    finishedSkillPanelTitle() {
+      if (this.tab === 'equipSkill') return '装备技能';
+      if (this.tab === 'generalSkill') return '通用技能';
+      if (this.tab === 'characterSkill') return '专属技能';
+      return '主动技能';
+    },
+    passiveSkillPanelTitle() {
+      if (this.tab === 'passiveNumeric') return '数值型被动技能';
+      if (this.tab === 'passiveMechanism') return '机制型被动技能';
+      return '被动技能';
+    },
+    skillItemSelectOptions() {
+      var badgeOpts = (this.allItems || []).filter(function (it) {
+        var tags = String(it.itemTags || it.tags || '');
+        return tags.indexOf('SKILL_BADGE') >= 0;
+      }).map(function (it) {
+        return { value: it.id, label: it.name + ' (' + it.id + ')' };
+      });
+      return badgeOpts.length ? badgeOpts : this.itemSelectOptions;
     },
     equipItemRecipes() {
       var itemId = this.currentItemIdForTriggers;
@@ -1659,8 +2004,31 @@ createApp({
     isEquipTabKey(key) {
       return ['weapon', 'armor', 'gloves', 'helmet', 'legs', 'accessory'].indexOf(key) >= 0;
     },
+    isSkillTabKey(key) {
+      return ['equipSkill', 'generalSkill', 'passiveNumeric', 'passiveMechanism', 'profession', 'professionSkill', 'skillBadge', 'finishedSkill', 'passiveSkill'].indexOf(key) >= 0;
+    },
+    isCharacterTabKey(key) {
+      return ['monster', 'playerCharacter', 'characterSkill'].indexOf(key) >= 0;
+    },
+    finishedSkillCatL1ForTab(key) {
+      if (key === 'equipSkill') return 'EQUIP';
+      if (key === 'generalSkill') return 'GENERAL';
+      if (key === 'characterSkill') return 'CHARACTER';
+      return '';
+    },
+    passiveKindForTab(key) {
+      if (key === 'passiveNumeric') return 'NUMERIC';
+      if (key === 'passiveMechanism') return 'MECHANISM';
+      return '';
+    },
     toggleEquipMenu() {
       this.equipMenuOpen = !this.equipMenuOpen;
+    },
+    toggleSkillMenu() {
+      this.skillMenuOpen = !this.skillMenuOpen;
+    },
+    toggleCharacterMenu() {
+      this.characterMenuOpen = !this.characterMenuOpen;
     },
     recipeSummaryForItem(itemId) {
       if (!itemId) return '—';
@@ -1695,6 +2063,8 @@ createApp({
     },
     switchTab(key) {
       if (this.isEquipTabKey(key)) this.equipMenuOpen = true;
+      if (this.isSkillTabKey(key)) this.skillMenuOpen = true;
+      if (this.isCharacterTabKey(key)) this.characterMenuOpen = true;
       this.tab = key;
       if (key === 'member') this.loadMembers();
       else if (key === 'level') this.switchLevel();
@@ -1707,9 +2077,12 @@ createApp({
       else if (key === 'helmet') this.switchEquipPart('helmet');
       else if (key === 'legs') this.switchEquipPart('legs');
       else if (key === 'accessory') this.switchEquipPart('accessory');
-      else if (key === 'finishedSkill') this.switchFinishedSkill();
-      else if (key === 'passiveSkill') this.switchPassiveSkill();
+      else if (key === 'equipSkill' || key === 'generalSkill' || key === 'characterSkill' || key === 'finishedSkill') this.switchFinishedSkill();
+      else if (key === 'passiveNumeric' || key === 'passiveMechanism' || key === 'passiveSkill') this.switchPassiveSkill();
       else if (key === 'skillBadge') this.switchSkillBadge();
+      else if (key === 'profession') this.switchProfession();
+      else if (key === 'professionSkill') this.switchProfessionSkill();
+      else if (key === 'playerCharacter') this.switchPlayerCharacter();
     },
     loadMembers() {
       AdminApi.memberList({ current: 1, size: 50 })
@@ -1724,7 +2097,7 @@ createApp({
         .then((res) => {
           localStorage.setItem(APP_CONFIG.tokenKey, res.token);
           this.showToast('已获取用户 token，正在跳转', 'success');
-          setTimeout(() => { location.href = APP_CONFIG.homePage; }, 500);
+          setTimeout(() => { location.href = APP_CONFIG.loadingPage || '/loading.html'; }, 500);
         })
         .catch((err) => this.showToast(err.message));
     },
@@ -1973,7 +2346,10 @@ createApp({
     },
     selectWave(waveId) {
       this.selectedWaveId = this.selectedWaveId === waveId ? null : waveId;
-      this.waveMonsterDraft = { monsterId: '', quantity: 1, slotCol: null, slotRow: null };
+      this.waveMonsterDraft = { monsterId: '', quantity: 1 };
+      this.wmDrag = null;
+      this.wmHover = null;
+      this.wmGhost = { show: false, x: 0, y: 0, name: '' };
     },
     startAddWave() {
       if (!this.levelPick.stageId) return;
@@ -1997,6 +2373,142 @@ createApp({
       this.drawerTitle = '编辑波次';
       this.drawerOpen = true;
     },
+    unplacedWaveMonsters(wave) {
+      return (wave.monsters || []).filter(function (wm) {
+        return wm.slotCol == null || wm.slotRow == null;
+      });
+    },
+    wmUnitStyle(wm) {
+      if (wm.slotCol == null || wm.slotRow == null) {
+        return { display: 'none' };
+      }
+      var col = wm.slotCol + 1;
+      var row = wm.slotRow + 1;
+      var w = wm.footprintW || 1;
+      var h = wm.footprintH || 1;
+      return {
+        gridColumn: col + ' / span ' + w,
+        gridRow: row + ' / span ' + h
+      };
+    },
+    isWmCellHot(index, wave) {
+      if (!this.wmHover || !this.wmDrag || !wave || wave.wave.id !== this.wmDrag.waveId) return false;
+      var col = index % 4;
+      var row = Math.floor(index / 4);
+      var w = this.wmDrag.w || 1;
+      var h = this.wmDrag.h || 1;
+      return col >= this.wmHover.col && col < this.wmHover.col + w
+        && row >= this.wmHover.row && row < this.wmHover.row + h;
+    },
+    updateWmHover(clientX, clientY, wave) {
+      var el = this.$refs['wmBoard_' + wave.wave.id];
+      if (Array.isArray(el)) el = el[0];
+      if (!el || !this.wmDrag) return;
+      var rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      var w = this.wmDrag.w || 1;
+      var h = this.wmDrag.h || 1;
+      var col = Math.floor((clientX - rect.left) / rect.width * 4);
+      var row = Math.floor((clientY - rect.top) / rect.height * 3);
+      col = Math.max(0, Math.min(4 - w, col));
+      row = Math.max(0, Math.min(3 - h, row));
+      this.wmHover = { col: col, row: row };
+    },
+    beginWmDrag(e, wm, wave) {
+      if (this.wavePlaceMode !== 'precise' || this.wmActing) return;
+      if (e.button != null && e.button !== 0) return;
+      var el = e.currentTarget;
+      if (el && el.setPointerCapture) {
+        try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+      this.wmDrag = {
+        id: wm.id,
+        waveId: wave.wave.id,
+        pointerId: e.pointerId,
+        w: wm.footprintW || 1,
+        h: wm.footprintH || 1,
+        name: wm.monsterName || wm.monsterId
+      };
+      this.wmGhost = { show: true, x: e.clientX, y: e.clientY, name: this.wmDrag.name };
+      this.updateWmHover(e.clientX, e.clientY, wave);
+    },
+    onWmPointerDown(e, wm, wave) {
+      this.beginWmDrag(e, wm, wave);
+    },
+    onWmUnplacedDown(e, wm, wave) {
+      this.beginWmDrag(e, wm, wave);
+    },
+    onWmPointerMove(e, wave) {
+      if (!this.wmDrag || this.wmDrag.waveId !== wave.wave.id) return;
+      if (this.wmDrag.pointerId != null && e.pointerId !== this.wmDrag.pointerId) return;
+      this.wmGhost = { show: true, x: e.clientX, y: e.clientY, name: this.wmDrag.name };
+      this.updateWmHover(e.clientX, e.clientY, wave);
+    },
+    onWmPointerUp(e, wave) {
+      if (!this.wmDrag || this.wmDrag.waveId !== wave.wave.id) return;
+      if (this.wmDrag.pointerId != null && e.pointerId !== this.wmDrag.pointerId) return;
+      var hover = this.wmHover;
+      var drag = this.wmDrag;
+      this.wmDrag = null;
+      this.wmGhost = { show: false, x: 0, y: 0, name: '' };
+      this.wmHover = null;
+      if (!hover) return;
+      var wm = (wave.monsters || []).find(function (m) { return m.id === drag.id; });
+      if (!wm) return;
+      if (wm.slotCol === hover.col && wm.slotRow === hover.row) return;
+      this.commitWmSlot(wm, wave.wave.id, hover.col, hover.row);
+    },
+    commitWmSlot(wm, waveId, col, row) {
+      var self = this;
+      var prevCol = wm.slotCol;
+      var prevRow = wm.slotRow;
+      wm.slotCol = col;
+      wm.slotRow = row;
+      self.wmActing = true;
+      AdminApi.saveWaveMonster({
+        id: wm.id,
+        waveId: waveId,
+        monsterId: wm.monsterId,
+        quantity: 1,
+        sort: wm.sort || 0,
+        slotCol: col,
+        slotRow: row
+      })
+        .then(function () {
+          self.showToast('站位已更新', 'success');
+        })
+        .catch(function (err) {
+          wm.slotCol = prevCol;
+          wm.slotRow = prevRow;
+          self.showToast(err.message);
+        })
+        .finally(function () { self.wmActing = false; });
+    },
+    autoPlaceWave(waveId) {
+      var self = this;
+      self.wmActing = true;
+      AdminApi.autoPlaceWaveMonsters(waveId)
+        .then(function () {
+          self.showToast('已按对称原则布置', 'success');
+          return self.loadStageBattleForPick();
+        })
+        .then(function () { self.selectedWaveId = waveId; })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.wmActing = false; });
+    },
+    removeWaveMonster(wm, waveId) {
+      if (!confirm('移除「' + (wm.monsterName || wm.monsterId) + '」？')) return;
+      var self = this;
+      self.wmActing = true;
+      AdminApi.removeWaveMonster(wm.id)
+        .then(function () {
+          self.showToast('已移除', 'success');
+          return self.loadStageBattleForPick();
+        })
+        .then(function () { self.selectedWaveId = waveId; })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.wmActing = false; });
+    },
     addMonsterToSelectedWave(waveId) {
       if (!this.waveMonsterDraft.monsterId) {
         this.showToast('请选择怪物');
@@ -2004,26 +2516,23 @@ createApp({
       }
       var wave = (this.stageBattle.waves || []).find(function (w) { return w.wave.id === waveId; });
       var sort = wave && wave.monsters ? wave.monsters.length + 1 : 1;
-      var payload = {
+      var qty = this.waveMonsterDraft.quantity || 1;
+      var self = this;
+      self.wmActing = true;
+      AdminApi.saveWaveMonster({
         waveId: waveId,
         monsterId: this.waveMonsterDraft.monsterId,
-        quantity: this.waveMonsterDraft.quantity || 1,
+        quantity: qty,
         sort: sort
-      };
-      if (this.waveMonsterDraft.slotCol != null && this.waveMonsterDraft.slotCol !== '') {
-        payload.slotCol = this.waveMonsterDraft.slotCol;
-      }
-      if (this.waveMonsterDraft.slotRow != null && this.waveMonsterDraft.slotRow !== '') {
-        payload.slotRow = this.waveMonsterDraft.slotRow;
-      }
-      AdminApi.saveWaveMonster(payload)
-        .then(() => {
-          this.showToast('已添加怪物', 'success');
-          this.waveMonsterDraft = { monsterId: '', quantity: 1, slotCol: null, slotRow: null };
-          this.loadStageBattleForPick();
-          this.selectedWaveId = waveId;
+      })
+        .then(function () {
+          self.showToast(qty > 1 ? ('已添加 ' + qty + ' 只（单体）') : '已添加怪物', 'success');
+          self.waveMonsterDraft = { monsterId: '', quantity: 1 };
+          return self.loadStageBattleForPick();
         })
-        .catch((err) => this.showToast(err.message));
+        .then(function () { self.selectedWaveId = waveId; })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.wmActing = false; });
     },
     loadMonsters() {
       AdminApi.monsterList({ current: 1, size: 200 })
@@ -2714,12 +3223,22 @@ createApp({
       return payload;
     },
     switchFinishedSkill() {
+      var locked = this.finishedSkillCatL1ForTab(this.tab);
+      if (locked) {
+        this.finishedSkillFilter = Object.assign({}, this.finishedSkillFilter, { catL1: locked });
+      }
       this.loadFinishedSkills();
       this.loadV2Meta();
     },
     loadFinishedSkills() {
       var filter = {};
-      if (this.finishedSkillFilter.catL1) filter.catL1 = this.finishedSkillFilter.catL1;
+      var locked = this.finishedSkillCatL1ForTab(this.tab);
+      if (locked) {
+        filter.catL1 = locked;
+        this.finishedSkillFilter.catL1 = locked;
+      } else if (this.finishedSkillFilter.catL1) {
+        filter.catL1 = this.finishedSkillFilter.catL1;
+      }
       if (this.finishedSkillFilter.catL2) filter.catL2 = this.finishedSkillFilter.catL2;
       if (this.finishedSkillFilter.catL3) filter.catL3 = this.finishedSkillFilter.catL3;
       if (this.finishedSkillFilter.catL4) filter.catL4 = this.finishedSkillFilter.catL4;
@@ -2763,7 +3282,10 @@ createApp({
       if (!this.allItems.length) this.loadAllItems();
     },
     loadPassiveSkills() {
-      AdminApi.passiveSkillList({ current: 1, size: 200 })
+      var filter = {};
+      var kind = this.passiveKindForTab(this.tab);
+      if (kind) filter.passiveKind = kind;
+      AdminApi.passiveSkillList({ current: 1, size: 200 }, filter)
         .then((res) => { this.passiveSkills = res.data || []; })
         .catch((err) => this.showToast(err.message));
     },
@@ -2787,6 +3309,59 @@ createApp({
       AdminApi.removeSkillBadge(b.itemId || b.id)
         .then(() => { this.showToast('已删除', 'success'); this.loadSkillBadges(); this.loadAllItems(); })
         .catch((err) => this.showToast(err.message));
+    },
+    switchProfession() {
+      this.loadProfessions();
+    },
+    loadProfessions() {
+      AdminApi.professionList()
+        .then((res) => { this.professions = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeProfession(p) {
+      if (!confirm('删除职业 ' + p.name + '？其技能绑定也会删除')) return;
+      AdminApi.professionRemove(p.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadProfessions(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    openProfessionSkills(p) {
+      this.selectedProfession = p;
+      this.switchTab('professionSkill');
+    },
+    switchProfessionSkill() {
+      if (!this.selectedProfession) {
+        this.switchTab('profession');
+        return;
+      }
+      this.loadProfessionSkills();
+      if (!this.allItems.length) this.loadAllItems();
+    },
+    loadProfessionSkills() {
+      if (!this.selectedProfession || !this.selectedProfession.id) {
+        this.professionSkills = [];
+        return;
+      }
+      AdminApi.professionSkillList(this.selectedProfession.id)
+        .then((res) => { this.professionSkills = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeProfessionSkill(s) {
+      if (!confirm('解除技能绑定 ' + (s.itemName || s.itemId) + '?')) return;
+      AdminApi.professionSkillRemove(s.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadProfessionSkills(); this.loadProfessions(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    switchPlayerCharacter() {
+      this.loadCharacterTemplates();
+    },
+    loadCharacterTemplates() {
+      AdminApi.characterTemplateList()
+        .then((res) => { this.characterTemplates = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    openCharacterSkills(c) {
+      this.selectedCharacterTemplate = c;
+      this.switchTab('characterSkill');
     },
     loadItemTriggers(ownerId) {
       if (!ownerId) {
@@ -3115,7 +3690,7 @@ createApp({
         this.materialForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', icon: '📦', maxStack: 99, sort: 0, enabled: 1, remark: '' };
       } else if (type === 'weapon') {
         this.drawerTitle = row ? '编辑武器' : '新增武器';
-        this.weaponForm = row ? Object.assign({}, row) : { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, sort: 0, enabled: 1, remark: '' };
+        this.weaponForm = row ? Object.assign({ consumable: 0, maxUses: null }, row) : { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, consumable: 0, maxUses: null, sort: 0, enabled: 1, remark: '' };
         this.weaponBasicAttackForm = this.applyWeaponBasicAttackForm(null);
       this.weaponUltimateForm = this.applyWeaponUltimateForm(null);
         if (row && row.itemId) this.loadEquipItemExtras(row.itemId);
@@ -3141,20 +3716,52 @@ createApp({
           if (!this.allItems.length) this.loadAllItems();
         }
       } else if (type === 'finishedSkill') {
+        var lockedCat = this.finishedSkillCatL1ForTab(this.tab);
         if (!row && !this.finishedSkillForm.id && !this.finishedSkillForm.code) {
-          this.finishedSkillForm = { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [this.newEffectRow()] };
+          var cat = lockedCat || 'GENERAL';
+          var defaults = cat === 'GENERAL'
+            ? { catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL' }
+            : { catL1: cat, catL2: 'GENERAL', catL3: '', catL4: 'GENERAL' };
+          this.finishedSkillForm = Object.assign({
+            id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null,
+            enabled: 1, remark: '', effects: [this.newEffectRow()]
+          }, defaults);
+        } else if (!row && lockedCat) {
+          this.finishedSkillForm.catL1 = lockedCat;
         }
         if (!this.categoryMeta.catL1.length) this.loadV2Meta();
-        this.drawerTitle = this.finishedSkillForm.id ? '编辑主动技能' : '新增主动技能';
+        this.drawerTitle = this.finishedSkillForm.id ? ('编辑' + this.finishedSkillPanelTitle) : ('新增' + this.finishedSkillPanelTitle);
       } else if (type === 'passiveSkill') {
-        this.drawerTitle = row ? '编辑被动技能' : '新增被动技能';
-        this.passiveSkillForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' };
+        var defaultKind = this.passiveKindForTab(this.tab) || 'NUMERIC';
+        this.drawerTitle = row ? ('编辑' + this.passiveSkillPanelTitle) : ('新增' + this.passiveSkillPanelTitle);
+        this.passiveSkillForm = row
+          ? Object.assign({ passiveKind: defaultKind }, row)
+          : { id: '', code: '', name: '', passiveKind: defaultKind, conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' };
         this.loadPassiveMeta();
         if (!this.allItems.length) this.loadAllItems();
       } else if (type === 'skillBadge') {
         this.drawerTitle = row ? '编辑技能徽章' : '新增技能徽章';
         this.skillBadgeForm = row ? Object.assign({}, row) : { id: '', itemId: '', code: '', name: '', icon: '🎖', passiveSkillId: '', sort: 0, enabled: 1, remark: '' };
         this.loadPassiveMeta();
+      } else if (type === 'profession') {
+        this.drawerTitle = row ? '编辑职业' : '新增职业';
+        this.professionForm = row ? Object.assign({}, row) : { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' };
+      } else if (type === 'professionSkill') {
+        if (!this.selectedProfession) {
+          this.showToast('请先选择职业');
+          return;
+        }
+        this.drawerTitle = row ? '编辑职业技能' : '绑定职业技能';
+        this.professionSkillForm = row
+          ? Object.assign({}, row)
+          : { id: '', professionId: this.selectedProfession.id, itemId: '', sort: 0, enabled: 1 };
+        this.professionSkillForm.professionId = this.selectedProfession.id;
+        if (!this.allItems.length) this.loadAllItems();
+      } else if (type === 'characterTemplate') {
+        this.drawerTitle = row ? '编辑玩家角色' : '新增玩家角色';
+        this.characterTemplateForm = row
+          ? Object.assign({}, row)
+          : { id: '', code: '', name: '', maxHp: 100, attack: 10, defense: 0, actionValue: 100, enabled: 1, remark: '' };
       } else if (type === 'recipe') {
         this.openRecipeDrawer(row);
         return;
@@ -3264,11 +3871,37 @@ createApp({
           self.loadAllItems();
         });
       } else if (this.drawerType === 'finishedSkill') {
+        var lockedCat = this.finishedSkillCatL1ForTab(this.tab);
+        if (lockedCat) this.finishedSkillForm.catL1 = lockedCat;
         p = AdminApi.saveFinishedSkill(this.finishedSkillForm).then(() => { this.loadFinishedSkills(); this.loadV2Meta(); });
       } else if (this.drawerType === 'passiveSkill') {
+        var lockedKind = this.passiveKindForTab(this.tab);
+        if (lockedKind) this.passiveSkillForm.passiveKind = lockedKind;
         p = AdminApi.savePassiveSkill(this.passiveSkillForm).then(() => { this.loadPassiveSkills(); this.loadPassiveMeta(); });
       } else if (this.drawerType === 'skillBadge') {
         p = AdminApi.saveSkillBadge(this.skillBadgeForm).then(() => { this.loadSkillBadges(); this.loadAllItems(); this.loadPassiveMeta(); });
+      } else if (this.drawerType === 'profession') {
+        if (!this.professionForm.code || !this.professionForm.name) {
+          this.showToast('请填写编码和名称');
+          return;
+        }
+        p = AdminApi.professionSave(this.professionForm).then(() => { this.loadProfessions(); });
+      } else if (this.drawerType === 'professionSkill') {
+        if (!this.professionSkillForm.itemId) {
+          this.showToast('请选择技能物品');
+          return;
+        }
+        this.professionSkillForm.professionId = this.selectedProfession && this.selectedProfession.id;
+        p = AdminApi.professionSkillSave(this.professionSkillForm).then(() => {
+          this.loadProfessionSkills();
+          this.loadProfessions();
+        });
+      } else if (this.drawerType === 'characterTemplate') {
+        if (!this.characterTemplateForm.code || !this.characterTemplateForm.name) {
+          this.showToast('请填写编码和名称');
+          return;
+        }
+        p = AdminApi.characterTemplateSave(this.characterTemplateForm).then(() => { this.loadCharacterTemplates(); });
       } else if (this.drawerType === 'recipe') {
         p = AdminApi.saveRecipe(this.recipeForm).then(() => { this.loadRecipes(); });
       } else if (this.drawerType === 'mode') {

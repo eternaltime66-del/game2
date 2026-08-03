@@ -158,6 +158,14 @@ public class GameItemCategoryAdminService {
         weapon.setAttack(vo.getAttack());
         weapon.setBaseActionValue(vo.getBaseActionValue() != null ? vo.getBaseActionValue() : 100);
         weapon.setDamageRatio(vo.getDamageRatio() != null ? vo.getDamageRatio() : BigDecimal.ONE);
+        int consumable = vo.getConsumable() != null && vo.getConsumable() == 1 ? 1 : 0;
+        weapon.setConsumable(consumable);
+        if (consumable == 1) {
+            ErrorFactory.throwError(vo.getMaxUses() == null || vo.getMaxUses() < 1, "消耗型武器请填写最大使用次数");
+            weapon.setMaxUses(vo.getMaxUses());
+        } else {
+            weapon.setMaxUses(null);
+        }
         weapon.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         weapon.setRemark(vo.getRemark());
 
@@ -407,6 +415,8 @@ public class GameItemCategoryAdminService {
         vo.setAttack(weapon.getAttack());
         vo.setBaseActionValue(weapon.getBaseActionValue());
         vo.setDamageRatio(weapon.getDamageRatio());
+        vo.setConsumable(weapon.getConsumable() != null ? weapon.getConsumable() : 0);
+        vo.setMaxUses(weapon.getMaxUses());
         vo.setEnabled(weapon.getEnabled());
         vo.setRemark(weapon.getRemark() != null ? weapon.getRemark() : item.getRemark());
         return vo;

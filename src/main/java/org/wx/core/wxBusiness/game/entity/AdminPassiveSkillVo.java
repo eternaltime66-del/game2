@@ -13,6 +13,10 @@ public class AdminPassiveSkillVo {
 
     private String name;
 
+    private String passiveKind;
+
+    private String passiveKindLabel;
+
     private String conditionType;
 
     private String conditionTypeLabel;

@@ -12,6 +12,7 @@ import org.wx.core.wxBusiness.game.entity.*;
 import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveSkillKind;
 
 import java.util.Arrays;
 import java.util.List;
@@ -67,6 +68,8 @@ public class GamePassiveSkillAdminService {
         entity.setId(vo.getId());
         entity.setCode(vo.getCode().trim().toUpperCase());
         entity.setName(vo.getName().trim());
+        PassiveSkillKind kind = PassiveSkillKind.parse(vo.getPassiveKind());
+        entity.setPassiveKind(kind.name());
         entity.setConditionType(conditionType.name());
         entity.setConditionEquipItemId(conditionType == PassiveConditionType.REQUIRE_EQUIP
                 ? vo.getConditionEquipItemId() : null);
@@ -250,6 +253,9 @@ public class GamePassiveSkillAdminService {
         vo.setId(skill.getId());
         vo.setCode(skill.getCode());
         vo.setName(skill.getName());
+        PassiveSkillKind kind = PassiveSkillKind.parse(skill.getPassiveKind());
+        vo.setPassiveKind(kind.name());
+        vo.setPassiveKindLabel(kind.getLabel());
         vo.setConditionType(skill.getConditionType());
         PassiveConditionType ct = PassiveConditionType.parse(skill.getConditionType());
         if (ct != null) {

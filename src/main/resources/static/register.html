@@ -151,7 +151,7 @@ createApp({
         .then((res) => {
           GameApi.saveToken(res.token);
           this.showToast('注册成功', 'success');
-          setTimeout(() => { location.href = APP_CONFIG.homePage; }, 500);
+          setTimeout(() => { location.href = APP_CONFIG.loadingPage || '/loading.html'; }, 500);
         })
         .catch((err) => this.showToast(err.message))
         .finally(() => { this.loading = false; });

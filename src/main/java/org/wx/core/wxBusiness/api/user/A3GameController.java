@@ -19,6 +19,7 @@ import org.wx.core.wxBusiness.game.entity.ItemDetailVo;
 import org.wx.core.wxBusiness.game.entity.ItemDropSourceVo;
 import org.wx.core.wxBusiness.game.entity.MaterialSourceVo;
 import org.wx.core.wxBusiness.game.service.GameBattleService;
+import org.wx.core.wxBusiness.game.service.GameCharacterAdminService;
 import org.wx.core.wxBusiness.game.service.GameCraftService;
 import org.wx.core.wxBusiness.game.service.GameItemDropSourceService;
 import org.wx.core.wxBusiness.game.service.GameItemService;
@@ -53,6 +54,8 @@ public class A3GameController {
     private GameCraftService craftService;
     @Resource
     private GamePrepService gamePrepService;
+    @Resource
+    private GameCharacterAdminService characterAdminService;
 
     /**
      * 主角详情
@@ -62,6 +65,16 @@ public class A3GameController {
     @NeedHeader(roles = MemberRole.USER)
     public WxResult<GameHero> heroInfo() {
         return WxResult.success(gamePrepService.getOutsideBattleHero(Wx.memberId()));
+    }
+
+    /**
+     * 登录加载：同步角色模板基础数值并重算装备属性
+     */
+    @PostMapping("/character/sync")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<?> characterSync() {
+        return WxResult.success(characterAdminService.syncOwnedCharacters(Wx.memberId()));
     }
 
     /**

@@ -138,6 +138,12 @@
     saveWaveMonster: function (body) {
       return request('/back/game/battle/wave-monster/save', { json: true, body: body }).then(ensureSuccess);
     },
+    removeWaveMonster: function (id) {
+      return request('/back/game/battle/wave-monster/remove', { json: true, body: { id: id } }).then(ensureSuccess);
+    },
+    autoPlaceWaveMonsters: function (waveId) {
+      return request('/back/game/battle/wave-monster/auto-place', { body: { waveId: waveId } }).then(ensureSuccess);
+    },
     stageBattleDetail: function (stageId) {
       return request('/back/game/battle/stage/detail', { body: { stageId: stageId } }).then(ensureSuccess);
     },
@@ -320,6 +326,32 @@
     },
     v2FinishedSkillCategories: function () {
       return request('/back/game/trigger-v2/meta/finished-skill-categories', {}).then(ensureSuccess);
+    },
+    characterTemplateList: function () {
+      return request('/back/game/character/template/list', {}).then(ensureSuccess);
+    },
+    characterTemplateSave: function (body) {
+      return request('/back/game/character/template/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    professionList: function () {
+      return request('/back/game/character/profession/list', {}).then(ensureSuccess);
+    },
+    professionSave: function (body) {
+      return request('/back/game/character/profession/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    professionRemove: function (id) {
+      return request('/back/game/character/profession/remove', { json: true, body: { id: id } }).then(ensureSuccess);
+    },
+    professionSkillList: function (professionId) {
+      return request('/back/game/character/profession/skill/list', {
+        body: { professionId: professionId }
+      }).then(ensureSuccess);
+    },
+    professionSkillSave: function (body) {
+      return request('/back/game/character/profession/skill/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    professionSkillRemove: function (id) {
+      return request('/back/game/character/profession/skill/remove', { json: true, body: { id: id } }).then(ensureSuccess);
     }
   };
 })(window);

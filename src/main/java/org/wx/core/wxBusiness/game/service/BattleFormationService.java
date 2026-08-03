@@ -3,6 +3,7 @@ package org.wx.core.wxBusiness.game.service;
 import org.springframework.stereotype.Service;
 import org.wx.core.wxBusiness.game.entity.BattleFormation;
 import org.wx.core.wxBusiness.game.entity.BattleUnit;
+import org.wx.core.wxBusiness.game.entity.GameHero;
 import org.wx.core.wxBusiness.game.entity.GameMonster;
 import org.wx.core.wxBusiness.game.entity.enums.MonsterRank;
 
@@ -16,14 +17,20 @@ import java.util.List;
 public class BattleFormationService {
 
     public void placeHero(BattleUnit hero) {
+        placeHero(hero, null);
+    }
+
+    public void placeHero(BattleUnit hero, GameHero template) {
         if (hero == null) {
             return;
         }
         hero.setRankType("HERO");
         hero.applyFootprint(BattleFormation.HERO_FOOTPRINT_W, BattleFormation.HERO_FOOTPRINT_H);
-        // 己方前排（行0=1排）居中：列 B-C
-        hero.setSlotCol(1);
-        hero.setSlotRow(0);
+        int col = template != null && template.getSlotCol() != null ? template.getSlotCol() : 1;
+        int row = template != null && template.getSlotRow() != null ? template.getSlotRow() : 0;
+        hero.setSlotCol(col);
+        hero.setSlotRow(row);
+        clampToBoard(hero);
     }
 
     public void placeMonsters(List<BattleUnit> monsters) {

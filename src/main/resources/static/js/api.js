@@ -181,6 +181,15 @@
         slot: slot
       }).then(ensureSuccess);
     },
+    getHeroFormation: function () {
+      return request('/api/game/prep/formation/get', {}).then(ensureSuccess);
+    },
+    saveHeroFormation: function (slotCol, slotRow) {
+      return request('/api/game/prep/formation/save', {
+        slotCol: slotCol,
+        slotRow: slotRow
+      }).then(ensureSuccess);
+    },
     getCraftList: function () {
       return request('/api/game/craft/list', {}).then(ensureSuccess);
     },

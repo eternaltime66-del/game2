@@ -106,88 +106,71 @@
 }
 
 .formation-board {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  gap: 4px 6px;
   width: 100%;
   max-width: 740px;
   margin: 0 auto;
-  align-items: stretch;
 }
 
-.formation-row-tags {
-  grid-column: 1;
-  grid-row: 1;
-  display: grid;
-  grid-template-rows: repeat(3, minmax(40px, 1fr));
-  gap: 6px;
-  align-items: center;
-  justify-items: center;
-  font-size: 11px;
-  color: rgba(245, 247, 255, 0.4);
-  font-variant-numeric: tabular-nums;
-}
-
-.formation-board.ally .formation-row-tags {
-  grid-template-rows: repeat(3, minmax(36px, 1fr));
-}
-
-.formation-col-tags {
-  grid-column: 2;
-  grid-row: 2;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  justify-items: center;
-  font-size: 11px;
-  color: rgba(245, 247, 255, 0.4);
-}
-
+/* 固定 横4 × 竖3：底格与单位分层，避免同格挤位 */
 .formation-grid {
-  grid-column: 2;
-  grid-row: 1;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(40px, 1fr));
-  gap: 6px;
+  position: relative;
   width: 100%;
-  min-height: 148px;
-  align-items: stretch;
+  min-height: 174px;
 }
 
 .formation-grid.ally {
-  min-height: 128px;
-  grid-template-rows: repeat(3, minmax(36px, 1fr));
+  min-height: 162px;
+}
+
+.formation-cells,
+.formation-units {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(52px, 1fr));
+  gap: 6px;
+  width: 100%;
+  min-height: inherit;
+}
+
+.formation-grid.ally .formation-cells,
+.formation-grid.ally .formation-units {
+  grid-template-rows: repeat(3, minmax(48px, 1fr));
+}
+
+.formation-units {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .formation-cell {
   box-sizing: border-box;
-  min-height: 40px;
   border: 1px dashed rgba(245, 247, 255, 0.28);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
-  pointer-events: none;
-  z-index: 0;
+  min-height: 0;
 }
 
 .formation-grid.ally .formation-cell {
-  min-height: 36px;
   border-color: rgba(120, 200, 255, 0.28);
 }
 
 .formation-grid .battle-unit-wrap {
   min-width: 0;
-  height: auto;
-  align-self: center;
+  height: 100%;
+  align-self: stretch;
   justify-self: stretch;
   position: relative;
-  z-index: 1;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
 }
 
 .formation-grid .battle-unit {
   height: auto;
   width: 100%;
+  max-height: 100%;
 }
 
 .formation-grid .battle-unit-wrap.rank-elite .battle-unit {
@@ -341,6 +324,23 @@
   height: 14px;
 }
 
+.battle-unit.slim .bar-track.action-track {
+  height: 8px;
+}
+
+.battle-unit.slim .unit-head {
+  margin-bottom: 3px;
+}
+
+.battle-unit.slim .unit-name {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.battle-unit.slim .bar-row.action-only {
+  margin-top: 3px;
+}
+
 .battle-unit.compact .bar-track.action-track {
   height: 9px;
 }
@@ -447,6 +447,10 @@
 
 .bar-row.hp-only {
   margin-top: 0;
+}
+
+.bar-row.action-only {
+  margin-top: 4px;
 }
 
 .bar-label {

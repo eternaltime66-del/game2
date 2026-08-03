@@ -42,6 +42,12 @@ public class GameHero extends WxBaseEntity<GameHero> {
 
     private Integer actionValue;
 
+    /** 布阵列 0-3（主角占地宽 2，默认 1 = B 列起） */
+    private Integer slotCol;
+
+    /** 布阵行 0-2（0=前排，默认 0） */
+    private Integer slotRow;
+
     private BigDecimal optimalCarryWeight;
 
     public static GameHero defaultHero(String uid) {
@@ -54,6 +60,8 @@ public class GameHero extends WxBaseEntity<GameHero> {
         hero.setAttack(DEFAULT_ATTACK);
         hero.setDefense(DEFAULT_DEFENSE);
         hero.setActionValue(DEFAULT_ACTION_VALUE);
+        hero.setSlotCol(1);
+        hero.setSlotRow(0);
         hero.setOptimalCarryWeight(DEFAULT_OPTIMAL_CARRY_WEIGHT);
         return hero;
     }

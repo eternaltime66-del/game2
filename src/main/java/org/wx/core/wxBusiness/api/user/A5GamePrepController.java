@@ -10,6 +10,7 @@ import org.wx.core.wxBase.base.Wx;
 import org.wx.core.wxBase.base.WxResult;
 import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 import org.wx.core.wxBusiness.game.entity.BattleBagVo;
+import org.wx.core.wxBusiness.game.entity.HeroFormationVo;
 import org.wx.core.wxBusiness.game.entity.PrepSummaryVo;
 import org.wx.core.wxBusiness.game.service.GamePrepService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
@@ -30,6 +31,23 @@ public class A5GamePrepController {
     @NeedHeader(roles = MemberRole.USER)
     public WxResult<PrepSummaryVo> summary() {
         return WxResult.success(prepService.getPrepSummary(Wx.memberId()));
+    }
+
+    @PostMapping("/formation/get")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<HeroFormationVo> getFormation() {
+        return WxResult.success(prepService.getHeroFormation(Wx.memberId()));
+    }
+
+    @PostMapping("/formation/save")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.USER)
+    public WxResult<HeroFormationVo> saveFormation(
+            @ParamCheck(msg = "站位列") Integer slotCol,
+            @ParamCheck(msg = "站位行") Integer slotRow
+    ) {
+        return WxResult.success(prepService.saveHeroFormation(Wx.memberId(), slotCol, slotRow));
     }
 
     @PostMapping("/bag/info")

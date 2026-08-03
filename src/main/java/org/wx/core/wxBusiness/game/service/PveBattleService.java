@@ -415,7 +415,7 @@ public class PveBattleService {
         unit.initActionBar();
         state.setHeroEquippedItemIds(gameHeroEquipService.getOrInit(state.getUid()).listEquippedItemIds());
         applyHeroWeaponRatio(state, unit);
-        battleFormationService.placeHero(unit);
+        battleFormationService.placeHero(unit, hero);
         state.getUnits().add(unit);
     }
 

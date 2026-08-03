@@ -323,4 +323,42 @@ public class GamePrepService {
         gameHeroService.syncOutsideBattleHp(hero, totalMaxHp);
         gameHeroService.persistOutsideBattleHp(uid, totalMaxHp);
     }
+
+    public HeroFormationVo getHeroFormation(String uid) {
+        GameHero hero = gameHeroService.getOrInitHero(uid);
+        return toFormationVo(hero);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public HeroFormationVo saveHeroFormation(String uid, Integer slotCol, Integer slotRow) {
+        ErrorFactory.notNull(slotCol, "站位列不能为空");
+        ErrorFactory.notNull(slotRow, "站位行不能为空");
+        int w = BattleFormation.HERO_FOOTPRINT_W;
+        int h = BattleFormation.HERO_FOOTPRINT_H;
+        ErrorFactory.throwError(!BattleFormation.inBounds(slotCol, slotRow, w, h), "站位超出战场范围");
+
+        GameHero hero = gameHeroService.getOrInitHero(uid);
+        hero.setSlotCol(slotCol);
+        hero.setSlotRow(slotRow);
+        gameHeroService.updateById(hero);
+        return toFormationVo(hero);
+    }
+
+    private HeroFormationVo toFormationVo(GameHero hero) {
+        HeroFormationVo vo = new HeroFormationVo();
+        vo.setName(hero.getName() != null ? hero.getName() : GameHero.DEFAULT_NAME);
+        int w = BattleFormation.HERO_FOOTPRINT_W;
+        int h = BattleFormation.HERO_FOOTPRINT_H;
+        int col = hero.getSlotCol() != null ? hero.getSlotCol() : 1;
+        int row = hero.getSlotRow() != null ? hero.getSlotRow() : 0;
+        col = Math.max(0, Math.min(col, BattleFormation.COLS - w));
+        row = Math.max(0, Math.min(row, BattleFormation.ROWS - h));
+        vo.setSlotCol(col);
+        vo.setSlotRow(row);
+        vo.setFootprintW(w);
+        vo.setFootprintH(h);
+        vo.setCols(BattleFormation.COLS);
+        vo.setRows(BattleFormation.ROWS);
+        return vo;
+    }
 }

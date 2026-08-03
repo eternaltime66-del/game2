@@ -96,46 +96,51 @@
 
     <div class="battle-scene" :class="{ dimmed: battle.status !== 'RUNNING' }">
       <div class="formation-side enemy" v-if="monsterUnits.length">
-        <div class="formation-label">敌方 · 下行1前排 / 上行3后排（A–D）</div>
+        <div class="formation-label">敌方</div>
         <div class="formation-board enemy">
-          <div class="formation-row-tags">
-            <span>3</span><span>2</span><span>1</span>
-          </div>
           <div class="formation-grid enemy">
-          <div
-            v-for="n in 12"
-            :key="'ecell-' + n"
-            class="formation-cell"
-            aria-hidden="true"
-          ></div>
-          <div
-            v-for="unit in monsterUnits"
-            :key="unit.unitId"
-            class="battle-unit-wrap clickable"
-            :class="'rank-' + (unit.rankType || 'NORMAL').toLowerCase()"
-            :style="enemyFormationStyle(unit)"
-            @click="openMonsterDetail(unit)"
-          >
-            <div
-              class="battle-unit monster compact slim"
-              :class="unitClasses(unit)"
-            >
-              <div class="bar-row hp-only">
-                <div class="bar-track hp-track">
-                  <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
-                  <span class="bar-text">{{ unit.hp }}/{{ unit.maxHp }}</span>
+            <div class="formation-cells" aria-hidden="true">
+              <div v-for="n in 12" :key="'ecell-' + n" class="formation-cell"></div>
+            </div>
+            <div class="formation-units">
+              <div
+                v-for="unit in monsterUnits"
+                :key="unit.unitId"
+                class="battle-unit-wrap clickable"
+                :class="'rank-' + (unit.rankType || 'NORMAL').toLowerCase()"
+                :style="enemyFormationStyle(unit)"
+                @click="openMonsterDetail(unit)"
+              >
+                <div
+                  class="battle-unit monster compact slim"
+                  :class="unitClasses(unit)"
+                >
+                  <div class="unit-head">
+                    <span class="unit-name">{{ unit.name }}</span>
+                  </div>
+                  <div class="bar-row hp-only">
+                    <div class="bar-track hp-track">
+                      <div class="bar-fill hp" :style="{ width: hpPercent(unit) + '%' }"></div>
+                      <span class="bar-text">{{ unit.hp }}/{{ unit.maxHp }}</span>
+                    </div>
+                  </div>
+                  <div class="bar-row action-only">
+                    <div class="bar-track action-track">
+                      <div
+                        class="bar-fill action"
+                        :class="actionBarClasses(unit)"
+                        :style="{ width: actionPercent(unit) + '%' }"
+                      ></div>
+                    </div>
+                  </div>
                 </div>
+                <div
+                  v-for="df in floatsForUnit(unit.unitId)"
+                  :key="df.id"
+                  class="damage-float"
+                >-{{ df.text }}</div>
               </div>
             </div>
-            <div
-              v-for="df in floatsForUnit(unit.unitId)"
-              :key="df.id"
-              class="damage-float"
-            >-{{ df.text }}</div>
-          </div>
-          </div>
-          <div class="formation-col-tags">
-            <span>A</span><span>B</span><span>C</span><span>D</span>
           </div>
         </div>
       </div>
@@ -143,42 +148,44 @@
       <div class="scene-spacer"></div>
 
       <div class="formation-side ally" v-if="heroUnit">
-        <div class="formation-label">己方 · 上行1前排 / 下行3后排（镜像）</div>
+        <div class="formation-label">己方</div>
         <div class="formation-board ally">
-          <div class="formation-row-tags">
-            <span>1</span><span>2</span><span>3</span>
-          </div>
           <div class="formation-grid ally">
-          <div
-            v-for="n in 12"
-            :key="'acell-' + n"
-            class="formation-cell"
-            aria-hidden="true"
-          ></div>
-          <div
-            class="battle-unit-wrap"
-            :style="allyFormationStyle(heroUnit)"
-          >
-            <div class="battle-unit hero slim" :class="unitClasses(heroUnit)">
-              <div class="unit-head hero-only">
-                <span class="unit-name">{{ heroUnit.name }}</span>
-              </div>
-              <div class="bar-row hp-only">
-                <div class="bar-track hp-track">
-                  <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
-                  <span class="bar-text">{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
+            <div class="formation-cells" aria-hidden="true">
+              <div v-for="n in 12" :key="'acell-' + n" class="formation-cell"></div>
+            </div>
+            <div class="formation-units">
+              <div
+                class="battle-unit-wrap"
+                :style="allyFormationStyle(heroUnit)"
+              >
+                <div class="battle-unit hero slim" :class="unitClasses(heroUnit)">
+                  <div class="unit-head hero-only">
+                    <span class="unit-name">{{ heroUnit.name }}</span>
+                  </div>
+                  <div class="bar-row hp-only">
+                    <div class="bar-track hp-track">
+                      <div class="bar-fill hp" :style="{ width: hpPercent(heroUnit) + '%' }"></div>
+                      <span class="bar-text">{{ heroUnit.hp }}/{{ heroUnit.maxHp }}</span>
+                    </div>
+                  </div>
+                  <div class="bar-row action-only">
+                    <div class="bar-track action-track">
+                      <div
+                        class="bar-fill action"
+                        :class="actionBarClasses(heroUnit)"
+                        :style="{ width: actionPercent(heroUnit) + '%' }"
+                      ></div>
+                    </div>
+                  </div>
                 </div>
+                <div
+                  v-for="df in floatsForUnit(heroUnit.unitId)"
+                  :key="df.id"
+                  class="damage-float"
+                >-{{ df.text }}</div>
               </div>
             </div>
-            <div
-              v-for="df in floatsForUnit(heroUnit.unitId)"
-              :key="df.id"
-              class="damage-float"
-            >-{{ df.text }}</div>
-          </div>
-          </div>
-          <div class="formation-col-tags">
-            <span>A</span><span>B</span><span>C</span><span>D</span>
           </div>
         </div>
       </div>

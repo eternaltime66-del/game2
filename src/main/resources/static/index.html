@@ -456,6 +456,52 @@
       </div>
     </div>
 
+    <!-- 布阵 -->
+    <div class="tab-panel formation-panel" :class="{ hidden: activeTab !== 'formation' }">
+      <div class="formation-top">
+        <h3>布阵</h3>
+        <p class="formation-hint">按住主角拖到格子，松手即可落位（占 2 格宽）</p>
+      </div>
+      <div v-if="formationLoading" class="loading-text">加载中...</div>
+      <div
+        v-else-if="formation"
+        class="fm-board"
+        ref="fmGrid"
+      >
+        <div class="fm-cells" aria-hidden="true">
+          <div
+            v-for="n in 12"
+            :key="'fm-cell-' + n"
+            class="fm-cell"
+            :class="{ hot: isFmCellHot(n - 1) }"
+          ></div>
+        </div>
+        <div class="fm-units">
+          <div
+            class="fm-hero-wrap"
+            :class="{ dragging: formationDragging }"
+            :style="fmHeroStyle"
+            @pointerdown.prevent="onFmPointerDown"
+            @pointermove="onFmPointerMove"
+            @pointerup="onFmPointerUp"
+            @pointercancel="onFmPointerUp"
+          >
+            <div class="fm-hero">
+              <div class="fm-hero-name">{{ formation.name || '主角' }}</div>
+              <div class="fm-hero-sub">拖拽布阵</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="formationGhost.show"
+        class="fm-finger-ghost"
+        :style="{ left: formationGhost.x + 'px', top: formationGhost.y + 'px' }"
+      >
+        {{ formation ? (formation.name || '主角') : '主角' }}
+      </div>
+    </div>
+
     <!-- 出击 -->
     <div class="tab-panel" :class="{ hidden: activeTab !== 'sortie' }">
       <div class="stage-panel sortie-panel" v-if="!loading">
@@ -514,6 +560,7 @@
   <div class="home-tabs">
     <button class="home-tab" :class="{ active: activeTab === 'home' }" @click="activeTab = 'home'">主页</button>
     <button class="home-tab" :class="{ active: activeTab === 'prep' }" @click="switchPrepTab">备战</button>
+    <button class="home-tab" :class="{ active: activeTab === 'formation' }" @click="switchFormationTab">布阵</button>
     <button class="home-tab" :class="{ active: activeTab === 'craft' }" @click="switchCraftTab">合成台</button>
     <button class="home-tab" :class="{ active: activeTab === 'sortie' }" @click="activeTab = 'sortie'">出击</button>
   </div>
@@ -1182,6 +1229,13 @@ createApp({
       warehouseTagFilterOpen: false,
       craftRecipes: [],
       craftLoading: false,
+      formation: null,
+      formationLoading: false,
+      formationSaving: false,
+      formationDragging: false,
+      formationHover: null,
+      formationGhost: { show: false, x: 0, y: 0 },
+      _fmPointerId: null,
       selectedCraftId: '',
       craftActing: false,
       pendingCraftId: '',
@@ -1544,6 +1598,18 @@ createApp({
       var id = this.selectedCraftId;
       if (!id) return this.craftRecipes[0] || null;
       return this.craftRecipes.find(function (r) { return r.id === id; }) || null;
+    },
+    fmHeroStyle() {
+      var f = this.formation;
+      if (!f) return {};
+      var col = (f.slotCol != null ? f.slotCol : 1) + 1;
+      var row = (f.slotRow != null ? f.slotRow : 0) + 1;
+      var w = f.footprintW || 2;
+      var h = f.footprintH || 1;
+      return {
+        gridColumn: col + ' / span ' + w,
+        gridRow: row + ' / span ' + h
+      };
     }
   },
   mounted() {
@@ -1554,6 +1620,7 @@ createApp({
     var params = new URLSearchParams(location.search);
     if (params.get('tab') === 'prep') this.activeTab = 'prep';
     if (params.get('tab') === 'craft') this.activeTab = 'craft';
+    if (params.get('tab') === 'formation') this.activeTab = 'formation';
     if (params.get('craft')) this.pendingCraftId = params.get('craft');
     if (params.get('warehouse') === '1') this.warehouseOpen = true;
     this.loadHero();
@@ -1563,6 +1630,9 @@ createApp({
     }
     if (this.activeTab === 'craft') {
       this.loadCraft();
+    }
+    if (this.activeTab === 'formation') {
+      this.loadFormation();
     }
     document.addEventListener('click', this.closeTagFilterDropdown);
   },
@@ -1577,6 +1647,9 @@ createApp({
       }
       if (tab === 'craft') {
         this.loadCraft();
+      }
+      if (tab === 'formation') {
+        this.loadFormation();
       }
     }
   },
@@ -1871,9 +1944,102 @@ createApp({
     switchPrepTab: function () {
       this.activeTab = 'prep';
     },
+    switchFormationTab: function () {
+      this.activeTab = 'formation';
+      this.loadFormation();
+    },
     switchCraftTab: function () {
       this.activeTab = 'craft';
       this.loadCraft();
+    },
+    loadFormation: function () {
+      var self = this;
+      self.formationLoading = true;
+      return GameApi.getHeroFormation()
+        .then(function (res) {
+          self.formation = res.data || null;
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.formationLoading = false; });
+    },
+    isFmCellHot: function (index) {
+      var hover = this.formationHover;
+      var f = this.formation;
+      if (!hover || !f || !this.formationDragging) return false;
+      var col = index % 4;
+      var row = Math.floor(index / 4);
+      var w = f.footprintW || 2;
+      var h = f.footprintH || 1;
+      return col >= hover.col && col < hover.col + w
+        && row >= hover.row && row < hover.row + h;
+    },
+    updateFmHoverFromPoint: function (clientX, clientY) {
+      var grid = this.$refs.fmGrid;
+      var f = this.formation;
+      if (!grid || !f) return;
+      var rect = grid.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      var cols = f.cols || 4;
+      var rows = f.rows || 3;
+      var w = f.footprintW || 2;
+      var h = f.footprintH || 1;
+      var col = Math.floor((clientX - rect.left) / rect.width * cols);
+      var row = Math.floor((clientY - rect.top) / rect.height * rows);
+      col = Math.max(0, Math.min(cols - w, col));
+      row = Math.max(0, Math.min(rows - h, row));
+      this.formationHover = { col: col, row: row };
+    },
+    onFmPointerDown: function (e) {
+      if (!this.formation || this.formationSaving || this.formationDragging) return;
+      if (e.button != null && e.button !== 0) return;
+      var el = e.currentTarget;
+      if (el && el.setPointerCapture) {
+        try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+      this._fmPointerId = e.pointerId;
+      this.formationDragging = true;
+      this.formationGhost = { show: true, x: e.clientX, y: e.clientY };
+      this.updateFmHoverFromPoint(e.clientX, e.clientY);
+    },
+    onFmPointerMove: function (e) {
+      if (!this.formationDragging) return;
+      if (this._fmPointerId != null && e.pointerId !== this._fmPointerId) return;
+      this.formationGhost = { show: true, x: e.clientX, y: e.clientY };
+      this.updateFmHoverFromPoint(e.clientX, e.clientY);
+    },
+    onFmPointerUp: function (e) {
+      if (!this.formationDragging) return;
+      if (this._fmPointerId != null && e.pointerId !== this._fmPointerId) return;
+      var hover = this.formationHover;
+      this.formationDragging = false;
+      this.formationGhost = { show: false, x: 0, y: 0 };
+      this._fmPointerId = null;
+      if (hover) {
+        this.commitFormation(hover.col, hover.row);
+      }
+      this.formationHover = null;
+    },
+    commitFormation: function (col, row) {
+      var self = this;
+      var f = this.formation;
+      if (!f || self.formationSaving) return;
+      if (f.slotCol === col && f.slotRow === row) return;
+      self.formationSaving = true;
+      var prevCol = f.slotCol;
+      var prevRow = f.slotRow;
+      f.slotCol = col;
+      f.slotRow = row;
+      GameApi.saveHeroFormation(col, row)
+        .then(function (res) {
+          if (res.data) self.formation = res.data;
+          self.showToast('布阵已保存', 'success');
+        })
+        .catch(function (err) {
+          f.slotCol = prevCol;
+          f.slotRow = prevRow;
+          self.showToast(err.message);
+        })
+        .finally(function () { self.formationSaving = false; });
     },
     selectCraftRecipe: function (recipeId) {
       this.selectedCraftId = recipeId;

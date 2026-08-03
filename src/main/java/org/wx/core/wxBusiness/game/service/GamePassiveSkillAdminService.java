@@ -69,8 +69,7 @@ public class GamePassiveSkillAdminService {
         entity.setId(vo.getId());
         entity.setCode(vo.getCode().trim().toUpperCase());
         entity.setName(vo.getName().trim());
-        PassiveSkillKind kind = PassiveSkillKind.parse(vo.getPassiveKind());
-        entity.setPassiveKind(kind.name());
+        entity.setPassiveKind(PassiveSkillKind.NUMERIC.name());
         String catL1 = vo.getCatL1() != null && !vo.getCatL1().isBlank() ? vo.getCatL1().trim().toUpperCase() : "EQUIP";
         entity.setCatL1(catL1);
         String catL2 = vo.getCatL2() != null && !vo.getCatL2().isBlank() ? vo.getCatL2().trim().toUpperCase() : "GENERAL";
@@ -259,9 +258,8 @@ public class GamePassiveSkillAdminService {
         vo.setId(skill.getId());
         vo.setCode(skill.getCode());
         vo.setName(skill.getName());
-        PassiveSkillKind kind = PassiveSkillKind.parse(skill.getPassiveKind());
-        vo.setPassiveKind(kind.name());
-        vo.setPassiveKindLabel(kind.getLabel());
+        vo.setPassiveKind(PassiveSkillKind.NUMERIC.name());
+        vo.setPassiveKindLabel(PassiveSkillKind.NUMERIC.getLabel());
         vo.setCatL1(skill.getCatL1() != null ? skill.getCatL1() : "EQUIP");
         vo.setCatL2(skill.getCatL2() != null ? skill.getCatL2() : "GENERAL");
         FinishedSkillCatL2 c2 = FinishedSkillCatL2.parse(vo.getCatL2());

@@ -1,9 +1,8 @@
 package org.wx.core.wxBusiness.game.entity.enums;
 
-/** 被动技能大类 */
+/** 被动技能类型（已统一，不再区分数值/机制） */
 public enum PassiveSkillKind {
-    NUMERIC("数值型"),
-    MECHANISM("机制型");
+    NUMERIC("被动");
 
     private final String label;
 
@@ -16,13 +15,6 @@ public enum PassiveSkillKind {
     }
 
     public static PassiveSkillKind parse(String code) {
-        if (code == null || code.isBlank()) {
-            return NUMERIC;
-        }
-        try {
-            return valueOf(code.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return NUMERIC;
-        }
+        return NUMERIC;
     }
 }

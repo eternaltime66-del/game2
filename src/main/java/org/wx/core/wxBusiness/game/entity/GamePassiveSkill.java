@@ -21,7 +21,7 @@ public class GamePassiveSkill extends WxBaseEntity<GamePassiveSkill> {
 
     private String name;
 
-    /** NUMERIC / MECHANISM */
+    /** 被动类型（已统一为 NUMERIC，不再区分数值/机制） */
     private String passiveKind;
 
     /** EQUIP / PERSON */

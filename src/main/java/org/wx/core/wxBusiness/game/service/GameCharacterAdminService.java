@@ -5,15 +5,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBase.unit.WordUnit;
+import org.wx.core.wxBusiness.game.entity.GameCharacterProfession;
 import org.wx.core.wxBusiness.game.entity.GameCharacterTemplate;
 import org.wx.core.wxBusiness.game.entity.GameHero;
-import org.wx.core.wxBusiness.game.entity.GameItem;
 import org.wx.core.wxBusiness.game.entity.GameProfession;
-import org.wx.core.wxBusiness.game.entity.GameProfessionSkill;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class GameCharacterAdminService {
@@ -27,12 +30,37 @@ public class GameCharacterAdminService {
     @Resource
     private GameProfessionService professionService;
     @Resource
-    private GameProfessionSkillService professionSkillService;
-    @Resource
-    private GameItemService gameItemService;
+    private GameCharacterProfessionService characterProfessionService;
 
     public List<GameCharacterTemplate> listTemplates() {
-        return templateService.find().orderByAsc(GameCharacterTemplate::getCode).list();
+        List<GameCharacterTemplate> list = templateService.find().orderByAsc(GameCharacterTemplate::getCode).list();
+        if (list.isEmpty()) {
+            return list;
+        }
+        Map<String, GameProfession> professionMap = professionService.find().list().stream()
+                .collect(Collectors.toMap(GameProfession::getId, p -> p, (a, b) -> a, LinkedHashMap::new));
+        List<String> tplIds = list.stream().map(GameCharacterTemplate::getId).toList();
+        List<GameCharacterProfession> binds = characterProfessionService.find()
+                .in(GameCharacterProfession::getCharacterTemplateId, tplIds)
+                .orderByAsc(GameCharacterProfession::getSort)
+                .list();
+        Map<String, List<GameCharacterProfession>> byTpl = binds.stream()
+                .collect(Collectors.groupingBy(GameCharacterProfession::getCharacterTemplateId));
+        for (GameCharacterTemplate tpl : list) {
+            List<GameCharacterProfession> rows = byTpl.getOrDefault(tpl.getId(), List.of());
+            List<String> ids = new ArrayList<>();
+            List<String> names = new ArrayList<>();
+            for (GameCharacterProfession row : rows) {
+                ids.add(row.getProfessionId());
+                GameProfession p = professionMap.get(row.getProfessionId());
+                if (p != null) {
+                    names.add(p.getName());
+                }
+            }
+            tpl.setProfessionIds(ids);
+            tpl.setProfessionNames(names.isEmpty() ? "—" : String.join("、", names));
+        }
+        return list;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -46,6 +74,7 @@ public class GameCharacterAdminService {
         if (entity.getEnabled() == null) entity.setEnabled(1);
 
         GameCharacterTemplate existing = templateService.getByCode(entity.getCode());
+        String templateId;
         if (existing != null) {
             boolean statsChanged = !eq(existing.getMaxHp(), entity.getMaxHp())
                     || !eq(existing.getAttack(), entity.getAttack())
@@ -58,16 +87,50 @@ public class GameCharacterAdminService {
             }
             entity.setTemplateVersion(ver);
             templateService.updateById(entity);
-            return templateService.getById(entity.getId());
+            templateId = entity.getId();
+        } else {
+            if (entity.getId() == null || entity.getId().isBlank()) {
+                entity.setId(WordUnit.randomKey(12, 1));
+            }
+            if (entity.getTemplateVersion() == null) {
+                entity.setTemplateVersion(1);
+            }
+            templateService.save(entity);
+            templateId = entity.getId();
         }
-        if (entity.getId() == null || entity.getId().isBlank()) {
-            entity.setId(WordUnit.randomKey(12, 1));
+        replaceProfessionBinds(templateId, entity.getProfessionIds());
+        return listTemplates().stream()
+                .filter(t -> Objects.equals(t.getId(), templateId))
+                .findFirst()
+                .orElseGet(() -> templateService.getById(templateId));
+    }
+
+    private void replaceProfessionBinds(String templateId, List<String> professionIds) {
+        List<GameCharacterProfession> old = characterProfessionService.find()
+                .eq(GameCharacterProfession::getCharacterTemplateId, templateId)
+                .list();
+        for (GameCharacterProfession row : old) {
+            characterProfessionService.removeById(row.getId());
         }
-        if (entity.getTemplateVersion() == null) {
-            entity.setTemplateVersion(1);
+        if (professionIds == null || professionIds.isEmpty()) {
+            return;
         }
-        templateService.save(entity);
-        return entity;
+        int sort = 0;
+        for (String professionId : professionIds) {
+            if (professionId == null || professionId.isBlank()) {
+                continue;
+            }
+            GameProfession p = professionService.getById(professionId);
+            if (p == null) {
+                continue;
+            }
+            GameCharacterProfession bind = new GameCharacterProfession();
+            bind.setId(WordUnit.randomKey(12, 1));
+            bind.setCharacterTemplateId(templateId);
+            bind.setProfessionId(professionId);
+            bind.setSort(sort++);
+            characterProfessionService.save(bind);
+        }
     }
 
     /**
@@ -93,14 +156,12 @@ public class GameCharacterAdminService {
             hero.setDefense(tpl.getDefense());
             hero.setActionValue(tpl.getActionValue());
             hero.setTemplateVersion(tplVer);
-            // 基础 maxHp 更新后，先把当前 hp 钳到模板 max，再由 prep 按装备重算
             if (hero.getHp() == null || hero.getHp() > hero.getMaxHp()) {
                 hero.setHp(hero.getMaxHp());
             }
             gameHeroService.updateById(hero);
             synced = true;
         }
-        // 无论是否升版，都重算装备加成后的场外生命
         int totalMaxHp = gamePrepService.resolveBattleMaxHp(uid);
         gameHeroService.persistOutsideBattleHp(uid, totalMaxHp);
         result.put("synced", synced);

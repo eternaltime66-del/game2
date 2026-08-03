@@ -283,8 +283,8 @@ body.admin-body .bg-glow {
 .panel-filter-bar {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px 16px;
+  justify-content: flex-start;
+  gap: 12px;
   padding: 14px 18px;
   margin: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -296,8 +296,8 @@ body.admin-body .bg-glow {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  flex: 1;
-  min-width: 220px;
+  flex: 0 1 auto;
+  min-width: 0;
   flex-wrap: wrap;
 }
 
@@ -309,9 +309,9 @@ body.admin-body .bg-glow {
 }
 
 .panel-filter-field.panel-filter-grow {
-  flex: 1;
+  flex: 0 1 240px;
   min-width: 180px;
-  max-width: 320px;
+  max-width: 280px;
 }
 
 .panel-filter-field label {
@@ -328,6 +328,8 @@ body.admin-body .bg-glow {
   padding: 0 12px;
   font-size: 13px;
   outline: none;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .panel-filter-field input:focus {
@@ -342,8 +344,24 @@ body.admin-body .bg-glow {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
   flex-shrink: 0;
-  padding-bottom: 1px;
+  padding-bottom: 0;
+}
+
+.panel-filter-actions .btn-mini,
+.panel-filter-actions .btn-primary,
+.panel-filter-actions .btn-primary.btn-mini {
+  height: 36px;
+  min-width: 64px;
+  padding: 0 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .panel-body {
@@ -554,6 +572,44 @@ body.admin-body .bg-glow {
 .muted {
   color: var(--muted);
   font-size: 12px;
+}
+
+.check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.check-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text, #e8e8e8);
+}
+
+.check-chip input {
+  margin: 0;
+  width: auto;
+  accent-color: #5b9bd5;
+}
+
+.check-chip em {
+  font-style: normal;
+  opacity: 0.55;
+  font-size: 12px;
+}
+
+.check-chip:has(input:checked) {
+  border-color: rgba(91, 155, 213, 0.55);
+  background: rgba(91, 155, 213, 0.15);
 }
 
 .level-tree {
@@ -1485,7 +1541,22 @@ body.admin-body .bg-glow {
 .skill-browser-filter-actions .skill-browser-btn-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.skill-browser-filter-actions .skill-browser-btn-row .btn-mini,
+.skill-browser-filter-actions .skill-browser-btn-row .btn-primary {
+  height: 36px;
+  min-width: 64px;
+  padding: 0 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .skill-filter-quick .btn-mini {

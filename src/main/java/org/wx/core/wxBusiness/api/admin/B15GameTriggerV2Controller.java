@@ -165,4 +165,53 @@ public class B15GameTriggerV2Controller {
     public WxResult<FinishedSkillCategoryMetaVo> finishedSkillCategories() {
         return WxResult.success(adminService.finishedSkillCategoryMeta());
     }
+
+    @PostMapping("/meta/read-types")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> readTypes() {
+        return WxResult.success(adminService.listReadTypeOptions());
+    }
+
+    @PostMapping("/meta/compare-ops")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> compareOps() {
+        return WxResult.success(adminService.listCompareOpOptions());
+    }
+
+    @PostMapping("/meta/formula-outcomes")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> formulaOutcomes() {
+        return WxResult.success(adminService.listFormulaOutcomeOptions());
+    }
+
+    @PostMapping("/meta/trigger-modes")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> triggerModes() {
+        return WxResult.success(adminService.listTriggerModeOptions());
+    }
+
+    @PostMapping("/meta/quick-presets")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> quickPresets() {
+        return WxResult.success(adminService.listQuickPresetOptions());
+    }
+
+    @PostMapping("/meta/skill-scope-cast")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> skillScopeCast() {
+        return WxResult.success(adminService.listSkillScopeFilterCastOptions());
+    }
+
+    @PostMapping("/meta/skill-scope-hit")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<TriggerOptionVo>> skillScopeHit() {
+        return WxResult.success(adminService.listSkillScopeFilterHitOptions());
+    }
+
+    @PostMapping("/basic-attack/detail")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<AdminFinishedSkillVo> basicAttackDetail() {
+        return WxResult.success(adminService.getUniversalBasicAttack());
+    }
 }

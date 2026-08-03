@@ -8,7 +8,9 @@ import org.wx.core.wxBase.factory.ErrorFactory;
 import org.wx.core.wxBase.unit.WordUnit;
 import org.wx.core.wxBusiness.game.entity.*;
 import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL2;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionKind;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectKind;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveSkillKind;
 
@@ -31,6 +33,8 @@ public class GamePassiveSkillAdminService {
     private GameMonsterPassiveService monsterPassiveService;
     @Resource
     private GameReferenceCleanupService referenceCleanupService;
+    @Resource
+    private SkillJsonHelper skillJsonHelper;
 
     public IPage<AdminPassiveSkillVo> listPassiveSkills(GamePassiveSkill query) {
         return passiveSkillService.pageQuery(query).convert(this::toPassiveVo);
@@ -46,18 +50,29 @@ public class GamePassiveSkillAdminService {
     public AdminPassiveSkillVo savePassiveSkill(AdminPassiveSkillVo vo) {
         ErrorFactory.notNull(vo.getCode(), "编码不能为空");
         ErrorFactory.notNull(vo.getName(), "名称不能为空");
-        ErrorFactory.notNull(vo.getEffectType(), "效果类型不能为空");
-        PassiveEffectType effectType = PassiveEffectType.parse(vo.getEffectType());
-        ErrorFactory.notNull(effectType, "效果类型无效");
-        ErrorFactory.notNull(vo.getEffectValue(), "效果数值不能为空");
 
-        PassiveConditionType conditionType = PassiveConditionType.parse(
-                vo.getConditionType() != null ? vo.getConditionType() : PassiveConditionType.NONE.name());
-        ErrorFactory.notNull(conditionType, "生效条件无效");
-        if (conditionType == PassiveConditionType.REQUIRE_EQUIP) {
-            ErrorFactory.notNull(vo.getConditionEquipItemId(), "请选择条件装备");
-            GameItem item = itemService.getById(vo.getConditionEquipItemId());
-            ErrorFactory.notNull(item, "条件装备不存在");
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo> conditions =
+                vo.getConditions() != null && !vo.getConditions().isEmpty()
+                        ? vo.getConditions()
+                        : skillJsonHelper.defaultPassiveConditions();
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo> effects =
+                vo.getEffects() != null ? vo.getEffects() : List.of();
+        ErrorFactory.throwError(effects.isEmpty(), "请至少配置一条效果");
+
+        for (org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo c : conditions) {
+            if (c == null) {
+                continue;
+            }
+            PassiveConditionKind kind = PassiveConditionKind.parse(c.getType());
+            if (kind == PassiveConditionKind.REQUIRE_EQUIP) {
+                ErrorFactory.notNull(c.getEquipItemId(), "请选择条件装备");
+                GameItem item = itemService.getById(c.getEquipItemId());
+                ErrorFactory.notNull(item, "条件装备不存在");
+            }
+        }
+        for (org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo e : effects) {
+            ErrorFactory.notNull(e.getKind(), "效果类型不能为空");
+            ErrorFactory.notNull(PassiveEffectKind.parse(e.getKind()), "效果类型无效");
         }
 
         GamePassiveSkill entity = new GamePassiveSkill();
@@ -70,11 +85,12 @@ public class GamePassiveSkillAdminService {
         String catL2 = vo.getCatL2() != null && !vo.getCatL2().isBlank() ? vo.getCatL2().trim().toUpperCase() : "GENERAL";
         entity.setCatL2(catL2);
         entity.setOwnerRef(vo.getOwnerRef() != null && !vo.getOwnerRef().isBlank() ? vo.getOwnerRef().trim() : null);
-        entity.setConditionType(conditionType.name());
-        entity.setConditionEquipItemId(conditionType == PassiveConditionType.REQUIRE_EQUIP
-                ? vo.getConditionEquipItemId() : null);
-        entity.setEffectType(effectType.name());
-        entity.setEffectValue(vo.getEffectValue());
+        entity.setConditionsJson(skillJsonHelper.writePassiveConditions(conditions));
+        entity.setEffectsJson(skillJsonHelper.writePassiveEffects(effects));
+        entity.setConditionType(null);
+        entity.setConditionEquipItemId(null);
+        entity.setEffectType(null);
+        entity.setEffectValue(null);
         entity.setSort(vo.getSort() != null ? vo.getSort() : 0);
         entity.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         entity.setRemark(vo.getRemark());
@@ -100,7 +116,7 @@ public class GamePassiveSkillAdminService {
     }
 
     public List<TriggerOptionVo> listPassiveConditionTypes() {
-        return Arrays.stream(PassiveConditionType.values()).map(type -> {
+        return PassiveConditionKind.all().stream().map(type -> {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
             vo.setLabel(type.getLabel());
@@ -109,7 +125,7 @@ public class GamePassiveSkillAdminService {
     }
 
     public List<TriggerOptionVo> listPassiveEffectTypes() {
-        return Arrays.stream(PassiveEffectType.values()).map(type -> {
+        return PassiveEffectKind.all().stream().map(type -> {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
             vo.setLabel(type.getLabel());
@@ -191,18 +207,19 @@ public class GamePassiveSkillAdminService {
         FinishedSkillCatL2 c2 = FinishedSkillCatL2.parse(vo.getCatL2());
         vo.setCatL2Label(c2.getLabel());
         vo.setOwnerRef(skill.getOwnerRef());
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo> conditions =
+                skillJsonHelper.readPassiveConditions(skill.getConditionsJson());
+        if (conditions.isEmpty()) {
+            conditions = skillJsonHelper.defaultPassiveConditions();
+        }
+        vo.setConditions(conditions);
+        vo.setEffects(skillJsonHelper.readPassiveEffects(skill.getEffectsJson()));
         vo.setConditionType(skill.getConditionType());
         PassiveConditionType ct = PassiveConditionType.parse(skill.getConditionType());
         if (ct != null) {
             vo.setConditionTypeLabel(ct.getLabel());
         }
         vo.setConditionEquipItemId(skill.getConditionEquipItemId());
-        if (skill.getConditionEquipItemId() != null) {
-            GameItem item = itemService.getById(skill.getConditionEquipItemId());
-            if (item != null) {
-                vo.setConditionEquipItemName(item.getName());
-            }
-        }
         vo.setEffectType(skill.getEffectType());
         PassiveEffectType et = PassiveEffectType.parse(skill.getEffectType());
         if (et != null) {

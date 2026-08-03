@@ -1,8 +1,8 @@
 package org.wx.core.wxBusiness.game.entity;
 
 import lombok.Data;
+import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +20,16 @@ public class AdminFinishedSkillVo {
     private String targetTypeLabel;
 
     private Integer targetParam;
+
+    /** 频率槽，最小 1 */
+    private Integer hitFrequency;
+
+    /** null=无限 */
+    private Integer maxCastCount;
+
+    private Boolean maxCastUnlimited;
+
+    private List<SkillFormulaGroupVo> formulas = new ArrayList<>();
 
     private String catL1;
 
@@ -42,5 +52,9 @@ public class AdminFinishedSkillVo {
 
     private String remark;
 
+    /** @deprecated 旧效果步骤 */
     private List<AdminFinishedSkillEffectVo> effects = new ArrayList<>();
+
+    /** 是否只读（通用普攻） */
+    private Boolean readonly;
 }

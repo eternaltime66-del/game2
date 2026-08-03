@@ -26,6 +26,10 @@ public class FinishedSkillExecutorService {
     private GameTriggerSlotEngineService triggerSlotEngineService;
     @Resource
     private GameWeaponService gameWeaponService;
+    @Resource
+    private SkillJsonHelper skillJsonHelper;
+    @Resource
+    private SkillExpressionService skillExpressionService;
 
     public List<BattleLog> execute(BattleState state, BattleUnit caster, String finishedSkillId, TriggerEventContext ctx) {
         if (ctx == null) {
@@ -42,8 +46,12 @@ public class FinishedSkillExecutorService {
             return Collections.emptyList();
         }
 
-        List<GameFinishedSkillEffect> effects = finishedSkillEffectService.listByFinishedSkillId(finishedSkillId);
-        if (effects.isEmpty()) {
+        List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> formulas =
+                skillJsonHelper.readFormulas(skill.getFormulasJson());
+        List<GameFinishedSkillEffect> effects = formulas.isEmpty()
+                ? finishedSkillEffectService.listByFinishedSkillId(finishedSkillId)
+                : List.of();
+        if (formulas.isEmpty() && effects.isEmpty()) {
             return Collections.emptyList();
         }
 
@@ -57,13 +65,23 @@ public class FinishedSkillExecutorService {
         List<TargetHit> hits = resolveTargetHits(state, caster, skill, targetType, ctx);
         boolean dealtDamage = false;
         for (TargetHit hit : hits) {
-            for (GameFinishedSkillEffect effect : effects) {
-                List<BattleLog> effectLogs = applyEffect(state, caster, hit.target(), effect, skill, ctx, hit.repeatIndex());
-                logs.addAll(effectLogs);
-                if (AdvancedEffectKind.STAT_FORMULA.name().equals(effect.getEffectKind())
-                        || AdvancedEffectKind.FIXED_VALUE.name().equals(effect.getEffectKind())) {
-                    if (EffectOutcomeType.DAMAGE.name().equals(effect.getOutcomeType())) {
+            if (!formulas.isEmpty()) {
+                for (org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo formula : formulas) {
+                    List<BattleLog> effectLogs = applyFormula(state, caster, hit.target(), formula, skill, ctx, hit.repeatIndex());
+                    logs.addAll(effectLogs);
+                    if (SkillFormulaOutcome.DAMAGE.name().equals(formula.getOutcome())) {
                         dealtDamage = true;
+                    }
+                }
+            } else {
+                for (GameFinishedSkillEffect effect : effects) {
+                    List<BattleLog> effectLogs = applyEffect(state, caster, hit.target(), effect, skill, ctx, hit.repeatIndex());
+                    logs.addAll(effectLogs);
+                    if (AdvancedEffectKind.STAT_FORMULA.name().equals(effect.getEffectKind())
+                            || AdvancedEffectKind.FIXED_VALUE.name().equals(effect.getEffectKind())) {
+                        if (EffectOutcomeType.DAMAGE.name().equals(effect.getOutcomeType())) {
+                            dealtDamage = true;
+                        }
                     }
                 }
             }
@@ -82,38 +100,141 @@ public class FinishedSkillExecutorService {
 
     private List<TargetHit> resolveTargetHits(BattleState state, BattleUnit caster, GameFinishedSkill skill,
                                                 SkillTargetType targetType, TriggerEventContext ctx) {
-        int param = skill.getTargetParam() != null ? skill.getTargetParam() : 1;
-        return switch (targetType) {
-            case SELF -> List.of(new TargetHit(caster, 0));
-            case ALL_ALLIES -> listAllies(state, caster).stream().map(u -> new TargetHit(u, 0)).toList();
-            case ALL_ENEMIES -> listEnemies(state, caster).stream().map(u -> new TargetHit(u, 0)).toList();
-            case RANDOM_ONE_ENEMY -> pickRandomEnemies(state, caster, 1).stream().map(u -> new TargetHit(u, 0)).toList();
-            case RANDOM_ENEMIES -> pickRandomEnemies(state, caster, param).stream().map(u -> new TargetHit(u, 0)).toList();
-            case FRONT_ROW_RANDOM_ONE_ENEMY ->
-                    pickRandomEnemiesFromRow(state, caster, true, 1).stream().map(u -> new TargetHit(u, 0)).toList();
-            case BACK_ROW_RANDOM_ONE_ENEMY ->
-                    pickRandomEnemiesFromRow(state, caster, false, 1).stream().map(u -> new TargetHit(u, 0)).toList();
-            case RANDOM_ONE_ENEMY_REPEAT -> {
-                List<BattleUnit> one = pickRandomEnemies(state, caster, 1);
-                if (one.isEmpty()) {
-                    yield List.of();
-                }
-                List<TargetHit> repeated = new ArrayList<>();
-                for (int i = 0; i < param; i++) {
-                    repeated.add(new TargetHit(one.get(0), i));
-                }
-                yield repeated;
+        int frequency = skill.getHitFrequency() != null && skill.getHitFrequency() > 0 ? skill.getHitFrequency() : 1;
+        List<BattleUnit> baseTargets = switch (targetType) {
+            case SELF -> List.of(caster);
+            case ALL_ALLIES -> listAllies(state, caster);
+            case ALL_ENEMIES -> listEnemies(state, caster);
+            case FRONT_ROW_ALL -> listEnemiesInRow(state, caster, true);
+            case MID_ROW_ALL -> listEnemiesInMidRow(state, caster);
+            case BACK_ROW_ALL -> listEnemiesInRow(state, caster, false);
+            case RANDOM_1 -> pickRandomAny(state, caster, 1);
+            case FIRST_TARGET -> {
+                BattleUnit first = firstTargetByGrid(state, caster);
+                yield first != null ? List.of(first) : List.of();
             }
-            case CURRENT_ATTACK_TARGET -> {
+            case MAIN_TARGET, CURRENT_ATTACK_TARGET -> {
                 BattleUnit t = ctx.getPrimaryTarget();
                 if (t != null && t.isAlive() && isEnemy(caster, t)) {
-                    yield List.of(new TargetHit(t, 0));
+                    yield List.of(t);
                 }
-                yield pickRandomEnemies(state, caster, 1).stream().map(u -> new TargetHit(u, 0)).toList();
+                yield pickRandomEnemies(state, caster, 1);
             }
-            case FRONT_ROW_ENEMIES -> listEnemiesInRow(state, caster, true).stream().map(u -> new TargetHit(u, 0)).toList();
-            case BACK_ROW_ENEMIES -> listEnemiesInRow(state, caster, false).stream().map(u -> new TargetHit(u, 0)).toList();
+            case RANDOM_ONE_ENEMY -> pickRandomEnemies(state, caster, 1);
+            case RANDOM_ENEMIES -> pickRandomEnemies(state, caster, skill.getTargetParam() != null ? skill.getTargetParam() : 1);
+            case FRONT_ROW_RANDOM_ONE_ENEMY -> pickRandomEnemiesFromRow(state, caster, true, 1);
+            case BACK_ROW_RANDOM_ONE_ENEMY -> pickRandomEnemiesFromRow(state, caster, false, 1);
+            case RANDOM_ONE_ENEMY_REPEAT -> pickRandomEnemies(state, caster, 1);
+            case FRONT_ROW_ENEMIES -> listEnemiesInRow(state, caster, true);
+            case BACK_ROW_ENEMIES -> listEnemiesInRow(state, caster, false);
         };
+        if (targetType == SkillTargetType.RANDOM_ONE_ENEMY_REPEAT) {
+            frequency = skill.getTargetParam() != null && skill.getTargetParam() > 0 ? skill.getTargetParam() : frequency;
+        }
+        List<TargetHit> hits = new ArrayList<>();
+        for (BattleUnit target : baseTargets) {
+            for (int i = 0; i < frequency; i++) {
+                hits.add(new TargetHit(target, i));
+            }
+        }
+        return hits;
+    }
+
+    private List<BattleUnit> listEnemiesInMidRow(BattleState state, BattleUnit caster) {
+        return listEnemies(state, caster).stream()
+                .filter(u -> u.getSlotRow() != null && u.getSlotRow() == 1)
+                .collect(Collectors.toList());
+    }
+
+    private BattleUnit firstTargetByGrid(BattleState state, BattleUnit caster) {
+        return listEnemies(state, caster).stream()
+                .sorted(Comparator
+                        .comparing((BattleUnit u) -> u.getSlotRow() == null ? 99 : u.getSlotRow())
+                        .thenComparing(u -> u.getSlotCol() == null ? 99 : u.getSlotCol()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private List<BattleUnit> pickRandomAny(BattleState state, BattleUnit caster, int count) {
+        return pickRandomEnemies(state, caster, count);
+    }
+
+    private List<BattleLog> applyFormula(BattleState state, BattleUnit caster, BattleUnit target,
+                                         org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo formula,
+                                         GameFinishedSkill skill, TriggerEventContext ctx, int repeatIndex) {
+        if (target == null || !target.isAlive() || formula == null) {
+            return Collections.emptyList();
+        }
+        var reader = skillExpressionService.unitReader(caster, Map.of());
+        BigDecimal amount = skillExpressionService.evalFormula(formula, reader);
+        if (SkillFormulaOutcome.DAMAGE.name().equals(formula.getOutcome())
+                && caster.getWeaponDamageRatio() != null) {
+            amount = amount.multiply(caster.getWeaponDamageRatio());
+        }
+        amount = amount.setScale(1, RoundingMode.CEILING);
+        SkillFormulaOutcome outcome = SkillFormulaOutcome.parse(formula.getOutcome());
+        if (outcome == null) {
+            return Collections.emptyList();
+        }
+        List<BattleLog> logs = new ArrayList<>();
+        switch (outcome) {
+            case DAMAGE -> {
+                TriggerEventContext preCtx = copyCtx(ctx, caster, target);
+                preCtx.setVictim(target);
+                preCtx.setFinishedSkillId(skill.getId());
+                preCtx.setFinishedSkillCasterSide(caster.getSide());
+                logs.addAll(triggerSlotEngineService.fireInstant(state, TriggerSlotType.ON_TAKE_DAMAGE, target, preCtx));
+                TriggerSlotType skillHitType = isEnemy(caster, target)
+                        ? TriggerSlotType.ON_HIT_BY_ENEMY_FINISHED_SKILL
+                        : TriggerSlotType.ON_HIT_BY_ALLY_FINISHED_SKILL;
+                logs.addAll(triggerSlotEngineService.fireInstant(state, skillHitType, target, preCtx));
+                BattleEngine.applyDamage(target, amount);
+                logs.add(BattleLog.skillDamage(caster.getName(), target.getName(),
+                        BattleLog.buildSkillDisplayLabel(skill),
+                        amount.stripTrailingZeros().toPlainString(),
+                        "公式", !target.isAlive()));
+                TriggerEventContext postCtx = copyCtx(preCtx, caster, target);
+                postCtx.setDamageAmount(amount);
+                logs.addAll(triggerSlotEngineService.fireAccumulated(state, caster, target, postCtx, amount, BigDecimal.ZERO));
+                triggerSlotEngineService.recordHit(target);
+                logs.addAll(triggerSlotEngineService.fireThreshold(state, TriggerSlotType.HIT_COUNT, target, postCtx));
+            }
+            case HEAL -> {
+                int heal = amount.setScale(0, RoundingMode.CEILING).intValue();
+                int nextHp = Math.min(target.getMaxHp(), target.getHp() + heal);
+                int actualHeal = nextHp - target.getHp();
+                target.setHp(nextHp);
+                logs.add(BattleLog.skillHeal(caster.getName(), target.getName(),
+                        BattleLog.buildSkillDisplayLabel(skill), String.valueOf(actualHeal)));
+            }
+            case ACTION_INC -> {
+                int bar = target.getActionBar() != null ? target.getActionBar() : 0;
+                int max = target.getActionValue() != null ? target.getActionValue() : 0;
+                int delta = Math.max(0, amount.intValue());
+                target.setActionBar(Math.min(max, bar + delta));
+                logs.add(BattleLog.of(BattleLog.TYPE_SKILL, target.getName() + " 行动值 +" + delta));
+            }
+            case ACTION_DEC -> {
+                int bar = target.getActionBar() != null ? target.getActionBar() : 0;
+                int delta = Math.max(0, amount.intValue());
+                target.setActionBar(Math.max(0, bar - delta));
+                logs.add(BattleLog.of(BattleLog.TYPE_SKILL, target.getName() + " 行动值 -" + delta));
+            }
+            case ENERGY_MAX_INC -> {
+                int max = target.getActionValue() != null ? target.getActionValue() : 0;
+                int delta = Math.max(0, amount.intValue());
+                target.setActionValue(Math.max(10, max + delta));
+                logs.add(BattleLog.of(BattleLog.TYPE_SKILL, target.getName() + " 最大能量 +" + delta));
+            }
+            case ENERGY_MAX_DEC -> {
+                int max = target.getActionValue() != null ? target.getActionValue() : 0;
+                int delta = Math.max(0, amount.intValue());
+                target.setActionValue(Math.max(10, max - delta));
+                logs.add(BattleLog.of(BattleLog.TYPE_SKILL, target.getName() + " 最大能量 -" + delta));
+            }
+        }
+        BattleEngine.refreshAliveState(state);
+        return logs;
     }
 
     private List<BattleLog> applyEffect(BattleState state, BattleUnit caster, BattleUnit target,

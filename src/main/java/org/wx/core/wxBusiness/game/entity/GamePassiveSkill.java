@@ -33,12 +33,22 @@ public class GamePassiveSkill extends WxBaseEntity<GamePassiveSkill> {
     /** 角色模板 code 或职业 id */
     private String ownerRef;
 
+    /** 生效条件组 JSON */
+    private String conditionsJson;
+
+    /** 效果组 JSON */
+    private String effectsJson;
+
+    /** @deprecated 旧条件，清库后不再使用 */
     private String conditionType;
 
+    /** @deprecated */
     private String conditionEquipItemId;
 
+    /** @deprecated */
     private String effectType;
 
+    /** @deprecated */
     private BigDecimal effectValue;
 
     private Integer sort;

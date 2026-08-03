@@ -1,8 +1,11 @@
 package org.wx.core.wxBusiness.game.entity;
 
 import lombok.Data;
+import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class AdminTriggerSlotVo {
@@ -21,6 +24,18 @@ public class AdminTriggerSlotVo {
 
     private String slotKindLabel;
 
+    /** PRECISE / QUICK */
+    private String triggerMode;
+
+    private String triggerModeLabel;
+
+    private String quickPreset;
+
+    private String quickPresetLabel;
+
+    private List<SkillConditionGroupVo> conditionGroups = new ArrayList<>();
+
+    /** @deprecated */
     private String triggerSlotType;
 
     private String triggerSlotTypeLabel;
@@ -35,7 +50,7 @@ public class AdminTriggerSlotVo {
 
     private String finishedSkillName;
 
-    /** null=无限次 */
+    /** @deprecated 上限在成品技能 */
     private Integer maxCastCount;
 
     private Integer sort;

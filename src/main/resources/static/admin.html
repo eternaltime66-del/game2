@@ -45,6 +45,17 @@
           </button>
           <div v-show="skillMenuOpen" class="sidebar-nav-sub">
             <div class="sidebar-nav-sub-group">
+              <div class="sidebar-nav-sub-group-label">角色管理</div>
+              <button
+                v-for="t in roleSkillTabs"
+                :key="t.key"
+                type="button"
+                class="sidebar-nav-sub-item"
+                :class="{ active: tab === t.key }"
+                @click="switchTab(t.key)"
+              >{{ t.label }}</button>
+            </div>
+            <div class="sidebar-nav-sub-group">
               <div class="sidebar-nav-sub-group-label">装备技能</div>
               <button
                 v-for="t in equipSkillTabs"
@@ -666,6 +677,38 @@
       </div>
     </div>
 
+    <div v-if="tab === 'personBasicAttack'" class="admin-panel">
+      <div class="panel-toolbar">
+        <div class="panel-toolbar-title">
+          <h3>普通攻击</h3>
+          <p class="panel-page-remark">通用普攻只读模板：能量值满 → 首位目标 → 攻击力100%（无武器覆盖时使用）</p>
+        </div>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-mini secondary" @click="loadBasicAttack">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap" v-if="basicAttackDetail">
+        <table class="admin-table">
+          <tbody>
+            <tr><th style="width:140px">ID</th><td>{{ basicAttackDetail.id }}</td></tr>
+            <tr><th>编码</th><td>{{ basicAttackDetail.code }}</td></tr>
+            <tr><th>名称</th><td>{{ basicAttackDetail.name }}</td></tr>
+            <tr><th>目标槽</th><td>{{ basicAttackDetail.targetTypeLabel || basicAttackDetail.targetType }}</td></tr>
+            <tr><th>频率槽</th><td>{{ basicAttackDetail.hitFrequency || 1 }}</td></tr>
+            <tr><th>全场发动上限</th><td>{{ basicAttackDetail.maxCastUnlimited || basicAttackDetail.maxCastCount == null ? '无限' : basicAttackDetail.maxCastCount }}</td></tr>
+            <tr><th>公式组</th><td>
+              <div v-for="(f, i) in (basicAttackDetail.formulas || [])" :key="i" class="muted">
+                {{ i + 1 }}. {{ formulaOutcomeLabel(f.outcome) }} · {{ formulaTokensText(f.tokens) }}
+              </div>
+              <span v-if="!(basicAttackDetail.formulas || []).length">—</span>
+            </td></tr>
+            <tr><th>备注</th><td>{{ basicAttackDetail.remark || '—' }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-else class="empty-hint">加载中…</p>
+    </div>
+
     <div v-if="tab === 'equipGeneralSkill'" class="admin-panel">
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
@@ -1228,7 +1271,24 @@
           <div class="field"><label>目标槽</label>
             <admin-select v-model="finishedSkillForm.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
           </div>
-          <div class="field"><label>目标参数 x</label><input v-model.number="finishedSkillForm.targetParam" type="number" placeholder="随机敌人数/重复次数"></div>
+          <div class="field"><label>频率槽</label><input v-model.number="finishedSkillForm.hitFrequency" type="number" min="1" placeholder="最小1"></div>
+          <div class="field full"><label>全场发动上限</label>
+            <div class="cast-limit-row">
+              <label class="admin-switch">
+                <input type="checkbox" v-model="finishedSkillForm.maxCastLimited">
+                <span class="admin-switch-slider"></span>
+                <span class="admin-switch-text">{{ finishedSkillForm.maxCastLimited ? '限制次数' : '无限' }}</span>
+              </label>
+              <input
+                v-if="finishedSkillForm.maxCastLimited"
+                v-model.number="finishedSkillForm.maxCastCount"
+                type="number"
+                min="1"
+                placeholder="次数"
+                class="cast-limit-input"
+              >
+            </div>
+          </div>
           <div class="field"><label>分类1</label><span class="field-value">{{ finishedSkillForm.catL1 === 'PERSON' ? '人物' : '装备' }}</span></div>
           <div class="field" v-if="finishedSkillForm.catL1 !== 'PERSON' && tab !== 'equipCustomSkill' && !finishedSkillForm.id"><label>装备类型</label>
             <admin-select v-model="finishedSkillForm.catL2" :options="equipCatL2Options" value-key="code" label-key="label" :disabled="tab === 'equipGeneralSkill'" />
@@ -1242,32 +1302,69 @@
           <div class="field full"><label>备注</label><input v-model="finishedSkillForm.remark"></div>
           <div class="field full">
             <div class="panel-toolbar" style="margin:0">
-              <span>高级效果步骤</span>
-              <button type="button" class="btn-mini" @click="addFinishedEffect">+ 效果</button>
+              <span>公式组</span>
+              <button type="button" class="btn-mini" @click="addFormulaGroup">+ 公式</button>
             </div>
-            <div class="effect-block" v-for="(eff, idx) in finishedSkillForm.effects" :key="idx">
-              <div class="effect-block-head"><span>步骤 {{ idx + 1 }}</span><button type="button" class="btn-mini danger" @click="removeFinishedEffect(idx)">删</button></div>
-              <div class="form-grid">
-                <div class="field"><label>种类</label>
-                  <admin-select v-model="eff.effectKind" :options="meta.effectKinds" value-key="code" label-key="label" />
+            <div class="effect-block formula-editor" v-for="(fg, idx) in finishedSkillForm.formulas" :key="'fg'+idx">
+              <div class="effect-block-head">
+                <span>公式 {{ idx + 1 }}</span>
+                <button type="button" class="btn-mini danger" @click="removeFormulaGroup(idx)">删</button>
+              </div>
+              <div class="formula-outcome-row">
+                <span class="formula-sub-label">结果类型</span>
+                <div class="formula-outcome-pills">
+                  <button
+                    v-for="opt in formulaOutcomeOptions"
+                    :key="opt.code"
+                    type="button"
+                    class="formula-pill"
+                    :class="{ active: fg.outcome === opt.code }"
+                    @click="fg.outcome = opt.code"
+                  >{{ opt.label }}</button>
                 </div>
-                <div class="field" v-if="eff.effectKind !== 'ACTION_VALUE'"><label>伤害/治疗</label>
-                  <admin-select v-model="eff.outcomeType" :options="meta.outcomeTypes" value-key="code" label-key="label" />
+              </div>
+              <div class="formula-expr-box">
+                <div class="formula-expr-display" :class="{ empty: !(fg.tokens && fg.tokens.length) }">
+                  <template v-if="fg.tokens && fg.tokens.length">
+                    <button
+                      v-for="(tk, ti) in fg.tokens"
+                      :key="'tk'+ti"
+                      type="button"
+                      class="formula-token-chip"
+                      :class="'kind-' + (tk.kind || '').toLowerCase()"
+                      :title="'点击删除该项'"
+                      @click="removeFormulaTokenAt(fg, ti)"
+                    >{{ formulaTokenLabel(tk) }}</button>
+                  </template>
+                  <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
                 </div>
-                <div class="field" v-if="eff.effectKind === 'STAT_FORMULA'"><label>属性 x</label>
-                  <admin-select v-model="eff.statRef" :options="meta.statRefs" value-key="code" label-key="label" />
+              </div>
+              <div class="formula-keypad">
+                <button type="button" class="formula-key" @click="pushFormulaParen(fg,'LPAREN')">(</button>
+                <button type="button" class="formula-key" @click="pushFormulaParen(fg,'RPAREN')">)</button>
+                <button type="button" class="formula-key op" @click="pushFormulaOp(fg,'+')">+</button>
+                <button type="button" class="formula-key op" @click="pushFormulaOp(fg,'-')">−</button>
+                <button type="button" class="formula-key op" @click="pushFormulaOp(fg,'*')">×</button>
+                <button type="button" class="formula-key op" @click="pushFormulaOp(fg,'/')">÷</button>
+                <button type="button" class="formula-key danger" @click="popFormulaToken(fg)">⌫</button>
+              </div>
+              <div class="formula-param-row">
+                <span class="formula-sub-label">参数</span>
+                <div class="formula-param-mode">
+                  <button type="button" class="formula-pill" :class="{ active: fg._paramMode !== 'READ' }" @click="fg._paramMode = 'CONST'">定值</button>
+                  <button type="button" class="formula-pill" :class="{ active: fg._paramMode === 'READ' }" @click="fg._paramMode = 'READ'">读取</button>
                 </div>
-                <div class="field" v-if="eff.effectKind === 'STAT_FORMULA'"><label>比例 y</label><input v-model.number="eff.ratioY" type="number" step="0.01"></div>
-                <div class="field" v-if="eff.effectKind === 'STAT_FORMULA'"><label>由武器释放</label>
-                  <admin-select v-model="eff.useWeaponRatio" :options="yesNoOptions" />
+                <div class="formula-param-input" v-if="fg._paramMode !== 'READ'">
+                  <input v-model.number="fg._constDraft" type="number" step="0.01" placeholder="输入数值">
+                  <button type="button" class="btn-mini" @click="pushFormulaConst(fg)">加入</button>
                 </div>
-                <div class="field full" v-if="eff.effectKind === 'STAT_FORMULA' && eff.useWeaponRatio === 1">
-                  <span class="muted" style="font-size:12px">z = 角色装备武器的「伤害比例」，战斗中自动读取，无需填写</span>
+                <div class="formula-param-input" v-else>
+                  <admin-select v-model="fg._readDraft" :options="meta.readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable />
+                  <button type="button" class="btn-mini" @click="pushFormulaRead(fg)">加入</button>
                 </div>
-                <div class="field" v-if="eff.effectKind === 'FIXED_VALUE'"><label>固定值</label><input v-model.number="eff.fixedValue" type="number"></div>
-                <div class="field" v-if="eff.effectKind === 'ACTION_VALUE'"><label>行动值 ±</label><input v-model.number="eff.actionDelta" type="number"></div>
               </div>
             </div>
+            <p v-if="!(finishedSkillForm.formulas || []).length" class="muted" style="margin-top:8px">请添加至少一条公式</p>
           </div>
         </div>
 
@@ -1282,16 +1379,82 @@
             <admin-select v-model="passiveSkillForm.catL2" :options="equipCatL2Options" value-key="code" label-key="label" />
           </div>
           <div class="field full" v-if="passiveSkillForm.ownerRef"><label>归属</label><span class="field-value">{{ passiveSkillForm.ownerRef }}</span></div>
-          <div class="field full"><label>生效条件</label>
-            <admin-select v-model="passiveSkillForm.conditionType" :options="passiveMeta.conditionTypes" value-key="code" label-key="label" />
+          <div class="field full">
+            <div class="panel-toolbar" style="margin:0">
+              <span>生效条件组</span>
+              <button type="button" class="btn-mini" @click="addPassiveCondition">+ 条件</button>
+            </div>
+            <div class="effect-block" v-for="(c, idx) in passiveSkillForm.conditions" :key="'pc'+idx">
+              <div class="effect-block-head"><span>条件 {{ idx + 1 }}</span><button type="button" class="btn-mini danger" @click="removePassiveCondition(idx)">删</button></div>
+              <div class="form-grid">
+                <div class="field"><label>类型</label>
+                  <admin-select v-model="c.type" :options="passiveMeta.conditionTypes" value-key="code" label-key="label" />
+                </div>
+                <div class="field full" v-if="c.type === 'REQUIRE_EQUIP'"><label>需装备物品</label>
+                  <admin-select v-model="c.equipItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择装备" searchable />
+                </div>
+                <template v-if="c.type === 'COMPARE'">
+                  <div class="field"><label>左·类型</label>
+                    <admin-select v-model="c.leftKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                  </div>
+                  <div class="field" v-if="c.leftKind === 'READ'"><label>左·读取</label>
+                    <admin-select v-model="c.leftRead" :options="meta.readTypes" value-key="code" label-key="label" />
+                  </div>
+                  <div class="field" v-else><label>左·定值</label><input v-model.number="c.leftConst" type="number" step="0.01"></div>
+                  <div class="field"><label>判定</label>
+                    <admin-select v-model="c.op" :options="meta.compareOps" value-key="code" label-key="label" />
+                  </div>
+                  <div class="field"><label>右·类型</label>
+                    <admin-select v-model="c.rightKind" :options="operandKindOptions" value-key="value" label-key="label" />
+                  </div>
+                  <div class="field" v-if="c.rightKind === 'READ'"><label>右·读取</label>
+                    <admin-select v-model="c.rightRead" :options="meta.readTypes" value-key="code" label-key="label" />
+                  </div>
+                  <div class="field" v-else><label>右·定值</label><input v-model.number="c.rightConst" type="number" step="0.01"></div>
+                </template>
+              </div>
+            </div>
           </div>
-          <div class="field full" v-if="passiveSkillForm.conditionType === 'REQUIRE_EQUIP'"><label>需装备物品（全身任意槽）</label>
-            <admin-select v-model="passiveSkillForm.conditionEquipItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择装备" searchable />
+          <div class="field full">
+            <div class="panel-toolbar" style="margin:0">
+              <span>效果组</span>
+              <button type="button" class="btn-mini" @click="addPassiveEffect">+ 效果</button>
+            </div>
+            <div class="effect-block" v-for="(e, idx) in passiveSkillForm.effects" :key="'pe'+idx">
+              <div class="effect-block-head"><span>效果 {{ idx + 1 }}</span><button type="button" class="btn-mini danger" @click="removePassiveEffect(idx)">删</button></div>
+              <div class="form-grid">
+                <div class="field"><label>目标</label>
+                  <admin-select v-model="e.targetType" :options="meta.targetTypes" value-key="code" label-key="label" />
+                </div>
+                <div class="field"><label>类型</label>
+                  <admin-select v-model="e.kind" :options="passiveMeta.effectTypes" value-key="code" label-key="label" />
+                </div>
+                <div class="field" v-if="e.kind && e.kind.indexOf('STAT') >= 0"><label>属性</label>
+                  <admin-select v-model="e.stat" :options="passiveStatOptions" value-key="value" label-key="label" />
+                </div>
+                <div class="field" v-if="e.kind && e.kind.indexOf('FORMULA') < 0"><label>符号</label>
+                  <admin-select v-model="e.sign" :options="signOptions" value-key="value" label-key="label" />
+                </div>
+                <div class="field" v-if="e.kind && e.kind.indexOf('FORMULA') < 0"><label>数值</label>
+                  <input v-model.number="e.value" type="number" step="0.01">
+                </div>
+                <div class="field full" v-if="e.kind === 'FORMULA_DAMAGE' || e.kind === 'FORMULA_HEAL'">
+                  <div class="muted" style="margin-bottom:6px">{{ formulaTokensText(e.tokens) || '（空）' }}</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <admin-select v-model="e._readDraft" :options="meta.readTypes" value-key="code" label-key="label" placeholder="读取" />
+                    <button type="button" class="btn-mini" @click="pushFormulaRead(e)">+读取</button>
+                    <input v-model.number="e._constDraft" type="number" step="0.01" placeholder="定值" style="width:90px">
+                    <button type="button" class="btn-mini" @click="pushFormulaConst(e)">+定值</button>
+                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'+')">+</button>
+                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'-')">-</button>
+                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'*')">*</button>
+                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'/')">/</button>
+                    <button type="button" class="btn-mini danger" @click="popFormulaToken(e)">删末尾</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="field full"><label>效果类型</label>
-            <admin-select v-model="passiveSkillForm.effectType" :options="passiveMeta.effectTypes" value-key="code" label-key="label" />
-          </div>
-          <div class="field"><label>效果数值</label><input v-model.number="passiveSkillForm.effectValue" type="number" step="0.01" placeholder="固定值或百分比"></div>
           <div class="field"><label>排序</label><input v-model.number="passiveSkillForm.sort" type="number"></div>
           <div class="field"><label>启用</label>
             <admin-select v-model="passiveSkillForm.enabled" :options="yesNoOptions" />
@@ -1790,6 +1953,9 @@ createApp({
         { key: 'recipe', label: '配方管理' }
       ],
       battleSkillTabs: [],
+      roleSkillTabs: [
+        { key: 'personBasicAttack', label: '普通攻击' }
+      ],
       equipSkillTabs: [
         { key: 'equipCustomSkill', label: '装备自定义技能' },
         { key: 'equipGeneralSkill', label: '通用扳机技能' },
@@ -1923,7 +2089,25 @@ createApp({
       showPassiveInlineForm: false,
       triggerInlineForm: { id: '', itemId: '', triggerSlotType: 'ON_ATTACK', triggerParam: null, triggerRefId: '', finishedSkillId: '', sort: 0, enabled: 1, remark: '', castLimitMode: 'unlimited', maxCastCount: 1 },
       passiveInlineForm: { id: '', itemId: '', passiveSkillId: '', sort: 0, enabled: 1, remark: '' },
-      meta: { triggerTypes: [], targetTypes: [], effectKinds: [], statRefs: [], outcomeTypes: [], bindTypes: [], finishedSkillOptions: [] },
+      meta: {
+        triggerTypes: [], targetTypes: [], effectKinds: [], statRefs: [], outcomeTypes: [], bindTypes: [],
+        finishedSkillOptions: [], readTypes: [], compareOps: [], formulaOutcomes: [],
+        triggerModes: [], quickPresets: [], skillScopeCast: [], skillScopeHit: []
+      },
+      basicAttackDetail: null,
+      operandKindOptions: [
+        { value: 'READ', label: '读取' },
+        { value: 'CONST', label: '定值' }
+      ],
+      passiveStatOptions: [
+        { value: 'ATTACK', label: '攻击' },
+        { value: 'DEFENSE', label: '防御' },
+        { value: 'HP', label: '生命' }
+      ],
+      signOptions: [
+        { value: 1, label: '+' },
+        { value: -1, label: '-' }
+      ],
       passiveMeta: { conditionTypes: [], effectTypes: [], passiveSkillOptions: [] },
       drawerOpen: false,
       drawerType: '',
@@ -1934,8 +2118,8 @@ createApp({
       weaponUltimateForm: { id: '', itemId: '', triggerSlotType: 'ON_ATTACK', triggerParam: null, triggerRefId: '', finishedSkillId: '', castLimitMode: 'unlimited', maxCastCount: 1, enabled: 1, remark: '' },
       armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
-      finishedSkillForm: { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [] },
-      passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: '' },
+      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: 1, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [] },
+      passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditions: [{ type: 'NONE' }], effects: [], sort: 0, enabled: 1, remark: '' },
       professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
       professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
       characterTemplateForm: { id: '', code: '', name: '', maxHp: 100, attack: 10, defense: 0, actionValue: 100, enabled: 1, remark: '', professionIds: [] },
@@ -1947,6 +2131,7 @@ createApp({
       var self = this;
       var pools = []
         .concat(this.navTabs || [])
+        .concat(this.roleSkillTabs || [])
         .concat(this.equipSkillTabs || [])
         .concat(this.personSkillTabs || [])
         .concat(this.skillExtraTabs || [])
@@ -1972,6 +2157,18 @@ createApp({
     },
     isFinishedSkillTab() {
       return this.tab === 'equipGeneralSkill';
+    },
+    formulaOutcomeOptions() {
+      var list = this.meta.formulaOutcomes || [];
+      if (list.length) return list;
+      return [
+        { code: 'DAMAGE', label: '伤害' },
+        { code: 'HEAL', label: '治疗' },
+        { code: 'ACTION_INC', label: '当前行动值增加' },
+        { code: 'ACTION_DEC', label: '当前行动值减少' },
+        { code: 'ENERGY_MAX_INC', label: '最大能量值增加' },
+        { code: 'ENERGY_MAX_DEC', label: '最大能量值减少' }
+      ];
     },
     equipTypeFilterOptions() {
       return (this.equipCatL2Options || []).filter(function (x) { return x.code !== 'GENERAL'; });
@@ -2192,7 +2389,7 @@ createApp({
       return ['weapon', 'armor', 'gloves', 'helmet', 'legs', 'accessory'].indexOf(key) >= 0;
     },
     isSkillTabKey(key) {
-      return ['equipCustomSkill', 'equipGeneralSkill', 'equipPassiveSkill',
+      return ['personBasicAttack', 'equipCustomSkill', 'equipGeneralSkill', 'equipPassiveSkill',
         'personCharacterSkill', 'personGeneralSkill', 'personProfessionSkill'].indexOf(key) >= 0;
     },
     isCharacterTabKey(key) {
@@ -2271,6 +2468,7 @@ createApp({
       else if (key === 'helmet') this.switchEquipPart('helmet');
       else if (key === 'legs') this.switchEquipPart('legs');
       else if (key === 'accessory') this.switchEquipPart('accessory');
+      else if (key === 'personBasicAttack') this.switchBasicAttack();
       else if (key === 'equipCustomSkill') this.switchCustomEquipSkill();
       else if (key === 'equipGeneralSkill') this.switchFinishedSkill();
       else if (key === 'equipPassiveSkill') this.switchPassiveSkill();
@@ -2763,8 +2961,15 @@ createApp({
         AdminApi.v2OutcomeTypes(),
         AdminApi.v2BindTypes(),
         AdminApi.v2FinishedSkillOptions(),
-        AdminApi.v2FinishedSkillCategories()
-      ]).then(([tr, tg, ek, sr, ot, bt, fs, cat]) => {
+        AdminApi.v2FinishedSkillCategories(),
+        AdminApi.v2ReadTypes(),
+        AdminApi.v2CompareOps(),
+        AdminApi.v2FormulaOutcomes(),
+        AdminApi.v2TriggerModes(),
+        AdminApi.v2QuickPresets(),
+        AdminApi.v2SkillScopeCast(),
+        AdminApi.v2SkillScopeHit()
+      ]).then(([tr, tg, ek, sr, ot, bt, fs, cat, rt, co, fo, tm, qp, sc, sh]) => {
         this.meta.triggerTypes = tr.data || [];
         this.meta.targetTypes = tg.data || [];
         this.meta.effectKinds = ek.data || [];
@@ -2772,6 +2977,13 @@ createApp({
         this.meta.outcomeTypes = ot.data || [];
         this.meta.bindTypes = bt.data || [];
         this.meta.finishedSkillOptions = fs.data || [];
+        this.meta.readTypes = rt.data || [];
+        this.meta.compareOps = co.data || [];
+        this.meta.formulaOutcomes = fo.data || [];
+        this.meta.triggerModes = tm.data || [];
+        this.meta.quickPresets = qp.data || [];
+        this.meta.skillScopeCast = sc.data || [];
+        this.meta.skillScopeHit = sh.data || [];
         var cm = cat.data || {};
         this.categoryMeta = {
           catL1: cm.catL1 || [],
@@ -3563,10 +3775,19 @@ createApp({
     editFinishedSkill(s) {
       AdminApi.finishedSkillDetail(s.id)
         .then((res) => {
+          var data = res.data || {};
           this.finishedSkillForm = Object.assign({
-            catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM', effects: []
-          }, res.data || {});
-          if (!this.finishedSkillForm.effects) this.finishedSkillForm.effects = [];
+            catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM',
+            hitFrequency: 1, maxCastLimited: false, maxCastCount: 1, formulas: [], effects: []
+          }, data);
+          if (!this.finishedSkillForm.formulas) this.finishedSkillForm.formulas = [];
+          this.finishedSkillForm.formulas.forEach(function (fg) {
+            if (!fg._paramMode) fg._paramMode = 'CONST';
+          });
+          this.finishedSkillForm.maxCastLimited = this.finishedSkillForm.maxCastCount != null;
+          if (this.finishedSkillForm.maxCastLimited && !this.finishedSkillForm.maxCastCount) {
+            this.finishedSkillForm.maxCastCount = 1;
+          }
           this.openDrawer('finishedSkill');
         })
         .catch((err) => this.showToast(err.message));
@@ -4141,8 +4362,9 @@ createApp({
           var d = this.finishedSkillDefaultsForTab(this.tab);
           if (this.tab === 'equipGeneralSkill') d.catL2 = 'GENERAL';
           this.finishedSkillForm = Object.assign({
-            id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null,
-            enabled: 1, remark: '', effects: [this.newEffectRow()]
+            id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null,
+            hitFrequency: 1, maxCastCount: 1, maxCastLimited: false,
+            enabled: 1, remark: '', formulas: [], effects: []
           }, d);
         }
         if (!this.categoryMeta.catL1.length) this.loadV2Meta();
@@ -4154,15 +4376,24 @@ createApp({
           ? ('编辑' + ((row.catL1 === 'PERSON') ? '人物被动' : this.passiveSkillPanelTitle))
           : ('新增' + this.passiveSkillPanelTitle);
         this.passiveSkillForm = row
-          ? Object.assign({ passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '' }, row)
+          ? Object.assign({
+              passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '',
+              conditions: [{ type: 'NONE' }], effects: []
+            }, row)
           : {
               id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP',
-              catL2: this.tab === 'equipPassiveSkill' ? 'GENERAL' : 'GENERAL',
-              ownerRef: '', conditionType: 'NONE', conditionEquipItemId: '',
-              effectType: 'ATTACK_FLAT', effectValue: 0, sort: 0, enabled: 1, remark: ''
+              catL2: 'GENERAL', ownerRef: '',
+              conditions: [{ type: 'NONE' }],
+              effects: [{ targetType: 'SELF', kind: 'OUT_STAT_FLAT', stat: 'ATTACK', sign: 1, value: 0, tokens: [] }],
+              sort: 0, enabled: 1, remark: ''
             };
+        if (!this.passiveSkillForm.conditions || !this.passiveSkillForm.conditions.length) {
+          this.passiveSkillForm.conditions = [{ type: 'NONE' }];
+        }
+        if (!this.passiveSkillForm.effects) this.passiveSkillForm.effects = [];
         if (!row && this.tab === 'equipPassiveSkill') this.passiveSkillForm.catL2 = 'GENERAL';
         this.loadPassiveMeta();
+        if (!this.meta.readTypes.length) this.loadV2Meta();
         if (!this.allItems.length) this.loadAllItems();
       } else if (type === 'profession') {
         this.drawerTitle = row ? '编辑职业' : '新增职业';
@@ -4236,6 +4467,126 @@ createApp({
     removeFinishedEffect(idx) {
       this.finishedSkillForm.effects.splice(idx, 1);
     },
+    switchBasicAttack() {
+      this.loadBasicAttack();
+      this.loadV2Meta();
+    },
+    loadBasicAttack() {
+      AdminApi.basicAttackDetail()
+        .then((res) => { this.basicAttackDetail = res.data || null; })
+        .catch((err) => this.showToast(err.message));
+    },
+    formulaOutcomeLabel(code) {
+      var hit = (this.formulaOutcomeOptions || []).find(function (x) { return x.code === code; });
+      return hit ? hit.label : (code || '—');
+    },
+    formulaTokenLabel(tk) {
+      if (!tk) return '';
+      if (tk.kind === 'READ') {
+        var hit = (this.meta.readTypes || []).find(function (x) { return x.code === tk.read; });
+        return hit ? hit.label : (tk.read || '?');
+      }
+      if (tk.kind === 'CONST') return String(tk.value != null ? tk.value : 0);
+      if (tk.kind === 'OP') {
+        if (tk.op === '*') return '×';
+        if (tk.op === '/') return '÷';
+        if (tk.op === '-') return '−';
+        return tk.op || '';
+      }
+      if (tk.kind === 'LPAREN') return '(';
+      if (tk.kind === 'RPAREN') return ')';
+      return '';
+    },
+    formulaTokensText(tokens) {
+      if (!tokens || !tokens.length) return '';
+      var self = this;
+      return tokens.map(function (t) { return self.formulaTokenLabel(t); }).join(' ');
+    },
+    addFormulaGroup() {
+      if (!this.finishedSkillForm.formulas) this.finishedSkillForm.formulas = [];
+      this.finishedSkillForm.formulas.push({
+        outcome: 'DAMAGE',
+        tokens: [],
+        _paramMode: 'CONST',
+        _readDraft: '',
+        _constDraft: null
+      });
+    },
+    removeFormulaGroup(idx) {
+      this.finishedSkillForm.formulas.splice(idx, 1);
+    },
+    pushFormulaRead(fg) {
+      if (!fg.tokens) fg.tokens = [];
+      if (!fg._readDraft) { this.showToast('请先选择读取项'); return; }
+      fg.tokens.push({ kind: 'READ', read: fg._readDraft });
+    },
+    pushFormulaConst(fg) {
+      if (!fg.tokens) fg.tokens = [];
+      if (fg._constDraft == null || fg._constDraft === '') {
+        this.showToast('请输入定值');
+        return;
+      }
+      fg.tokens.push({ kind: 'CONST', value: fg._constDraft });
+      fg._constDraft = null;
+    },
+    pushFormulaOp(fg, op) {
+      if (!fg.tokens) fg.tokens = [];
+      fg.tokens.push({ kind: 'OP', op: op });
+    },
+    pushFormulaParen(fg, kind) {
+      if (!fg.tokens) fg.tokens = [];
+      fg.tokens.push({ kind: kind });
+    },
+    popFormulaToken(fg) {
+      if (fg.tokens && fg.tokens.length) fg.tokens.pop();
+    },
+    removeFormulaTokenAt(fg, index) {
+      if (!fg.tokens) return;
+      fg.tokens.splice(index, 1);
+    },
+    normalizeFinishedSkillPayload(form) {
+      var payload = Object.assign({}, form);
+      payload.maxCastUnlimited = !form.maxCastLimited;
+      if (!form.maxCastLimited) {
+        payload.maxCastCount = null;
+      } else if (!payload.maxCastCount || payload.maxCastCount < 1) {
+        payload.maxCastCount = 1;
+      }
+      payload.formulas = (form.formulas || []).map(function (fg) {
+        return {
+          outcome: fg.outcome,
+          tokens: (fg.tokens || []).map(function (t) {
+            return {
+              kind: t.kind,
+              read: t.read,
+              filter: t.filter,
+              filterRef: t.filterRef,
+              value: t.value,
+              op: t.op
+            };
+          })
+        };
+      });
+      delete payload.maxCastLimited;
+      return payload;
+    },
+    addPassiveCondition() {
+      if (!this.passiveSkillForm.conditions) this.passiveSkillForm.conditions = [];
+      this.passiveSkillForm.conditions.push({ type: 'NONE', leftKind: 'CONST', rightKind: 'CONST', op: 'EQ' });
+    },
+    removePassiveCondition(idx) {
+      this.passiveSkillForm.conditions.splice(idx, 1);
+      if (!this.passiveSkillForm.conditions.length) this.passiveSkillForm.conditions.push({ type: 'NONE' });
+    },
+    addPassiveEffect() {
+      if (!this.passiveSkillForm.effects) this.passiveSkillForm.effects = [];
+      this.passiveSkillForm.effects.push({
+        targetType: 'SELF', kind: 'OUT_STAT_FLAT', stat: 'ATTACK', sign: 1, value: 0, tokens: []
+      });
+    },
+    removePassiveEffect(idx) {
+      this.passiveSkillForm.effects.splice(idx, 1);
+    },
     saveDrawer() {
       if ((this.drawerType === 'weapon' || this.isEquipPartDrawer || this.drawerType === 'monster') && this.showTriggerInlineForm) {
         this.showToast('请先点击「保存特性主动」或取消特性主动编辑');
@@ -4302,7 +4653,11 @@ createApp({
           this.finishedSkillForm.catL4 = this.finishedSkillForm.catL4 || 'CUSTOM';
           if (this.tab === 'equipGeneralSkill') this.finishedSkillForm.catL2 = 'GENERAL';
         }
-        p = AdminApi.saveFinishedSkill(this.finishedSkillForm).then(() => {
+        if (!(this.finishedSkillForm.formulas || []).length) {
+          this.showToast('请至少添加一条公式');
+          return;
+        }
+        p = AdminApi.saveFinishedSkill(this.normalizeFinishedSkillPayload(this.finishedSkillForm)).then(() => {
           if (this.isPersonSkillTab) this.loadPersonSkills();
           else if (this.tab === 'equipCustomSkill') this.loadCustomEquipSkills();
           else this.loadFinishedSkills();

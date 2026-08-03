@@ -1,8 +1,12 @@
 package org.wx.core.wxBusiness.game.entity;
 
 import lombok.Data;
+import org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo;
+import org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class AdminPassiveSkillVo {
@@ -25,6 +29,11 @@ public class AdminPassiveSkillVo {
 
     private String ownerRef;
 
+    private List<PassiveConditionVo> conditions = new ArrayList<>();
+
+    private List<PassiveEffectVo> effects = new ArrayList<>();
+
+    /** @deprecated */
     private String conditionType;
 
     private String conditionTypeLabel;

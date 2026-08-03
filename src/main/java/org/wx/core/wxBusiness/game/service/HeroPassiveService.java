@@ -7,7 +7,9 @@ import org.wx.core.wxBusiness.game.entity.GameItem;
 import org.wx.core.wxBusiness.game.entity.GameItemPassive;
 import org.wx.core.wxBusiness.game.entity.GamePassiveSkill;
 import org.wx.core.wxBusiness.game.entity.HeroPassiveDetailVo;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionKind;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectKind;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
 
 import java.math.BigDecimal;
@@ -25,6 +27,8 @@ public class HeroPassiveService {
     private GameItemPassiveService itemPassiveService;
     @Resource
     private GamePassiveSkillService passiveSkillService;
+    @Resource
+    private SkillJsonHelper skillJsonHelper;
 
     public void applyPassives(HeroCombatService.HeroCombatContext ctx, GameHeroEquip equip,
                               Map<String, GameItem> itemMap) {
@@ -47,6 +51,37 @@ public class HeroPassiveService {
         BigDecimal actionFactor = BigDecimal.ONE;
 
         for (GamePassiveSkill passive : passives) {
+            List<org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo> effects =
+                    skillJsonHelper.readPassiveEffects(passive.getEffectsJson());
+            if (!effects.isEmpty()) {
+                for (org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo effect : effects) {
+                    PassiveEffectKind kind = PassiveEffectKind.parse(effect.getKind());
+                    if (kind == null || !kind.isOutBattle() || kind.isFormula()) {
+                        continue;
+                    }
+                    BigDecimal raw = effect.getValue() != null ? effect.getValue() : BigDecimal.ZERO;
+                    int sign = effect.getSign() != null && effect.getSign() < 0 ? -1 : 1;
+                    BigDecimal val = raw.multiply(BigDecimal.valueOf(sign));
+                    String stat = effect.getStat() != null ? effect.getStat().toUpperCase() : "ATTACK";
+                    switch (kind) {
+                        case OUT_STAT_FLAT -> {
+                            int flat = val.setScale(0, RoundingMode.CEILING).intValue();
+                            if ("DEFENSE".equals(stat)) flatDefense += flat;
+                            else if ("HP".equals(stat)) flatHp += flat;
+                            else flatAttack += flat;
+                        }
+                        case OUT_STAT_MULT -> {
+                            BigDecimal mul = pctMultiplier(val);
+                            if ("DEFENSE".equals(stat)) defenseMul = defenseMul.multiply(mul);
+                            else if ("HP".equals(stat)) hpMul = hpMul.multiply(mul);
+                            else attackMul = attackMul.multiply(mul);
+                        }
+                        default -> {
+                        }
+                    }
+                }
+                continue;
+            }
             PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
             if (effectType == null || passive.getEffectValue() == null) {
                 continue;
@@ -172,13 +207,31 @@ public class HeroPassiveService {
     }
 
     private boolean matchesCondition(GamePassiveSkill passive, Set<String> equippedIds) {
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo> conditions =
+                skillJsonHelper.readPassiveConditions(passive.getConditionsJson());
+        if (!conditions.isEmpty()) {
+            for (org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo c : conditions) {
+                PassiveConditionKind kind = PassiveConditionKind.parse(c.getType());
+                if (kind == PassiveConditionKind.NONE) {
+                    continue;
+                }
+                if (kind == PassiveConditionKind.REQUIRE_EQUIP) {
+                    if (c.getEquipItemId() == null || c.getEquipItemId().isBlank()
+                            || equippedIds == null || !equippedIds.contains(c.getEquipItemId())) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
         PassiveConditionType conditionType = PassiveConditionType.parse(passive.getConditionType());
         if (conditionType == null || conditionType == PassiveConditionType.NONE) {
             return true;
         }
         if (conditionType == PassiveConditionType.REQUIRE_EQUIP) {
             String requiredItemId = passive.getConditionEquipItemId();
-            return requiredItemId != null && !requiredItemId.isBlank() && equippedIds.contains(requiredItemId);
+            return requiredItemId != null && !requiredItemId.isBlank()
+                    && equippedIds != null && equippedIds.contains(requiredItemId);
         }
         return false;
     }

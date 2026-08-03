@@ -243,6 +243,30 @@
     finishedSkillDetail: function (id) {
       return request('/back/game/trigger-v2/finished-skill/detail', { body: { id: id } }).then(ensureSuccess);
     },
+    basicAttackDetail: function () {
+      return request('/back/game/trigger-v2/basic-attack/detail', {}).then(ensureSuccess);
+    },
+    skillReadTypes: function () {
+      return request('/back/game/trigger-v2/meta/read-types', {}).then(ensureSuccess);
+    },
+    skillCompareOps: function () {
+      return request('/back/game/trigger-v2/meta/compare-ops', {}).then(ensureSuccess);
+    },
+    skillFormulaOutcomes: function () {
+      return request('/back/game/trigger-v2/meta/formula-outcomes', {}).then(ensureSuccess);
+    },
+    triggerModes: function () {
+      return request('/back/game/trigger-v2/meta/trigger-modes', {}).then(ensureSuccess);
+    },
+    quickPresets: function () {
+      return request('/back/game/trigger-v2/meta/quick-presets', {}).then(ensureSuccess);
+    },
+    skillScopeCast: function () {
+      return request('/back/game/trigger-v2/meta/skill-scope-cast', {}).then(ensureSuccess);
+    },
+    skillScopeHit: function () {
+      return request('/back/game/trigger-v2/meta/skill-scope-hit', {}).then(ensureSuccess);
+    },
     saveFinishedSkill: function (body) {
       return request('/back/game/trigger-v2/finished-skill/save', { json: true, body: body }).then(ensureSuccess);
     },
@@ -317,6 +341,27 @@
     },
     v2FinishedSkillCategories: function () {
       return request('/back/game/trigger-v2/meta/finished-skill-categories', {}).then(ensureSuccess);
+    },
+    v2ReadTypes: function () {
+      return request('/back/game/trigger-v2/meta/read-types', {}).then(ensureSuccess);
+    },
+    v2CompareOps: function () {
+      return request('/back/game/trigger-v2/meta/compare-ops', {}).then(ensureSuccess);
+    },
+    v2FormulaOutcomes: function () {
+      return request('/back/game/trigger-v2/meta/formula-outcomes', {}).then(ensureSuccess);
+    },
+    v2TriggerModes: function () {
+      return request('/back/game/trigger-v2/meta/trigger-modes', {}).then(ensureSuccess);
+    },
+    v2QuickPresets: function () {
+      return request('/back/game/trigger-v2/meta/quick-presets', {}).then(ensureSuccess);
+    },
+    v2SkillScopeCast: function () {
+      return request('/back/game/trigger-v2/meta/skill-scope-cast', {}).then(ensureSuccess);
+    },
+    v2SkillScopeHit: function () {
+      return request('/back/game/trigger-v2/meta/skill-scope-hit', {}).then(ensureSuccess);
     },
     characterTemplateList: function () {
       return request('/back/game/character/template/list', {}).then(ensureSuccess);

@@ -44,7 +44,7 @@ public class GameReferenceCleanupService {
     @Resource
     private GameProfessionSkillService professionSkillService;
     @Resource
-    private GameMonsterDropService monsterDropService;
+    private GameMonsterDropService gameMonsterDropService;
     @Resource
     private GameStageDropService stageDropService;
 
@@ -86,7 +86,7 @@ public class GameReferenceCleanupService {
 
         professionSkillService.remove(new LambdaQueryWrapper<GameProfessionSkill>()
                 .eq(GameProfessionSkill::getItemId, itemId));
-        monsterDropService.remove(new LambdaQueryWrapper<GameMonsterDrop>()
+        gameMonsterDropService.remove(new LambdaQueryWrapper<GameMonsterDrop>()
                 .eq(GameMonsterDrop::getItemId, itemId));
         stageDropService.remove(new LambdaQueryWrapper<GameStageDrop>()
                 .eq(GameStageDrop::getItemId, itemId));

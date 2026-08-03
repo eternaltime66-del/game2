@@ -23,6 +23,15 @@ public class GameFinishedSkill extends WxBaseEntity<GameFinishedSkill> {
 
     private Integer targetParam;
 
+    /** 频率槽：对目标触发几下，最小 1 */
+    private Integer hitFrequency;
+
+    /** 全场最多发动次数，null=无限 */
+    private Integer maxCastCount;
+
+    /** 公式组 JSON */
+    private String formulasJson;
+
     /** 分类1：通用/装备/怪物 */
     private String catL1;
 

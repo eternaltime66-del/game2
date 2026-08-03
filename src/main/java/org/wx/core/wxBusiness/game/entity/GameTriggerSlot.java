@@ -24,15 +24,27 @@ public class GameTriggerSlot extends WxBaseEntity<GameTriggerSlot> {
     /** BASIC_ATTACK=武器普攻 ULTIMATE=武器大招 TRAIT_ACTIVE=特性主动 */
     private String slotKind;
 
+    /** PRECISE / QUICK */
+    private String triggerMode;
+
+    /** 快捷扳机预设 */
+    private String quickPreset;
+
+    /** 条件组 JSON（精准扳机） */
+    private String conditionsJson;
+
+    /** @deprecated 旧扳机类型，清库后不再使用 */
     private String triggerSlotType;
 
+    /** @deprecated */
     private BigDecimal triggerParam;
 
+    /** @deprecated */
     private String triggerRefId;
 
     private String finishedSkillId;
 
-    /** 单场最多释放次数，null 表示无限 */
+    /** @deprecated 上限改到成品技能上；槽位字段保留兼容 */
     private Integer maxCastCount;
 
     private Integer sort;

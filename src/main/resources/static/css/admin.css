@@ -518,6 +518,19 @@ body.admin-body .bg-glow {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+.form-grid input[type="checkbox"],
+.form-grid input[type="radio"],
+.admin-drawer .field input[type="checkbox"],
+.admin-drawer .field input[type="radio"],
+.effect-block input[type="checkbox"],
+.effect-block input[type="radio"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
 .panel-filter input {
   width: auto;
   min-width: 160px;
@@ -766,6 +779,247 @@ body.admin-body .bg-glow {
   margin-bottom: 10px;
   font-size: 13px;
   color: var(--muted);
+}
+
+/* 全场发动上限开关 */
+.cast-limit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 38px;
+}
+
+.cast-limit-input {
+  width: 120px !important;
+  max-width: 120px !important;
+  flex: 0 0 120px !important;
+}
+
+.form-grid .field .admin-switch,
+.admin-drawer .field .admin-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  color: var(--text);
+  position: relative;
+  width: auto;
+}
+
+.form-grid .field .admin-switch input[type="checkbox"],
+.admin-drawer .field .admin-switch input[type="checkbox"],
+.admin-switch input[type="checkbox"] {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  pointer-events: none;
+}
+
+.admin-switch-slider {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.18s ease, border-color 0.18s ease;
+  flex: 0 0 42px;
+  box-sizing: border-box;
+}
+
+.admin-switch-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s ease;
+}
+
+.admin-switch input[type="checkbox"]:checked + .admin-switch-slider {
+  background: rgba(88, 101, 242, 0.85);
+  border-color: rgba(88, 101, 242, 0.9);
+}
+
+.admin-switch input[type="checkbox"]:checked + .admin-switch-slider::after {
+  transform: translateX(18px);
+}
+
+.admin-switch-text {
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.admin-switch input[type="checkbox"]:checked ~ .admin-switch-text {
+  color: var(--text);
+}
+
+/* 公式编辑器 */
+.formula-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formula-sub-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.formula-outcome-pills,
+.formula-param-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.formula-pill {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.formula-pill:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--text);
+}
+
+.formula-pill.active {
+  background: rgba(88, 101, 242, 0.25);
+  border-color: rgba(88, 101, 242, 0.55);
+  color: #fff;
+}
+
+.formula-expr-box {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  min-height: 56px;
+  padding: 10px;
+}
+
+.formula-expr-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+}
+
+.formula-expr-display.empty {
+  justify-content: flex-start;
+}
+
+.formula-expr-placeholder {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.formula-token-chip {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.formula-token-chip.kind-read {
+  background: rgba(99, 230, 190, 0.12);
+  border-color: rgba(99, 230, 190, 0.35);
+  color: #63e6be;
+}
+
+.formula-token-chip.kind-const {
+  background: rgba(255, 212, 59, 0.12);
+  border-color: rgba(255, 212, 59, 0.35);
+  color: #ffd43b;
+}
+
+.formula-token-chip.kind-op,
+.formula-token-chip.kind-lparen,
+.formula-token-chip.kind-rparen {
+  background: rgba(88, 101, 242, 0.16);
+  border-color: rgba(88, 101, 242, 0.4);
+  color: #c5caff;
+}
+
+.formula-keypad {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.formula-key {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.formula-key:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.formula-key.op {
+  color: #c5caff;
+}
+
+.formula-key.danger {
+  color: #ff8787;
+  border-color: rgba(255, 107, 107, 0.35);
+}
+
+.formula-param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formula-param-input {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.formula-param-input .admin-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.formula-param-input input[type="number"] {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ========== 自定义下拉 AdminSelect ========== */

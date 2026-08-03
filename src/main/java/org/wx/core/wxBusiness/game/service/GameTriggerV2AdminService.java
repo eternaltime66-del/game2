@@ -35,6 +35,10 @@ public class GameTriggerV2AdminService {
     private GameMonsterService monsterService;
     @Resource
     private GameReferenceCleanupService referenceCleanupService;
+    @Resource
+    private SkillJsonHelper skillJsonHelper;
+
+    public static final String UNIVERSAL_BASIC_ATTACK_ID = "fin_normal_attack";
 
     public List<AdminTriggerSlotVo> listTriggerSlotsByMonster(String monsterId) {
         if (monsterId == null || monsterId.isBlank()) {
@@ -57,14 +61,24 @@ public class GameTriggerV2AdminService {
 
     @Transactional(rollbackFor = Exception.class)
     public AdminFinishedSkillVo saveFinishedSkill(AdminFinishedSkillVo vo) {
+        ErrorFactory.throwError(UNIVERSAL_BASIC_ATTACK_ID.equals(vo.getId()), "通用普攻为只读，不可修改");
         ErrorFactory.notNull(vo.getName(), "名称不能为空");
         ErrorFactory.notNull(vo.getTargetType(), "目标槽不能为空");
         SkillTargetType targetType = SkillTargetType.parse(vo.getTargetType());
         ErrorFactory.notNull(targetType, "目标槽类型无效");
+        ErrorFactory.throwError(targetType.isLegacy(), "请使用新目标槽类型");
 
         String code = vo.getCode();
         if (code == null || code.isBlank()) {
             code = generateSkillCodeFromName(vo.getName());
+        }
+
+        int hitFrequency = vo.getHitFrequency() != null ? vo.getHitFrequency() : 1;
+        ErrorFactory.throwError(hitFrequency < 1, "频率槽最小为1");
+
+        Integer maxCast = Boolean.TRUE.equals(vo.getMaxCastUnlimited()) ? null : vo.getMaxCastCount();
+        if (maxCast != null && maxCast <= 0) {
+            maxCast = null;
         }
 
         GameFinishedSkill skill = new GameFinishedSkill();
@@ -73,6 +87,9 @@ public class GameTriggerV2AdminService {
         skill.setName(vo.getName().trim());
         skill.setTargetType(targetType.name());
         skill.setTargetParam(vo.getTargetParam());
+        skill.setHitFrequency(hitFrequency);
+        skill.setMaxCastCount(maxCast);
+        skill.setFormulasJson(skillJsonHelper.writeFormulas(vo.getFormulas()));
         skill.setCatL1(normalizeCatL1(vo.getCatL1()));
         skill.setCatL2(normalizeCatL2(vo.getCatL2()));
         skill.setCatL3(normalizeCatL3(vo.getCatL3()));
@@ -91,56 +108,16 @@ public class GameTriggerV2AdminService {
             finishedSkillService.updateById(skill);
         }
 
+        // 旧效果表清空，统一走公式组
         finishedSkillEffectMapper.delete(new LambdaQueryWrapper<GameFinishedSkillEffect>()
                 .eq(GameFinishedSkillEffect::getFinishedSkillId, skill.getId()));
-
-        List<AdminFinishedSkillEffectVo> effects = vo.getEffects() != null ? vo.getEffects() : List.of();
-        int sort = 1;
-        for (AdminFinishedSkillEffectVo effectVo : effects) {
-            if (effectVo == null || effectVo.getEffectKind() == null || effectVo.getEffectKind().isBlank()) {
-                continue;
-            }
-            AdvancedEffectKind kind = AdvancedEffectKind.parse(effectVo.getEffectKind());
-            ErrorFactory.notNull(kind, "效果种类无效");
-
-            GameFinishedSkillEffect effect = new GameFinishedSkillEffect();
-            effect.setId(effectVo.getId() != null && !effectVo.getId().isBlank()
-                    ? effectVo.getId() : skill.getId() + "_eff_" + sort);
-            effect.setFinishedSkillId(skill.getId());
-            effect.setEffectKind(kind.name());
-            effect.setSort(effectVo.getSort() != null ? effectVo.getSort() : sort);
-
-            if (kind == AdvancedEffectKind.ACTION_VALUE) {
-                ErrorFactory.notNull(effectVo.getActionDelta(), "行动值增减不能为空");
-                effect.setOutcomeType(EffectOutcomeType.HEAL.name());
-                effect.setActionDelta(effectVo.getActionDelta());
-            } else {
-                EffectOutcomeType outcome = EffectOutcomeType.parse(effectVo.getOutcomeType());
-                ErrorFactory.notNull(outcome, "伤害/治疗类型不能为空");
-                effect.setOutcomeType(outcome.name());
-                if (kind == AdvancedEffectKind.STAT_FORMULA) {
-                    StatRefType statRef = StatRefType.parse(effectVo.getStatRef());
-                    ErrorFactory.notNull(statRef, "属性引用不能为空");
-                    effect.setStatRef(statRef.name());
-                    effect.setRatioY(effectVo.getRatioY() != null ? effectVo.getRatioY() : BigDecimal.ONE);
-                    int useWeapon = effectVo.getUseWeaponRatio() != null ? effectVo.getUseWeaponRatio() : 0;
-                    effect.setUseWeaponRatio(useWeapon);
-                    effect.setRatioZ(null);
-                } else {
-                    ErrorFactory.notNull(effectVo.getFixedValue(), "固定数值不能为空");
-                    effect.setFixedValue(effectVo.getFixedValue());
-                }
-            }
-            effect.setRemark(effectVo.getRemark());
-            finishedSkillEffectMapper.insert(effect);
-            sort++;
-        }
         return getFinishedSkillDetail(skill.getId());
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void removeFinishedSkill(String id) {
         ErrorFactory.notNull(id, "ID不能为空");
+        ErrorFactory.throwError(UNIVERSAL_BASIC_ATTACK_ID.equals(id), "通用普攻不可删除");
         referenceCleanupService.removeFinishedSkillBindings(id);
         finishedSkillEffectMapper.delete(new LambdaQueryWrapper<GameFinishedSkillEffect>()
                 .eq(GameFinishedSkillEffect::getFinishedSkillId, id));
@@ -217,8 +194,7 @@ public class GameTriggerV2AdminService {
         boolean bindMonster = vo.getMonsterId() != null && !vo.getMonsterId().isBlank();
         ErrorFactory.throwError(!bindItem && !bindMonster, "物品ID或怪物ID不能为空");
         ErrorFactory.throwError(bindItem && bindMonster, "不能同时绑定物品和怪物");
-        ErrorFactory.notNull(vo.getTriggerSlotType(), "扳机槽不能为空");
-        ErrorFactory.notNull(vo.getFinishedSkillId(), "成品技能不能为空");
+        ErrorFactory.notNull(vo.getFinishedSkillId(), "扳机技能不能为空");
 
         if (bindItem) {
             GameItem item = gameItemService.getById(vo.getItemId());
@@ -228,25 +204,23 @@ public class GameTriggerV2AdminService {
             ErrorFactory.notNull(monster, "怪物不存在");
         }
 
-        TriggerSlotType slotType = TriggerSlotType.parse(vo.getTriggerSlotType());
-        ErrorFactory.notNull(slotType, "扳机槽类型无效");
-        validateTriggerParam(slotType, vo.getTriggerParam(), vo.getTriggerRefId());
+        TriggerMode mode = TriggerMode.parse(vo.getTriggerMode());
+        TriggerQuickPreset quickPreset = TriggerQuickPreset.parse(vo.getQuickPreset());
+        if (mode == TriggerMode.QUICK) {
+            ErrorFactory.notNull(quickPreset, "请选择快捷扳机预设");
+        }
 
         TriggerSlotKind slotKind = TriggerSlotKind.parse(vo.getSlotKind());
-        if (slotType == TriggerSlotType.ACTION_VALUE_FULL
-                && (vo.getSlotKind() == null || vo.getSlotKind().isBlank())) {
-            slotKind = TriggerSlotKind.BASIC_ATTACK;
+        if (slotKind == null) {
+            slotKind = TriggerSlotKind.TRAIT_ACTIVE;
         }
         if (slotKind == TriggerSlotKind.BASIC_ATTACK) {
-            slotType = TriggerSlotType.ACTION_VALUE_FULL;
             if (bindItem) {
                 ensureSingleBasicAttackSlotForItem(vo.getItemId(), vo.getId());
             } else {
                 ensureSingleBasicAttackSlotForMonster(vo.getMonsterId(), vo.getId());
             }
         } else if (slotKind == TriggerSlotKind.ULTIMATE) {
-            ErrorFactory.throwError(slotType == TriggerSlotType.ACTION_VALUE_FULL,
-                    "大招槽不可使用「行动值满」扳机");
             if (bindItem) {
                 ensureSingleUltimateSlotForItem(vo.getItemId(), vo.getId());
             } else {
@@ -255,27 +229,29 @@ public class GameTriggerV2AdminService {
         }
 
         GameFinishedSkill finished = finishedSkillService.getById(vo.getFinishedSkillId());
-        ErrorFactory.notNull(finished, "成品技能不存在");
+        ErrorFactory.notNull(finished, "扳机技能不存在");
+
+        List<org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo> groups =
+                mode == TriggerMode.QUICK
+                        ? skillJsonHelper.expandQuickPreset(quickPreset)
+                        : (vo.getConditionGroups() != null ? vo.getConditionGroups() : skillJsonHelper.defaultConditionGroups());
 
         GameTriggerSlot entity = new GameTriggerSlot();
         entity.setId(vo.getId());
         entity.setItemId(bindItem ? vo.getItemId() : null);
         entity.setMonsterId(bindMonster ? vo.getMonsterId() : null);
         entity.setSlotKind(slotKind.name());
-        entity.setTriggerSlotType(slotType.name());
-        entity.setTriggerParam(vo.getTriggerParam());
-        entity.setTriggerRefId(vo.getTriggerRefId());
+        entity.setTriggerMode(mode.name());
+        entity.setQuickPreset(mode == TriggerMode.QUICK && quickPreset != null ? quickPreset.name() : null);
+        entity.setConditionsJson(skillJsonHelper.writeConditionGroups(groups));
+        entity.setTriggerSlotType(null);
+        entity.setTriggerParam(null);
+        entity.setTriggerRefId(null);
         entity.setFinishedSkillId(vo.getFinishedSkillId());
-        if (vo.getMaxCastCount() != null && vo.getMaxCastCount() <= 0) {
-            entity.setMaxCastCount(null);
-        } else {
-            entity.setMaxCastCount(vo.getMaxCastCount());
-        }
+        entity.setMaxCastCount(null);
         entity.setSort(vo.getSort() != null ? vo.getSort() : 0);
         entity.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         entity.setRemark(vo.getRemark());
-
-        normalizeBlankTriggerRef(entity);
 
         if (entity.getId() == null || entity.getId().isBlank()) {
             entity.setId(generateUniqueTriggerSlotId());
@@ -286,6 +262,9 @@ public class GameTriggerV2AdminService {
                     .set(GameTriggerSlot::getItemId, entity.getItemId())
                     .set(GameTriggerSlot::getMonsterId, entity.getMonsterId())
                     .set(GameTriggerSlot::getSlotKind, entity.getSlotKind())
+                    .set(GameTriggerSlot::getTriggerMode, entity.getTriggerMode())
+                    .set(GameTriggerSlot::getQuickPreset, entity.getQuickPreset())
+                    .set(GameTriggerSlot::getConditionsJson, entity.getConditionsJson())
                     .set(GameTriggerSlot::getTriggerSlotType, entity.getTriggerSlotType())
                     .set(GameTriggerSlot::getTriggerParam, entity.getTriggerParam())
                     .set(GameTriggerSlot::getTriggerRefId, entity.getTriggerRefId())
@@ -324,13 +303,85 @@ public class GameTriggerV2AdminService {
     }
 
     public List<TriggerOptionVo> listTargetTypeOptions() {
-        return Arrays.stream(SkillTargetType.values()).map(type -> {
+        return Arrays.stream(SkillTargetType.values())
+                .filter(type -> !type.isLegacy())
+                .map(type -> {
+                    TriggerOptionVo vo = new TriggerOptionVo();
+                    vo.setCode(type.name());
+                    vo.setLabel(type.getLabel());
+                    vo.setSort(0);
+                    return vo;
+                }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listReadTypeOptions() {
+        return SkillReadType.allSorted().stream().map(type -> {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
             vo.setLabel(type.getLabel());
-            vo.setSort(0);
+            vo.setSort(type.getSort());
+            vo.setNeedParam(type.isNeedSkillFilter());
+            vo.setFlag(type.isNeedSkillFilter() ? "FILTER" : (type.isEventScoped() ? "EVENT" : null));
             return vo;
         }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listCompareOpOptions() {
+        return SkillCompareOp.all().stream().map(type -> {
+            TriggerOptionVo vo = new TriggerOptionVo();
+            vo.setCode(type.name());
+            vo.setLabel(type.getLabel() + " (" + type.getSymbol() + ")");
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listFormulaOutcomeOptions() {
+        return SkillFormulaOutcome.all().stream().map(type -> {
+            TriggerOptionVo vo = new TriggerOptionVo();
+            vo.setCode(type.name());
+            vo.setLabel(type.getLabel());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listTriggerModeOptions() {
+        return TriggerMode.all().stream().map(type -> {
+            TriggerOptionVo vo = new TriggerOptionVo();
+            vo.setCode(type.name());
+            vo.setLabel(type.getLabel());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listQuickPresetOptions() {
+        return TriggerQuickPreset.all().stream().map(type -> {
+            TriggerOptionVo vo = new TriggerOptionVo();
+            vo.setCode(type.name());
+            vo.setLabel(type.getLabel());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listSkillScopeFilterCastOptions() {
+        return SkillScopeFilter.forCast().stream().map(type -> {
+            TriggerOptionVo vo = new TriggerOptionVo();
+            vo.setCode(type.name());
+            vo.setLabel(type.getLabel());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<TriggerOptionVo> listSkillScopeFilterHitOptions() {
+        return SkillScopeFilter.forHit().stream().map(type -> {
+            TriggerOptionVo vo = new TriggerOptionVo();
+            vo.setCode(type.name());
+            vo.setLabel(type.getLabel());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public AdminFinishedSkillVo getUniversalBasicAttack() {
+        return getFinishedSkillDetail(UNIVERSAL_BASIC_ATTACK_ID);
     }
 
     public List<TriggerOptionVo> listEffectKindOptions() {
@@ -503,6 +554,11 @@ public class GameTriggerV2AdminService {
             vo.setTargetTypeLabel(tt.getLabel());
         }
         vo.setTargetParam(skill.getTargetParam());
+        vo.setHitFrequency(skill.getHitFrequency() != null ? skill.getHitFrequency() : 1);
+        vo.setMaxCastCount(skill.getMaxCastCount());
+        vo.setMaxCastUnlimited(skill.getMaxCastCount() == null);
+        vo.setFormulas(skillJsonHelper.readFormulas(skill.getFormulasJson()));
+        vo.setReadonly(UNIVERSAL_BASIC_ATTACK_ID.equals(skill.getId()));
         vo.setCatL1(skill.getCatL1());
         vo.setCatL2(skill.getCatL2());
         vo.setCatL3(skill.getCatL3());
@@ -516,38 +572,7 @@ public class GameTriggerV2AdminService {
         vo.setCatL4Label(c4.getLabel());
         vo.setEnabled(skill.getEnabled());
         vo.setRemark(skill.getRemark());
-
-        List<GameFinishedSkillEffect> effects = finishedSkillEffectService.listByFinishedSkillId(skill.getId());
-        List<AdminFinishedSkillEffectVo> effectVos = new ArrayList<>();
-        for (GameFinishedSkillEffect effect : effects) {
-            AdminFinishedSkillEffectVo ev = new AdminFinishedSkillEffectVo();
-            ev.setId(effect.getId());
-            ev.setFinishedSkillId(effect.getFinishedSkillId());
-            ev.setEffectKind(effect.getEffectKind());
-            AdvancedEffectKind ek = AdvancedEffectKind.parse(effect.getEffectKind());
-            if (ek != null) {
-                ev.setEffectKindLabel(ek.getLabel());
-            }
-            ev.setOutcomeType(effect.getOutcomeType());
-            EffectOutcomeType ot = EffectOutcomeType.parse(effect.getOutcomeType());
-            if (ot != null) {
-                ev.setOutcomeTypeLabel(ot.getLabel());
-            }
-            ev.setStatRef(effect.getStatRef());
-            StatRefType sr = StatRefType.parse(effect.getStatRef());
-            if (sr != null) {
-                ev.setStatRefLabel(sr.getLabel());
-            }
-            ev.setRatioY(effect.getRatioY());
-            ev.setUseWeaponRatio(effect.getUseWeaponRatio());
-            ev.setRatioZ(effect.getRatioZ());
-            ev.setFixedValue(effect.getFixedValue());
-            ev.setActionDelta(effect.getActionDelta());
-            ev.setSort(effect.getSort());
-            ev.setRemark(effect.getRemark());
-            effectVos.add(ev);
-        }
-        vo.setEffects(effectVos);
+        vo.setEffects(new ArrayList<>());
         return vo;
     }
 
@@ -608,6 +633,16 @@ public class GameTriggerV2AdminService {
                 : TriggerSlotKind.TRAIT_ACTIVE;
         vo.setSlotKind(kind.name());
         vo.setSlotKindLabel(kind.getLabel());
+        TriggerMode mode = TriggerMode.parse(entity.getTriggerMode());
+        vo.setTriggerMode(mode.name());
+        vo.setTriggerModeLabel(mode.getLabel());
+        vo.setQuickPreset(entity.getQuickPreset());
+        TriggerQuickPreset qp = TriggerQuickPreset.parse(entity.getQuickPreset());
+        if (qp != null) {
+            vo.setQuickPresetLabel(qp.getLabel());
+        }
+        vo.setConditionGroups(skillJsonHelper.resolveSlotConditions(
+                entity.getTriggerMode(), entity.getQuickPreset(), entity.getConditionsJson()));
         vo.setTriggerSlotType(entity.getTriggerSlotType());
         TriggerSlotType st = TriggerSlotType.parse(entity.getTriggerSlotType());
         if (st != null) {

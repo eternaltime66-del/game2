@@ -52,28 +52,6 @@ public class B17GamePassiveSkillController {
         return WxResult.success();
     }
 
-    @PostMapping("/badge/list")
-    @WxRequestLog(recordRequest = false, recordResponse = false)
-    @NeedHeader(roles = MemberRole.ADMIN)
-    public WxResult<List<AdminSkillBadgeVo>> badgeList(@RequestBody GameItem query) {
-        return WxResult.page(passiveSkillAdminService.listSkillBadges(query));
-    }
-
-    @PostMapping("/badge/save")
-    @WxRequestLog()
-    @NeedHeader(roles = MemberRole.ADMIN)
-    public WxResult<AdminSkillBadgeVo> badgeSave(@RequestBody AdminSkillBadgeVo vo) {
-        return WxResult.success(passiveSkillAdminService.saveSkillBadge(vo));
-    }
-
-    @PostMapping("/badge/remove")
-    @WxRequestLog()
-    @NeedHeader(roles = MemberRole.ADMIN)
-    public WxResult<?> badgeRemove(@RequestBody CommonIdVo vo) {
-        passiveSkillAdminService.removeSkillBadge(vo.stringId());
-        return WxResult.success();
-    }
-
     @PostMapping("/monster-passive/by-monster")
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.ADMIN)

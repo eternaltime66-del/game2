@@ -132,7 +132,7 @@
       + '  <div class="admin-select-trigger" :class="{ disabled: disabled }" tabindex="0" role="combobox" :aria-expanded="open" @click="toggle" @keydown.enter.prevent="toggle" @keydown.space.prevent="toggle">'
       + '    <span class="admin-select-value" :class="{ placeholder: !selected }">{{ selected ? displayLabel : placeholder }}</span>'
       + '    <span class="admin-select-icons">'
-      + '      <span v-if="clearable && selected && !disabled" class="admin-select-clear" role="button" tabindex="-1" @click.stop="clear" title="清除">×</span>'
+      + '      <span v-if="clearable && selected && !disabled" class="admin-select-clear" role="button" tabindex="-1" @click.stop="clear" title="清除"><i class="admin-select-clear-x" aria-hidden="true"></i></span>'
       + '      <span class="admin-select-chevron" aria-hidden="true"></span>'
       + '    </span>'
       + '  </div>'

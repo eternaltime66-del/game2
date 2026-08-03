@@ -825,28 +825,64 @@ body.admin-body .bg-glow {
 }
 
 .admin-select-icons {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+  height: 20px;
 }
 
 .admin-select-clear {
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--muted);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
   padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  line-height: 0;
+  box-sizing: border-box;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
 .admin-select-clear:hover {
-  background: rgba(255, 107, 138, 0.35);
+  background: rgba(255, 107, 138, 0.42);
   color: #fff;
+  transform: scale(1.06);
+}
+
+.admin-select-clear-x {
+  position: relative;
+  display: block;
+  width: 8px;
+  height: 8px;
+}
+
+.admin-select-clear-x::before,
+.admin-select-clear-x::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+.admin-select-clear-x::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.admin-select-clear-x::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .admin-select-chevron {
@@ -856,6 +892,7 @@ body.admin-body .bg-glow {
   border-bottom: 2px solid var(--muted);
   transform: rotate(45deg) translateY(-2px);
   transition: transform 0.2s, border-color 0.15s;
+  flex-shrink: 0;
 }
 
 .admin-select.open .admin-select-chevron {

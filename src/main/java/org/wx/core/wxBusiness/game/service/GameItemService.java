@@ -13,7 +13,6 @@ import org.wx.core.wxBusiness.game.entity.GameItemPassive;
 import org.wx.core.wxBusiness.game.entity.GamePassiveSkill;
 import org.wx.core.wxBusiness.game.entity.GameRecipe;
 import org.wx.core.wxBusiness.game.entity.GameRecipeMaterial;
-import org.wx.core.wxBusiness.game.entity.GameSkillBadge;
 import org.wx.core.wxBusiness.game.entity.GameTriggerSlot;
 import org.wx.core.wxBusiness.game.entity.GameWeapon;
 import org.wx.core.wxBusiness.game.entity.ItemCraftPreviewVo;
@@ -66,8 +65,6 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
     private GameItemPassiveService itemPassiveService;
     @Resource
     private GamePassiveSkillService passiveSkillService;
-    @Resource
-    private GameSkillBadgeService skillBadgeService;
 
     public ItemDetailVo getItemDetail(String itemId) {
         GameItem item = this.getById(itemId);
@@ -131,15 +128,6 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
             ItemPassiveDetailVo detail = toPassiveDetail(binding.getPassiveSkillId());
             if (detail != null) {
                 list.add(detail);
-            }
-        }
-        if (ItemTagHelper.hasTag(item, GameItemTag.SKILL_BADGE)) {
-            GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
-            if (badge != null && badge.getPassiveSkillId() != null && !badge.getPassiveSkillId().isBlank()) {
-                ItemPassiveDetailVo detail = toPassiveDetail(badge.getPassiveSkillId());
-                if (detail != null) {
-                    list.add(detail);
-                }
             }
         }
         return list;

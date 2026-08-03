@@ -56,6 +56,18 @@ public class WordUnit {
         return id;
     }
 
+    /** 纯小写英文字母 a-z，用于业务 ID 后缀 */
+    public static String randomLowerAlpha(int len) {
+        if (len < 1) {
+            len = 8;
+        }
+        StringBuilder sb = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            sb.append((char) ('a' + (int) (Math.random() * 26)));
+        }
+        return sb.toString();
+    }
+
     public static String token() {
         return randomKey(8, 3);
     }

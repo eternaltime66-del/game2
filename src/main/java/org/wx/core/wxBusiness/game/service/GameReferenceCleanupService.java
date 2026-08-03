@@ -5,6 +5,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.HeroEquipSlot;
 import org.wx.core.wxBusiness.game.mapper.GameRecipeMaterialMapper;
 
 import java.util.HashSet;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** 删除主实体时，清理关联绑定数据 */
+/** 删除主实体时，清理关联绑定数据与玩家持有物 */
 @Service
 public class GameReferenceCleanupService {
 
@@ -34,6 +35,18 @@ public class GameReferenceCleanupService {
     private GameItemService itemService;
     @Resource
     private GameFinishedSkillService finishedSkillService;
+    @Resource
+    private GameInventoryService inventoryService;
+    @Resource
+    private GameBattleBagService battleBagService;
+    @Resource
+    private GameHeroEquipService heroEquipService;
+    @Resource
+    private GameProfessionSkillService professionSkillService;
+    @Resource
+    private GameMonsterDropService monsterDropService;
+    @Resource
+    private GameStageDropService stageDropService;
 
     /** 删除成品技能前：扳机槽 / 完整技能组中引用该技能的绑定 */
     @Transactional(rollbackFor = Exception.class)
@@ -49,7 +62,7 @@ public class GameReferenceCleanupService {
                 .or(w -> w.eq(GameCompleteSkill::getTriggerRefId, finishedSkillId)));
     }
 
-    /** 删除物品前：扳机槽 / 特性被动 / 配方引用 */
+    /** 删除物品前：绑定关系 + 玩家仓库/背包/装备槽 + 掉落/职业技能引用 */
     @Transactional(rollbackFor = Exception.class)
     public void removeItemBindings(String itemId) {
         if (itemId == null || itemId.isBlank()) {
@@ -70,6 +83,66 @@ public class GameReferenceCleanupService {
         }
         recipeMaterialMapper.delete(new LambdaQueryWrapper<GameRecipeMaterial>()
                 .eq(GameRecipeMaterial::getMaterialItemId, itemId));
+
+        professionSkillService.remove(new LambdaQueryWrapper<GameProfessionSkill>()
+                .eq(GameProfessionSkill::getItemId, itemId));
+        monsterDropService.remove(new LambdaQueryWrapper<GameMonsterDrop>()
+                .eq(GameMonsterDrop::getItemId, itemId));
+        stageDropService.remove(new LambdaQueryWrapper<GameStageDrop>()
+                .eq(GameStageDrop::getItemId, itemId));
+
+        GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
+        if (badge != null) {
+            skillBadgeService.removeById(badge.getItemId());
+        }
+
+        removePlayerItemHoldings(itemId);
+    }
+
+    /** 删除玩家持有：仓库、战斗背包、角色装备槽 */
+    @Transactional(rollbackFor = Exception.class)
+    public void removePlayerItemHoldings(String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            return;
+        }
+        inventoryService.remove(new LambdaQueryWrapper<GameInventory>()
+                .eq(GameInventory::getItemId, itemId));
+        battleBagService.remove(new LambdaQueryWrapper<GameBattleBag>()
+                .eq(GameBattleBag::getItemId, itemId));
+
+        List<GameHeroEquip> equips = heroEquipService.list();
+        for (GameHeroEquip equip : equips) {
+            boolean changed = false;
+            for (HeroEquipSlot slot : HeroEquipSlot.values()) {
+                String equipped = slot.getItemId(equip);
+                if (itemId.equals(equipped)) {
+                    slot.setItemId(equip, null);
+                    if (slot == HeroEquipSlot.WEAPON) {
+                        equip.setWeaponUsesLeft(null);
+                    }
+                    changed = true;
+                }
+            }
+            if (itemId.equals(equip.getSkillBadge1ItemId())) {
+                equip.setSkillBadge1ItemId(null);
+                changed = true;
+            }
+            if (itemId.equals(equip.getSkillBadge2ItemId())) {
+                equip.setSkillBadge2ItemId(null);
+                changed = true;
+            }
+            if (itemId.equals(equip.getSkillBadge3ItemId())) {
+                equip.setSkillBadge3ItemId(null);
+                changed = true;
+            }
+            if (itemId.equals(equip.getSkillBadge4ItemId())) {
+                equip.setSkillBadge4ItemId(null);
+                changed = true;
+            }
+            if (changed) {
+                heroEquipService.updateById(equip);
+            }
+        }
     }
 
     /** 删除怪物前：扳机槽 / 特性被动 */
@@ -84,7 +157,7 @@ public class GameReferenceCleanupService {
                 .eq(GameMonsterPassive::getMonsterId, monsterId));
     }
 
-    /** 删除被动技能前：装备/怪物被动绑定、技能徽章 */
+    /** 删除被动技能前：装备/怪物被动绑定、技能徽章（含玩家持有） */
     @Transactional(rollbackFor = Exception.class)
     public void removePassiveSkillBindings(String passiveSkillId) {
         if (passiveSkillId == null || passiveSkillId.isBlank()) {
@@ -102,8 +175,9 @@ public class GameReferenceCleanupService {
             if (badge.getItemId() == null || badge.getItemId().isBlank()) {
                 continue;
             }
-            skillBadgeService.removeById(badge.getItemId());
-            itemService.removeById(badge.getItemId());
+            String badgeItemId = badge.getItemId();
+            removeItemBindings(badgeItemId);
+            itemService.removeById(badgeItemId);
         }
     }
 

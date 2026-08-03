@@ -6,10 +6,7 @@ import org.wx.core.wxBusiness.game.entity.GameHeroEquip;
 import org.wx.core.wxBusiness.game.entity.GameItem;
 import org.wx.core.wxBusiness.game.entity.GameItemPassive;
 import org.wx.core.wxBusiness.game.entity.GamePassiveSkill;
-import org.wx.core.wxBusiness.game.entity.GameSkillBadge;
 import org.wx.core.wxBusiness.game.entity.HeroPassiveDetailVo;
-import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
-import org.wx.core.wxBusiness.game.entity.enums.HeroEquipSlot;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
 
@@ -24,8 +21,6 @@ import java.util.Set;
 @Service
 public class HeroPassiveService {
 
-    @Resource
-    private GameSkillBadgeService skillBadgeService;
     @Resource
     private GameItemPassiveService itemPassiveService;
     @Resource
@@ -98,22 +93,6 @@ public class HeroPassiveService {
         }
         Set<String> equipped = equippedIds != null ? equippedIds : Set.of();
         List<HeroPassiveDetailVo> result = new ArrayList<>();
-        for (HeroEquipSlot slot : HeroEquipSlot.values()) {
-            if (slot.getRequiredTag() != GameItemTag.SKILL_BADGE) {
-                continue;
-            }
-            String itemId = slot.getItemId(equip);
-            if (itemId == null || itemId.isBlank()) {
-                continue;
-            }
-            GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
-            if (badge == null || badge.getPassiveSkillId() == null || badge.getPassiveSkillId().isBlank()) {
-                continue;
-            }
-            GameItem item = itemMap != null ? itemMap.get(itemId) : null;
-            String source = item != null ? item.getName() : slot.getLabel();
-            appendHeroPassiveDetail(result, badge.getPassiveSkillId(), equipped, source, itemMap);
-        }
         if (!equipped.isEmpty()) {
             for (GameItemPassive binding : itemPassiveService.listEnabledByItemIds(new ArrayList<>(equipped))) {
                 GameItem item = itemMap != null ? itemMap.get(binding.getItemId()) : null;
@@ -164,27 +143,8 @@ public class HeroPassiveService {
 
     private List<GamePassiveSkill> collectActivePassives(GameHeroEquip equip, Set<String> equippedIds) {
         Map<String, GamePassiveSkill> deduped = new LinkedHashMap<>();
-        collectFromSkillBadges(equip, equippedIds, deduped);
         collectFromEquippedItems(equippedIds, deduped);
         return new ArrayList<>(deduped.values());
-    }
-
-    private void collectFromSkillBadges(GameHeroEquip equip, Set<String> equippedIds,
-                                        Map<String, GamePassiveSkill> out) {
-        for (HeroEquipSlot slot : HeroEquipSlot.values()) {
-            if (slot.getRequiredTag() != GameItemTag.SKILL_BADGE) {
-                continue;
-            }
-            String itemId = slot.getItemId(equip);
-            if (itemId == null || itemId.isBlank()) {
-                continue;
-            }
-            GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
-            if (badge == null || badge.getPassiveSkillId() == null || badge.getPassiveSkillId().isBlank()) {
-                continue;
-            }
-            addPassiveIfActive(badge.getPassiveSkillId(), equippedIds, out);
-        }
     }
 
     private void collectFromEquippedItems(Set<String> equippedIds, Map<String, GamePassiveSkill> out) {

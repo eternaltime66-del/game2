@@ -18,11 +18,7 @@ public enum HeroEquipSlot {
     HELMET("头盔", GameItemTag.HELMET),
     ACCESSORY_1("饰品1", GameItemTag.ACCESSORY),
     ACCESSORY_2("饰品2", GameItemTag.ACCESSORY),
-    ACCESSORY_3("饰品3", GameItemTag.ACCESSORY),
-    SKILL_BADGE_1("技能1", GameItemTag.SKILL_BADGE),
-    SKILL_BADGE_2("技能2", GameItemTag.SKILL_BADGE),
-    SKILL_BADGE_3("技能3", GameItemTag.SKILL_BADGE),
-    SKILL_BADGE_4("技能4", GameItemTag.SKILL_BADGE);
+    ACCESSORY_3("饰品3", GameItemTag.ACCESSORY);
 
     private final String label;
     private final GameItemTag requiredTag;
@@ -70,10 +66,6 @@ public enum HeroEquipSlot {
             case ACCESSORY_1 -> equip.getAccessory1ItemId();
             case ACCESSORY_2 -> equip.getAccessory2ItemId();
             case ACCESSORY_3 -> equip.getAccessory3ItemId();
-            case SKILL_BADGE_1 -> equip.getSkillBadge1ItemId();
-            case SKILL_BADGE_2 -> equip.getSkillBadge2ItemId();
-            case SKILL_BADGE_3 -> equip.getSkillBadge3ItemId();
-            case SKILL_BADGE_4 -> equip.getSkillBadge4ItemId();
         };
     }
 
@@ -90,10 +82,6 @@ public enum HeroEquipSlot {
             case ACCESSORY_1 -> equip.setAccessory1ItemId(itemId);
             case ACCESSORY_2 -> equip.setAccessory2ItemId(itemId);
             case ACCESSORY_3 -> equip.setAccessory3ItemId(itemId);
-            case SKILL_BADGE_1 -> equip.setSkillBadge1ItemId(itemId);
-            case SKILL_BADGE_2 -> equip.setSkillBadge2ItemId(itemId);
-            case SKILL_BADGE_3 -> equip.setSkillBadge3ItemId(itemId);
-            case SKILL_BADGE_4 -> equip.setSkillBadge4ItemId(itemId);
         }
     }
 }

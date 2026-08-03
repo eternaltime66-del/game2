@@ -163,20 +163,6 @@
           <template v-else>
             <div class="prep-hero-card" v-if="hero">
               <div class="prep-equip-body">
-                <div class="prep-skill-side prep-skill-side-left">
-                  <div
-                    v-for="sb in leftSkillBadgeSlots"
-                    :key="sb.slot"
-                    class="prep-equip-slot prep-equip-slot-sm prep-skill-slot"
-                    :class="{ filled: slotFilled(sb.slot) }"
-                    @click="onEquipSlotClick(sb.slot)"
-                  >
-                    <span class="prep-equip-slot-label">{{ sb.label }}</span>
-                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
-                    <span v-else class="prep-equip-slot-empty">空</span>
-                    <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
-                  </div>
-                </div>
                 <div class="prep-equip-panel prep-equip-panel-top">
                   <div class="prep-equip-row prep-equip-row-center">
                     <div
@@ -271,20 +257,6 @@
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName(acc.slot)" class="prep-equip-slot-name">{{ slotItemName(acc.slot) }}</span>
                     </div>
-                  </div>
-                </div>
-                <div class="prep-skill-side prep-skill-side-right">
-                  <div
-                    v-for="sb in rightSkillBadgeSlots"
-                    :key="sb.slot"
-                    class="prep-equip-slot prep-equip-slot-sm prep-skill-slot"
-                    :class="{ filled: slotFilled(sb.slot) }"
-                    @click="onEquipSlotClick(sb.slot)"
-                  >
-                    <span class="prep-equip-slot-label">{{ sb.label }}</span>
-                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
-                    <span v-else class="prep-equip-slot-empty">空</span>
-                    <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
                   </div>
                 </div>
               </div>
@@ -1248,22 +1220,13 @@ createApp({
         { slot: 'ACCESSORY_2', label: '饰品2' },
         { slot: 'ACCESSORY_3', label: '饰品3' }
       ],
-      leftSkillBadgeSlots: [
-        { slot: 'SKILL_BADGE_1', label: '被动1' },
-        { slot: 'SKILL_BADGE_2', label: '被动2' }
-      ],
-      rightSkillBadgeSlots: [
-        { slot: 'SKILL_BADGE_3', label: '被动3' },
-        { slot: 'SKILL_BADGE_4', label: '被动4' }
-      ],
       tagSlotMap: {
         WEAPON: ['WEAPON'],
         ARMOR: ['ARMOR'],
         GLOVES: ['GLOVES'],
         LEGS: ['LEGS'],
         HELMET: ['HELMET'],
-        ACCESSORY: ['ACCESSORY_1', 'ACCESSORY_2', 'ACCESSORY_3'],
-        SKILL_BADGE: ['SKILL_BADGE_1', 'SKILL_BADGE_2', 'SKILL_BADGE_3', 'SKILL_BADGE_4']
+        ACCESSORY: ['ACCESSORY_1', 'ACCESSORY_2', 'ACCESSORY_3']
       },
       slotLabelMap: {
         WEAPON: '武器',
@@ -1273,11 +1236,7 @@ createApp({
         HELMET: '头盔',
         ACCESSORY_1: '饰品1',
         ACCESSORY_2: '饰品2',
-        ACCESSORY_3: '饰品3',
-        SKILL_BADGE_1: '被动1',
-        SKILL_BADGE_2: '被动2',
-        SKILL_BADGE_3: '被动3',
-        SKILL_BADGE_4: '被动4'
+        ACCESSORY_3: '饰品3'
       }
     };
   },
@@ -1677,8 +1636,6 @@ createApp({
       if (tag === '护腿') return 'tag-legs';
       if (tag === '头盔') return 'tag-helmet';
       if (tag === '饰品') return 'tag-accessory';
-      if (tag === '被动徽章') return 'tag-skill-badge';
-      if (tag === '技能徽章') return 'tag-skill-badge';
       return '';
     },
     tagClassByCode: function (code) {
@@ -1690,8 +1647,7 @@ createApp({
         GLOVES: 'tag-gloves',
         LEGS: 'tag-legs',
         HELMET: 'tag-helmet',
-        ACCESSORY: 'tag-accessory',
-        SKILL_BADGE: 'tag-skill-badge'
+        ACCESSORY: 'tag-accessory'
       };
       return map[code] || this.tagClass(code);
     },
@@ -1837,7 +1793,7 @@ createApp({
     },
     isEquipableItem: function (detail) {
       if (!detail || !detail.itemTagCodes) return false;
-      var equipTags = ['WEAPON', 'ARMOR', 'GLOVES', 'LEGS', 'HELMET', 'ACCESSORY', 'SKILL_BADGE'];
+      var equipTags = ['WEAPON', 'ARMOR', 'GLOVES', 'LEGS', 'HELMET', 'ACCESSORY'];
       return detail.itemTagCodes.some(function (code) {
         return equipTags.indexOf(code) >= 0;
       });

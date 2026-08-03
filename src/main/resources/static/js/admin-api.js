@@ -261,15 +261,6 @@
     removePassiveSkill: function (id) {
       return request('/back/game/passive-skill/remove', { json: true, body: { id: id } }).then(ensureSuccess);
     },
-    skillBadgeList: function (query) {
-      return pageList('/back/game/passive-skill/badge/list', {}, query);
-    },
-    saveSkillBadge: function (body) {
-      return request('/back/game/passive-skill/badge/save', { json: true, body: body }).then(ensureSuccess);
-    },
-    removeSkillBadge: function (id) {
-      return request('/back/game/passive-skill/badge/remove', { json: true, body: { id: id } }).then(ensureSuccess);
-    },
     monsterPassiveByMonster: function (monsterId) {
       return request('/back/game/passive-skill/monster-passive/by-monster', { body: { monsterId: monsterId } }).then(ensureSuccess);
     },

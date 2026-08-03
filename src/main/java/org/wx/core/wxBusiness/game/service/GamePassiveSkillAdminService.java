@@ -1,16 +1,13 @@
 package org.wx.core.wxBusiness.game.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wx.core.wxBase.factory.ErrorFactory;
-import org.wx.core.wxBase.factory.PageFactory;
 import org.wx.core.wxBase.unit.WordUnit;
 import org.wx.core.wxBusiness.game.entity.*;
 import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL2;
-import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveSkillKind;
@@ -24,8 +21,6 @@ public class GamePassiveSkillAdminService {
 
     @Resource
     private GamePassiveSkillService passiveSkillService;
-    @Resource
-    private GameSkillBadgeService skillBadgeService;
     @Resource
     private GameItemPassiveService itemPassiveService;
     @Resource
@@ -84,8 +79,12 @@ public class GamePassiveSkillAdminService {
         entity.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         entity.setRemark(vo.getRemark());
 
-        if (entity.getId() == null || entity.getId().isBlank()) {
-            entity.setId(generateUniquePassiveId(vo.getCode()));
+        boolean createNew = entity.getId() == null || entity.getId().isBlank() || !isAsciiSkillId(entity.getId())
+                || passiveSkillService.getById(entity.getId()) == null;
+        if (createNew) {
+            if (entity.getId() == null || entity.getId().isBlank() || !isAsciiSkillId(entity.getId())) {
+                entity.setId(generateUniquePassiveId());
+            }
             passiveSkillService.save(entity);
         } else {
             passiveSkillService.updateById(entity);
@@ -98,79 +97,6 @@ public class GamePassiveSkillAdminService {
         ErrorFactory.notNull(id, "ID不能为空");
         referenceCleanupService.removePassiveSkillBindings(id);
         passiveSkillService.removeById(id);
-    }
-
-    public IPage<AdminSkillBadgeVo> listSkillBadges(GameItem query) {
-        List<GameItem> badges = itemService.find().list().stream()
-                .filter(item -> ItemTagHelper.hasTag(item, GameItemTag.SKILL_BADGE))
-                .collect(Collectors.toList());
-        List<AdminSkillBadgeVo> vos = badges.stream().map(this::toSkillBadgeVo).collect(Collectors.toList());
-        Page<AdminSkillBadgeVo> page = PageFactory.defaultPage();
-        int current = (int) page.getCurrent();
-        int size = (int) page.getSize();
-        int from = Math.max(0, (current - 1) * size);
-        int to = Math.min(vos.size(), from + size);
-        page.setRecords(from >= vos.size() ? List.of() : vos.subList(from, to));
-        page.setTotal(vos.size());
-        return page;
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public AdminSkillBadgeVo saveSkillBadge(AdminSkillBadgeVo vo) {
-        ErrorFactory.notNull(vo.getCode(), "编码不能为空");
-        ErrorFactory.notNull(vo.getName(), "名称不能为空");
-        ErrorFactory.notNull(vo.getPassiveSkillId(), "被动技能不能为空");
-        GamePassiveSkill passive = passiveSkillService.getById(vo.getPassiveSkillId());
-        ErrorFactory.notNull(passive, "被动技能不存在");
-
-        String itemId = vo.getItemId();
-        if (itemId == null || itemId.isBlank()) {
-            itemId = "item_" + vo.getCode().trim().toLowerCase();
-        }
-
-        GameItem item = itemService.getById(itemId);
-        boolean isNew = item == null;
-        if (isNew) {
-            item = new GameItem();
-            item.setId(itemId);
-        }
-        item.setCode(vo.getCode().trim().toUpperCase());
-        item.setName(vo.getName().trim());
-        item.setIcon(vo.getIcon() != null ? vo.getIcon() : "🎖");
-        item.setItemTags(GameItemTag.SKILL_BADGE.name());
-        item.setMaxStack(1);
-        item.setSort(vo.getSort() != null ? vo.getSort() : 0);
-        item.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
-        item.setRemark(vo.getRemark());
-        if (isNew) {
-            itemService.save(item);
-        } else {
-            itemService.updateById(item);
-        }
-
-        GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
-        if (badge == null) {
-            badge = new GameSkillBadge();
-            badge.setItemId(itemId);
-        }
-        badge.setPassiveSkillId(vo.getPassiveSkillId());
-        if (skillBadgeService.getByItemId(itemId) == null) {
-            skillBadgeService.save(badge);
-        } else {
-            skillBadgeService.updateById(badge);
-        }
-
-        vo.setItemId(itemId);
-        vo.setId(itemId);
-        return toSkillBadgeVo(itemService.getById(itemId));
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public void removeSkillBadge(String itemId) {
-        ErrorFactory.notNull(itemId, "物品ID不能为空");
-        referenceCleanupService.removeItemBindings(itemId);
-        skillBadgeService.removeById(itemId);
-        itemService.removeById(itemId);
     }
 
     public List<TriggerOptionVo> listPassiveConditionTypes() {
@@ -289,39 +215,16 @@ public class GamePassiveSkillAdminService {
         return vo;
     }
 
-    private AdminSkillBadgeVo toSkillBadgeVo(GameItem item) {
-        AdminSkillBadgeVo vo = new AdminSkillBadgeVo();
-        vo.setId(item.getId());
-        vo.setItemId(item.getId());
-        vo.setCode(item.getCode());
-        vo.setName(item.getName());
-        vo.setIcon(item.getIcon());
-        vo.setSort(item.getSort());
-        vo.setEnabled(item.getEnabled());
-        vo.setRemark(item.getRemark());
-        GameSkillBadge badge = skillBadgeService.getByItemId(item.getId());
-        if (badge != null) {
-            vo.setPassiveSkillId(badge.getPassiveSkillId());
-            GamePassiveSkill passive = passiveSkillService.getById(badge.getPassiveSkillId());
-            if (passive != null) {
-                vo.setPassiveSkillName(passive.getName());
-            }
-        }
-        return vo;
-    }
-
-    private String generateUniquePassiveId(String code) {
-        if (code != null && !code.isBlank()) {
-            String base = "psv_" + code.trim().toLowerCase();
-            if (passiveSkillService.getById(base) == null) {
-                return base;
-            }
-        }
+    private String generateUniquePassiveId() {
         String id;
         do {
-            id = "psv_" + WordUnit.randomKey(8, 3);
+            id = "psv_" + WordUnit.randomLowerAlpha(8);
         } while (passiveSkillService.getById(id) != null);
         return id;
+    }
+
+    private boolean isAsciiSkillId(String id) {
+        return id != null && id.matches("^[a-z]+_[a-z0-9_]+$");
     }
 
     public List<AdminMonsterPassiveVo> listMonsterPassivesByMonster(String monsterId) {
@@ -396,7 +299,7 @@ public class GamePassiveSkillAdminService {
     private String generateUniqueMonsterPassiveId() {
         String id;
         do {
-            id = "mpsv_" + WordUnit.randomKey(8, 3);
+            id = "mpsv_" + WordUnit.randomLowerAlpha(8);
         } while (monsterPassiveService.getById(id) != null);
         return id;
     }
@@ -432,7 +335,7 @@ public class GamePassiveSkillAdminService {
     private String generateUniqueItemPassiveId() {
         String id;
         do {
-            id = "itp_" + WordUnit.randomKey(8, 3);
+            id = "itp_" + WordUnit.randomLowerAlpha(8);
         } while (itemPassiveService.getById(id) != null);
         return id;
     }

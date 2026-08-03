@@ -80,8 +80,12 @@ public class GameTriggerV2AdminService {
         skill.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         skill.setRemark(vo.getRemark());
 
-        if (skill.getId() == null || skill.getId().isBlank()) {
-            skill.setId(generateUniqueFinishedSkillId(code));
+        boolean createNew = skill.getId() == null || skill.getId().isBlank() || !isAsciiSkillId(skill.getId())
+                || finishedSkillService.getById(skill.getId()) == null;
+        if (createNew) {
+            if (skill.getId() == null || skill.getId().isBlank() || !isAsciiSkillId(skill.getId())) {
+                skill.setId(generateUniqueFinishedSkillId());
+            }
             finishedSkillService.save(skill);
         } else {
             finishedSkillService.updateById(skill);
@@ -421,17 +425,11 @@ public class GameTriggerV2AdminService {
     }
 
     private String generateSkillCodeFromName(String name) {
-        String base = "SKILL";
-        if (name != null && !name.isBlank()) {
-            base = name.trim().replaceAll("[^A-Za-z0-9\\u4e00-\\u9fa5]", "");
-            if (base.length() > 12) {
-                base = base.substring(0, 12);
-            }
-            if (base.isBlank()) {
-                base = "SKILL";
-            }
-        }
-        return base.toUpperCase() + "_" + WordUnit.randomKey(4, 2);
+        return "SKILL_" + WordUnit.randomLowerAlpha(6).toUpperCase();
+    }
+
+    private boolean isAsciiSkillId(String id) {
+        return id != null && id.matches("^[a-z]+_[a-z0-9_]+$");
     }
 
     private void ensureSingleBasicAttackSlotForItem(String itemId, String keepId) {
@@ -490,8 +488,8 @@ public class GameTriggerV2AdminService {
             ErrorFactory.notNull(refId, "释放次数类扳机必须指定关联成品技能");
             return;
         }
-        ErrorFactory.notNull(param, slotType.getLabel() + " 必须设置阈值");
-        ErrorFactory.throwError(param.compareTo(BigDecimal.ZERO) <= 0, "阈值必须大于0");
+        ErrorFactory.notNull(param, slotType.getLabel() + " 必须设置频率");
+        ErrorFactory.throwError(param.compareTo(BigDecimal.ZERO) <= 0, "频率必须大于0");
     }
 
     private AdminFinishedSkillVo buildFinishedSkillVo(GameFinishedSkill skill) {
@@ -635,16 +633,10 @@ public class GameTriggerV2AdminService {
         return vo;
     }
 
-    private String generateUniqueFinishedSkillId(String code) {
-        if (code != null && !code.isBlank()) {
-            String base = "fin_" + code.trim().toLowerCase();
-            if (finishedSkillService.getById(base) == null) {
-                return base;
-            }
-        }
+    private String generateUniqueFinishedSkillId() {
         String id;
         do {
-            id = "fin_" + WordUnit.randomKey(8, 3);
+            id = "fin_" + WordUnit.randomLowerAlpha(8);
         } while (finishedSkillService.getById(id) != null);
         return id;
     }
@@ -652,7 +644,7 @@ public class GameTriggerV2AdminService {
     private String generateUniqueTriggerSlotId() {
         String id;
         do {
-            id = "ts_" + WordUnit.randomKey(8, 3);
+            id = "ts_" + WordUnit.randomLowerAlpha(8);
         } while (triggerSlotService.getById(id) != null);
         return id;
     }

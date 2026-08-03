@@ -20,6 +20,7 @@ public class GameItemLog extends WxBaseEntity<GameItemLog> {
     public static final String REASON_UNEQUIP = "UNEQUIP";
     public static final String REASON_CRAFT = "CRAFT";
     public static final String REASON_CRAFT_COST = "CRAFT_COST";
+    public static final String REASON_ADMIN_GRANT = "ADMIN_GRANT";
 
     @TableId(type = IdType.ASSIGN_ID)
     private String id;

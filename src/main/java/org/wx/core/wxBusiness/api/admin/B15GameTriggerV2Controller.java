@@ -89,6 +89,13 @@ public class B15GameTriggerV2Controller {
         return WxResult.page(page);
     }
 
+    @PostMapping("/trigger-slot/by-monster")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<AdminTriggerSlotVo>> triggerSlotByMonster(@ParamCheck(msg = "怪物ID") String monsterId) {
+        return WxResult.success(adminService.listTriggerSlotsByMonster(monsterId));
+    }
+
     @PostMapping("/trigger-slot/by-item")
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.ADMIN)
@@ -151,5 +158,11 @@ public class B15GameTriggerV2Controller {
     @NeedHeader(roles = MemberRole.ADMIN)
     public WxResult<List<GameFinishedSkill>> finishedSkillOptions() {
         return WxResult.success(adminService.listFinishedSkillOptions());
+    }
+
+    @PostMapping("/meta/finished-skill-categories")
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<FinishedSkillCategoryMetaVo> finishedSkillCategories() {
+        return WxResult.success(adminService.finishedSkillCategoryMeta());
     }
 }

@@ -65,4 +65,22 @@ public class BattleBagVo {
 
     /** 全部装备槽位概览 */
     private List<HeroEquipSlotVo> equipSlots = new ArrayList<>();
+
+    /** 当前生效/已持有的被动技能 */
+    private List<HeroPassiveDetailVo> activePassives = new ArrayList<>();
+
+    /** 属性构成明细（含被动百分比） */
+    private List<HeroStatBreakdownRowVo> statBreakdown = new ArrayList<>();
+
+    /** 当前生效普攻技能详情 */
+    private ItemFinishedSkillDetailVo basicAttackSkill;
+
+    /** 普攻来源说明 */
+    private String basicAttackSourceLabel;
+
+    /** 武器技能槽（大招扳机） */
+    private ItemTriggerSlotDetailVo weaponSkill;
+
+    /** 武器技能来源 */
+    private String weaponSkillSourceLabel;
 }

@@ -7,6 +7,10 @@ CREATE TABLE IF NOT EXISTS `app_game_finished_skill` (
   `name` varchar(64) NOT NULL COMMENT '名称',
   `target_type` varchar(32) NOT NULL COMMENT '目标槽类型',
   `target_param` int DEFAULT NULL COMMENT '目标参数(随机敌人数/重复次数等)',
+  `cat_l1` varchar(32) NOT NULL DEFAULT 'GENERAL' COMMENT '分类1',
+  `cat_l2` varchar(32) NOT NULL DEFAULT 'GENERAL' COMMENT '分类2',
+  `cat_l3` varchar(64) NOT NULL DEFAULT '通用' COMMENT '分类3：入口名称',
+  `cat_l4` varchar(32) NOT NULL DEFAULT 'GENERAL' COMMENT '分类4：槽位类型',
   `enabled` tinyint NOT NULL DEFAULT 1,
   `remark` varchar(255) DEFAULT NULL,
   `CREATE_TIME` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -60,6 +64,8 @@ CREATE TABLE IF NOT EXISTS `app_game_complete_skill` (
 CREATE TABLE IF NOT EXISTS `app_game_trigger_slot` (
   `id` varchar(32) NOT NULL,
   `item_id` varchar(32) DEFAULT NULL COMMENT '绑定物品,空=全局/角色',
+  `monster_id` varchar(32) DEFAULT NULL COMMENT '绑定怪物',
+  `slot_kind` varchar(32) NOT NULL DEFAULT 'TRAIT_ACTIVE' COMMENT 'BASIC_ATTACK/ULTIMATE/TRAIT_ACTIVE',
   `trigger_slot_type` varchar(48) NOT NULL,
   `trigger_param` decimal(10,1) DEFAULT NULL,
   `trigger_ref_id` varchar(32) DEFAULT NULL,
@@ -74,9 +80,9 @@ CREATE TABLE IF NOT EXISTS `app_game_trigger_slot` (
   KEY `idx_item_id` (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='扳机槽';
 
--- 普攻：随机1敌方，攻击力*100%伤害
+-- 普攻：前排随机1敌方，攻击力*100%伤害
 INSERT INTO `app_game_finished_skill` (`id`, `code`, `name`, `target_type`, `target_param`, `enabled`, `remark`)
-SELECT 'fin_normal_attack', 'NORMAL_ATTACK', '普攻', 'RANDOM_ONE_ENEMY', NULL, 1, '随机1个敌方，造成攻击力100%伤害'
+SELECT 'fin_normal_attack', 'NORMAL_ATTACK', '普攻', 'FRONT_ROW_RANDOM_ONE_ENEMY', NULL, 1, '行动值满：前排随机1敌方，攻击力100%×武器比例'
 WHERE NOT EXISTS (SELECT 1 FROM `app_game_finished_skill` WHERE `id` = 'fin_normal_attack');
 
 INSERT INTO `app_game_finished_skill_effect`

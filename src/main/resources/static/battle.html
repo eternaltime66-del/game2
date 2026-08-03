@@ -84,9 +84,12 @@
           <p v-else class="settlement-loot-empty">本局未获得材料</p>
           <p v-if="lootList.length && battle.lootGranted" class="settlement-loot-tip">已放入仓库</p>
         </div>
-        <div class="settlement-actions">
-          <button type="button" class="btn-settlement primary" @click="goHome">返回首页</button>
-          <button type="button" class="btn-settlement" @click="showLogFull = true">查看记录</button>
+        <div class="settlement-actions" :class="{ 'is-win': battle.status === 'WIN' }">
+          <button v-if="battle.status === 'WIN'" type="button" class="btn-settlement retry" :disabled="restarting" @click="fightAgain">再战一次</button>
+          <div class="settlement-actions-row">
+            <button type="button" class="btn-settlement" :class="{ primary: battle.status !== 'WIN' }" @click="goHome">返回首页</button>
+            <button type="button" class="btn-settlement" @click="showLogFull = true">查看记录</button>
+          </div>
         </div>
       </div>
     </div>
@@ -288,6 +291,7 @@ createApp({
       animating: false,
       actingUnitId: '',
       hitUnitId: '',
+      hitUnitIds: [],
       dyingUnitIds: [],
       growingUnitIds: [],
       autoRunning: false,
@@ -296,6 +300,7 @@ createApp({
       stepToken: 0,
       battleSpeed: 1,
       speedOptions: [1, 2, 3],
+      restarting: false,
       showMonsterDetail: false,
       monsterDetail: null,
       monsterDetailLoading: false,
@@ -380,7 +385,7 @@ createApp({
         dead: !unit.alive,
         dying: this.dyingUnitIds.indexOf(unit.unitId) >= 0,
         acting: this.actingUnitId === unit.unitId,
-        hit: this.hitUnitId === unit.unitId
+        hit: this.hitUnitId === unit.unitId || this.hitUnitIds.indexOf(unit.unitId) >= 0
       };
     },
     actionBarClasses(unit) {
@@ -450,7 +455,41 @@ createApp({
           self.loading = false;
           if (self.battle && self.battle.status === 'RUNNING') {
             self.autoRunning = true;
-            self.scheduleAutoStep();
+            self.scheduleAutoStep(true);
+          }
+        });
+    },
+    fightAgain() {
+      if (!this.battle || !this.battle.stageId || this.restarting) return;
+      var stageId = this.battle.stageId;
+      this.stopAuto();
+      this.skipRequested = false;
+      this.loading = false;
+      this.restarting = true;
+      this.stepToken++;
+      this.animating = false;
+      this.actingUnitId = '';
+      this.hitUnitId = '';
+      this.hitUnitIds = [];
+      this.dyingUnitIds = [];
+      this.growingUnitIds = [];
+      this.showLogFull = false;
+      this.damageFloats = [];
+      var self = this;
+      self.loading = true;
+      GameApi.battleStart(stageId)
+        .then(function (res) {
+          return self.applyBattle(res.data, null);
+        })
+        .catch(function (err) {
+          self.showToast(err.message);
+        })
+        .finally(function () {
+          self.loading = false;
+          self.restarting = false;
+          if (self.battle && self.battle.status === 'RUNNING') {
+            self.autoRunning = true;
+            self.scheduleAutoStep(true);
           }
         });
     },
@@ -468,20 +507,25 @@ createApp({
       self.animating = false;
       self.actingUnitId = '';
       self.hitUnitId = '';
+      self.hitUnitIds = [];
       self.dyingUnitIds = [];
       self.growingUnitIds = [];
       self.stopAuto();
+      self.loading = true;
       GameApi.battleSkip(this.battle.battleId)
         .then(function (res) {
           return self.applyBattle(res.data, null);
         })
         .catch(function (err) {
-          self.skipRequested = false;
           self.showToast(err.message);
           if (self.battle && self.battle.status === 'RUNNING') {
             self.autoRunning = true;
             self.scheduleAutoStep();
           }
+        })
+        .finally(function () {
+          self.skipRequested = false;
+          self.loading = false;
         });
     },
     openMonsterDetail(unit) {
@@ -524,8 +568,8 @@ createApp({
           self.stopAuto();
         })
         .finally(function () {
-          if (self.skipRequested || token !== self.stepToken) return;
           self.loading = false;
+          if (self.skipRequested || token !== self.stepToken) return;
           if (self.battle && self.battle.status !== 'RUNNING') {
             self.stopAuto();
           } else if (self.autoRunning) {
@@ -533,12 +577,13 @@ createApp({
           }
         });
     },
-    scheduleAutoStep() {
+    scheduleAutoStep(immediate) {
       var self = this;
       if (!self.autoRunning || self.skipRequested) return;
       if (self.autoTimer) {
         clearTimeout(self.autoTimer);
       }
+      var delay = immediate ? Math.round(120 / this.battleSpeed) : this.autoStepDelay;
       self.autoTimer = setTimeout(function () {
         self.autoTimer = null;
         if (!self.autoRunning || self.skipRequested) return;
@@ -551,7 +596,7 @@ createApp({
         } else {
           self.scheduleAutoStep();
         }
-      }, this.autoStepDelay);
+      }, delay);
     },
     stopAuto() {
       this.autoRunning = false;

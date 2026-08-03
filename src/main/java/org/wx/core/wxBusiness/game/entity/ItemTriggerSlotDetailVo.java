@@ -27,5 +27,10 @@ public class ItemTriggerSlotDetailVo {
 
     private String castLimitText;
 
+    /** BASIC_ATTACK / ULTIMATE / TRAIT_ACTIVE */
+    private String slotKind;
+
+    private String slotKindLabel;
+
     private ItemFinishedSkillDetailVo finishedSkill;
 }

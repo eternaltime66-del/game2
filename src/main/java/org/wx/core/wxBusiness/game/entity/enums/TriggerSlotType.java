@@ -10,7 +10,7 @@ public enum TriggerSlotType {
 
     ACTION_VALUE_PASSED("每经过x行动值", 1, true),
     ACTION_VALUE_FULL("行动值满时", 2, false),
-    FINISHED_SKILL_CAST_COUNT("每释放成品技能x次", 3, true),
+    FINISHED_SKILL_CAST_COUNT("释放成品技能x次后", 3, true),
     ON_ATTACK("每攻击时", 4, false),
     ON_HIT_BY_ENEMY_FINISHED_SKILL("每受到敌方成品技能", 5, false),
     ON_HIT_BY_ALLY_FINISHED_SKILL("每受到己方成品技能", 6, false),

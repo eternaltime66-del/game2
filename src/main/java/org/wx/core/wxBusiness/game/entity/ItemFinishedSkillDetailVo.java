@@ -20,6 +20,9 @@ public class ItemFinishedSkillDetailVo {
 
     private Integer targetParam;
 
+    /** 分类展示，与后台一致，如 装备 · 武器 · 铁剑 · 普攻 */
+    private String categoryLabel;
+
     private String remark;
 
     private List<ItemSkillEffectDetailVo> effects = new ArrayList<>();

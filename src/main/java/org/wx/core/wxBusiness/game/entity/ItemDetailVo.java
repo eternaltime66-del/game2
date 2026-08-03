@@ -44,11 +44,23 @@ public class ItemDetailVo implements ItemTagHolder {
     /** 护甲防御 */
     private Integer armorDefense;
 
+    /** 护甲攻击加成（饰品等） */
+    private Integer armorBonusAttack;
+
     private String remark;
 
     /** 合成公式（预留，后续扩展） */
     private List<ItemCraftPreviewVo> crafts = new ArrayList<>();
 
-    /** 装备扳机槽（武器/防具等） */
+    /** 装备扳机槽 → 特性主动（与后台「特性主动」Tab 一致） */
     private List<ItemTriggerSlotDetailVo> triggerSlots = new ArrayList<>();
+
+    /** 武器固定普攻槽 */
+    private ItemTriggerSlotDetailVo basicAttackSlot;
+
+    /** 武器固定大招槽 */
+    private ItemTriggerSlotDetailVo ultimateSlot;
+
+    /** 装备/徽章授予的被动技能 */
+    private List<ItemPassiveDetailVo> passiveSkills = new ArrayList<>();
 }

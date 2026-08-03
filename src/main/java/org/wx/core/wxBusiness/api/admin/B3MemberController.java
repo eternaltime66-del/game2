@@ -15,7 +15,11 @@ import org.wx.core.wxBusiness.account.entity.enums.MemberRole;
 import org.wx.core.wxBusiness.account.service.MemberKycService;
 import org.wx.core.wxBusiness.account.service.MemberService;
 import org.wx.core.wxBusiness.account.service.Web3WithdrawService;
+import org.wx.core.wxBusiness.api.vo.CommonIdVo;
+import org.wx.core.wxBusiness.api.vo.MemberAdminGrantVo;
+import org.wx.core.wxBusiness.game.service.GameUserAdminService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
+import org.wx.core.wxBase.factory.ErrorFactory;
 
 import java.util.List;
 
@@ -33,6 +37,8 @@ public class B3MemberController {
     public MemberKycService memberKycService;
     @Resource
     public Web3WithdrawService web3WithdrawService;
+    @Resource
+    private GameUserAdminService gameUserAdminService;
 
     /**
      * 用户列表
@@ -100,6 +106,31 @@ public class B3MemberController {
             @RequestBody Member entity
     ) {
         return WxResult.token(Wx.MemberService.superToken(entity.getId()));
+    }
+
+    /**
+     * 清空用户游戏数据（仓库、背包、装备、角色、物品/资金流水、战斗缓存等）
+     */
+    @PostMapping("/reset/game")
+    @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
+    public WxResult<?> resetGameData(@RequestBody CommonIdVo vo) {
+        gameUserAdminService.resetGameData(vo.stringId());
+        return WxResult.success();
+    }
+
+    /**
+     * 后台赠送物品到用户仓库
+     */
+    @PostMapping("/grant/item")
+    @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
+    public WxResult<?> grantItem(@RequestBody MemberAdminGrantVo vo) {
+        ErrorFactory.notNull(vo.getId(), "用户ID不能为空");
+        ErrorFactory.notNull(vo.getItemId(), "请选择物品");
+        int quantity = vo.getQuantity() != null ? vo.getQuantity() : 0;
+        gameUserAdminService.grantItem(vo.getId(), vo.getItemId(), quantity);
+        return WxResult.success();
     }
 
 }

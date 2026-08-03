@@ -4,25 +4,36 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.wx.core.wxBase.base.WxServiceImpl;
 import org.wx.core.wxBase.factory.ErrorFactory;
+import org.wx.core.wxBusiness.game.entity.BattleLog;
 import org.wx.core.wxBusiness.game.entity.GameArmor;
 import org.wx.core.wxBusiness.game.entity.GameFinishedSkill;
 import org.wx.core.wxBusiness.game.entity.GameFinishedSkillEffect;
 import org.wx.core.wxBusiness.game.entity.GameItem;
+import org.wx.core.wxBusiness.game.entity.GameItemPassive;
+import org.wx.core.wxBusiness.game.entity.GamePassiveSkill;
 import org.wx.core.wxBusiness.game.entity.GameRecipe;
 import org.wx.core.wxBusiness.game.entity.GameRecipeMaterial;
+import org.wx.core.wxBusiness.game.entity.GameSkillBadge;
 import org.wx.core.wxBusiness.game.entity.GameTriggerSlot;
 import org.wx.core.wxBusiness.game.entity.GameWeapon;
 import org.wx.core.wxBusiness.game.entity.ItemCraftPreviewVo;
 import org.wx.core.wxBusiness.game.entity.ItemDetailVo;
 import org.wx.core.wxBusiness.game.entity.ItemFinishedSkillDetailVo;
+import org.wx.core.wxBusiness.game.entity.ItemPassiveDetailVo;
 import org.wx.core.wxBusiness.game.entity.ItemSkillEffectDetailVo;
 import org.wx.core.wxBusiness.game.entity.ItemTagHelper;
 import org.wx.core.wxBusiness.game.entity.ItemTriggerSlotDetailVo;
 import org.wx.core.wxBusiness.game.entity.enums.AdvancedEffectKind;
 import org.wx.core.wxBusiness.game.entity.enums.EffectOutcomeType;
+import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL1;
+import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL2;
+import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL4;
 import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
 import org.wx.core.wxBusiness.game.entity.enums.SkillTargetType;
 import org.wx.core.wxBusiness.game.entity.enums.StatRefType;
+import org.wx.core.wxBusiness.game.entity.enums.TriggerSlotKind;
 import org.wx.core.wxBusiness.game.entity.enums.TriggerSlotType;
 import org.wx.core.wxBusiness.game.mapper.GameItemMapper;
 
@@ -51,6 +62,12 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
     private GameFinishedSkillService finishedSkillService;
     @Resource
     private GameFinishedSkillEffectService finishedSkillEffectService;
+    @Resource
+    private GameItemPassiveService itemPassiveService;
+    @Resource
+    private GamePassiveSkillService passiveSkillService;
+    @Resource
+    private GameSkillBadgeService skillBadgeService;
 
     public ItemDetailVo getItemDetail(String itemId) {
         GameItem item = this.getById(itemId);
@@ -76,24 +93,120 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
                 vo.setWeaponDamageRatio(weapon.getDamageRatio());
             }
         }
-        if (ItemTagHelper.hasTag(item, GameItemTag.ARMOR)) {
-            GameArmor armor = gameArmorService.getByItemId(itemId);
-            if (armor != null) {
-                vo.setArmorBonusHp(armor.getBonusHp());
-                vo.setArmorDefense(armor.getDefense());
-            }
+        GameArmor armor = gameArmorService.getByItemId(itemId);
+        if (armor != null) {
+            vo.setArmorBonusHp(armor.getBonusHp());
+            vo.setArmorDefense(armor.getDefense());
+            vo.setArmorBonusAttack(armor.getBonusAttack());
         }
         vo.setCrafts(listCraftPreviewsByMaterial(itemId));
-        vo.setTriggerSlots(listTriggerSlotDetails(itemId));
+        vo.setBasicAttackSlot(findSlotDetailByKind(itemId, TriggerSlotKind.BASIC_ATTACK));
+        vo.setUltimateSlot(findSlotDetailByKind(itemId, TriggerSlotKind.ULTIMATE));
+        vo.setTriggerSlots(listTraitActiveSlotDetails(itemId));
+        vo.setPassiveSkills(listPassiveDetails(item, itemId));
         vo.setRemark(item.getRemark());
         return vo;
     }
 
-    private List<ItemTriggerSlotDetailVo> listTriggerSlotDetails(String itemId) {
+    public ItemFinishedSkillDetailVo getFinishedSkillDetail(String finishedSkillId) {
+        if (finishedSkillId == null || finishedSkillId.isBlank()) {
+            return null;
+        }
+        return buildFinishedSkillDetail(finishedSkillId);
+    }
+
+    public ItemTriggerSlotDetailVo buildTriggerSlotDetailVo(GameTriggerSlot slot) {
+        if (slot == null) {
+            return null;
+        }
+        return buildTriggerSlotDetail(slot);
+    }
+
+    private List<ItemPassiveDetailVo> listPassiveDetails(GameItem item, String itemId) {
+        List<ItemPassiveDetailVo> list = new ArrayList<>();
+        for (GameItemPassive binding : itemPassiveService.listByItemId(itemId)) {
+            if (!Integer.valueOf(1).equals(binding.getEnabled())) {
+                continue;
+            }
+            ItemPassiveDetailVo detail = toPassiveDetail(binding.getPassiveSkillId());
+            if (detail != null) {
+                list.add(detail);
+            }
+        }
+        if (ItemTagHelper.hasTag(item, GameItemTag.SKILL_BADGE)) {
+            GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
+            if (badge != null && badge.getPassiveSkillId() != null && !badge.getPassiveSkillId().isBlank()) {
+                ItemPassiveDetailVo detail = toPassiveDetail(badge.getPassiveSkillId());
+                if (detail != null) {
+                    list.add(detail);
+                }
+            }
+        }
+        return list;
+    }
+
+    private ItemPassiveDetailVo toPassiveDetail(String passiveSkillId) {
+        GamePassiveSkill passive = passiveSkillService.getById(passiveSkillId);
+        if (passive == null || !Integer.valueOf(1).equals(passive.getEnabled())) {
+            return null;
+        }
+        ItemPassiveDetailVo vo = new ItemPassiveDetailVo();
+        vo.setId(passive.getId());
+        vo.setName(passive.getName());
+        vo.setConditionLabel(buildPassiveConditionLabel(passive));
+        PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
+        if (effectType != null) {
+            vo.setEffectTypeLabel(effectType.getLabel());
+        }
+        vo.setEffectValue(passive.getEffectValue());
+        vo.setRemark(passive.getRemark());
+        return vo;
+    }
+
+    private String buildPassiveConditionLabel(GamePassiveSkill passive) {
+        PassiveConditionType conditionType = PassiveConditionType.parse(passive.getConditionType());
+        if (conditionType == null || conditionType == PassiveConditionType.NONE) {
+            return "无条件";
+        }
+        if (conditionType == PassiveConditionType.REQUIRE_EQUIP) {
+            String requiredItemId = passive.getConditionEquipItemId();
+            if (requiredItemId == null || requiredItemId.isBlank()) {
+                return conditionType.getLabel();
+            }
+            GameItem required = this.getById(requiredItemId);
+            String name = required != null ? required.getName() : requiredItemId;
+            return "需装备「" + name + "」";
+        }
+        return conditionType.getLabel();
+    }
+
+    private List<ItemTriggerSlotDetailVo> listTraitActiveSlotDetails(String itemId) {
         return triggerSlotService.listByItemId(itemId).stream()
                 .filter(slot -> Integer.valueOf(1).equals(slot.getEnabled()))
+                .filter(TriggerSlotKind::isTraitActive)
                 .map(this::buildTriggerSlotDetail)
                 .collect(Collectors.toList());
+    }
+
+    private ItemTriggerSlotDetailVo findSlotDetailByKind(String itemId, TriggerSlotKind kind) {
+        GameTriggerSlot slot = switch (kind) {
+            case BASIC_ATTACK -> triggerSlotService.findBasicAttackSlot(itemId);
+            case ULTIMATE -> triggerSlotService.findUltimateSlot(itemId);
+            default -> null;
+        };
+        if (slot == null || !Integer.valueOf(1).equals(slot.getEnabled())) {
+            return null;
+        }
+        if (kind == TriggerSlotKind.BASIC_ATTACK) {
+            if (slot.getFinishedSkillId() == null || slot.getFinishedSkillId().isBlank()) {
+                return null;
+            }
+        } else if (kind == TriggerSlotKind.ULTIMATE) {
+            if (slot.getFinishedSkillId() == null || slot.getFinishedSkillId().isBlank()) {
+                return null;
+            }
+        }
+        return buildTriggerSlotDetail(slot);
     }
 
     private ItemTriggerSlotDetailVo buildTriggerSlotDetail(GameTriggerSlot slot) {
@@ -104,15 +217,22 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         if (slotType != null) {
             vo.setTriggerSlotTypeLabel(slotType.getLabel());
         }
+        TriggerSlotKind slotKind = resolveSlotKind(slot);
+        vo.setSlotKind(slotKind.name());
+        vo.setSlotKindLabel(slotKind.getLabel());
         vo.setTriggerParam(slot.getTriggerParam());
         vo.setTriggerRefId(slot.getTriggerRefId());
         if (slot.getTriggerRefId() != null && !slot.getTriggerRefId().isBlank()) {
             GameFinishedSkill refSkill = finishedSkillService.getById(slot.getTriggerRefId());
             if (refSkill != null) {
-                vo.setTriggerRefName(refSkill.getName());
+                vo.setTriggerRefName(BattleLog.buildSkillDisplayLabel(refSkill));
             }
         }
-        vo.setTriggerDesc(formatTriggerDesc(slot, vo.getTriggerRefName()));
+        if (slotKind == TriggerSlotKind.BASIC_ATTACK) {
+            vo.setTriggerDesc(TriggerSlotType.ACTION_VALUE_FULL.getLabel());
+        } else {
+            vo.setTriggerDesc(formatTriggerDesc(slot, vo.getTriggerRefName()));
+        }
         vo.setMaxCastCount(slot.getMaxCastCount());
         vo.setCastLimitText(formatCastLimit(slot.getMaxCastCount()));
         if (slot.getFinishedSkillId() != null && !slot.getFinishedSkillId().isBlank()) {
@@ -136,11 +256,30 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
             vo.setTargetLabel(formatTargetLabel(targetType, skill.getTargetParam()));
         }
         vo.setTargetParam(skill.getTargetParam());
+        vo.setCategoryLabel(buildSkillCategoryLabel(skill));
         vo.setRemark(skill.getRemark());
         for (GameFinishedSkillEffect effect : finishedSkillEffectService.listByFinishedSkillId(finishedSkillId)) {
             vo.getEffects().add(buildEffectDetail(effect));
         }
         return vo;
+    }
+
+    private TriggerSlotKind resolveSlotKind(GameTriggerSlot slot) {
+        if (TriggerSlotKind.isBasicAttack(slot)) {
+            return TriggerSlotKind.BASIC_ATTACK;
+        }
+        if (TriggerSlotKind.isUltimate(slot)) {
+            return TriggerSlotKind.ULTIMATE;
+        }
+        return TriggerSlotKind.TRAIT_ACTIVE;
+    }
+
+    private String buildSkillCategoryLabel(GameFinishedSkill skill) {
+        FinishedSkillCatL1 c1 = FinishedSkillCatL1.parse(skill.getCatL1());
+        FinishedSkillCatL2 c2 = FinishedSkillCatL2.parse(skill.getCatL2());
+        FinishedSkillCatL4 c4 = FinishedSkillCatL4.parse(skill.getCatL4());
+        String catL3 = skill.getCatL3() != null && !skill.getCatL3().isBlank() ? skill.getCatL3() : "通用";
+        return c1.getLabel() + " · " + c2.getLabel() + " · " + catL3 + " · " + c4.getLabel();
     }
 
     private ItemSkillEffectDetailVo buildEffectDetail(GameFinishedSkillEffect effect) {
@@ -180,7 +319,7 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         int x = slot.getTriggerParam() != null ? slot.getTriggerParam().intValue() : 0;
         if (type == TriggerSlotType.FINISHED_SKILL_CAST_COUNT) {
             String ref = triggerRefName != null ? triggerRefName : "指定技能";
-            return "每释放「" + ref + "」" + x + " 次";
+            return "释放「" + ref + "」" + x + " 次后";
         }
         return type.getLabel().replace("x", String.valueOf(x));
     }

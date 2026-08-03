@@ -19,6 +19,11 @@ public class GameTriggerSlot extends WxBaseEntity<GameTriggerSlot> {
 
     private String itemId;
 
+    private String monsterId;
+
+    /** BASIC_ATTACK=武器普攻 ULTIMATE=武器大招 TRAIT_ACTIVE=特性主动 */
+    private String slotKind;
+
     private String triggerSlotType;
 
     private BigDecimal triggerParam;

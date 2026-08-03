@@ -10,6 +10,8 @@ public enum SkillTargetType {
     RANDOM_ONE_ENEMY_REPEAT("随机1敌方触发x次"),
     CURRENT_ATTACK_TARGET("当前攻击目标"),
     RANDOM_ONE_ENEMY("随机1个敌方"),
+    FRONT_ROW_RANDOM_ONE_ENEMY("前排随机1个敌方"),
+    BACK_ROW_RANDOM_ONE_ENEMY("后排随机1个敌方"),
     FRONT_ROW_ENEMIES("前排敌人"),
     BACK_ROW_ENEMIES("后排敌人");
 

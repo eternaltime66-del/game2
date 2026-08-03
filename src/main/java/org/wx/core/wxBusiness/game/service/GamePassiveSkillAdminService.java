@@ -28,6 +28,12 @@ public class GamePassiveSkillAdminService {
     private GameItemPassiveService itemPassiveService;
     @Resource
     private GameItemService itemService;
+    @Resource
+    private GameMonsterService monsterService;
+    @Resource
+    private GameMonsterPassiveService monsterPassiveService;
+    @Resource
+    private GameReferenceCleanupService referenceCleanupService;
 
     public IPage<AdminPassiveSkillVo> listPassiveSkills(GamePassiveSkill query) {
         return passiveSkillService.pageQuery(query).convert(this::toPassiveVo);
@@ -82,6 +88,7 @@ public class GamePassiveSkillAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void removePassiveSkill(String id) {
         ErrorFactory.notNull(id, "ID不能为空");
+        referenceCleanupService.removePassiveSkillBindings(id);
         passiveSkillService.removeById(id);
     }
 
@@ -153,6 +160,7 @@ public class GamePassiveSkillAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void removeSkillBadge(String itemId) {
         ErrorFactory.notNull(itemId, "物品ID不能为空");
+        referenceCleanupService.removeItemBindings(itemId);
         skillBadgeService.removeById(itemId);
         itemService.removeById(itemId);
     }
@@ -298,6 +306,83 @@ public class GamePassiveSkillAdminService {
         do {
             id = "psv_" + WordUnit.randomKey(8, 3);
         } while (passiveSkillService.getById(id) != null);
+        return id;
+    }
+
+    public List<AdminMonsterPassiveVo> listMonsterPassivesByMonster(String monsterId) {
+        if (monsterId == null || monsterId.isBlank()) {
+            return List.of();
+        }
+        return monsterPassiveService.listByMonsterId(monsterId).stream()
+                .map(this::toMonsterPassiveVo)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AdminMonsterPassiveVo saveMonsterPassive(AdminMonsterPassiveVo vo) {
+        ErrorFactory.notNull(vo.getMonsterId(), "怪物ID不能为空");
+        ErrorFactory.notNull(vo.getPassiveSkillId(), "被动技能不能为空");
+        GameMonster monster = monsterService.getById(vo.getMonsterId());
+        ErrorFactory.notNull(monster, "怪物不存在");
+        GamePassiveSkill passive = passiveSkillService.getById(vo.getPassiveSkillId());
+        ErrorFactory.notNull(passive, "被动技能不存在");
+
+        GameMonsterPassive entity = new GameMonsterPassive();
+        entity.setId(vo.getId());
+        entity.setMonsterId(vo.getMonsterId());
+        entity.setPassiveSkillId(vo.getPassiveSkillId());
+        entity.setSort(vo.getSort() != null ? vo.getSort() : 0);
+        entity.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
+        entity.setRemark(vo.getRemark());
+
+        if (entity.getId() == null || entity.getId().isBlank()) {
+            entity.setId(generateUniqueMonsterPassiveId());
+            monsterPassiveService.save(entity);
+        } else {
+            monsterPassiveService.updateById(entity);
+        }
+        return toMonsterPassiveVo(monsterPassiveService.getById(entity.getId()));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeMonsterPassive(String id) {
+        ErrorFactory.notNull(id, "ID不能为空");
+        monsterPassiveService.removeById(id);
+    }
+
+    private AdminMonsterPassiveVo toMonsterPassiveVo(GameMonsterPassive binding) {
+        AdminMonsterPassiveVo vo = new AdminMonsterPassiveVo();
+        vo.setId(binding.getId());
+        vo.setMonsterId(binding.getMonsterId());
+        vo.setPassiveSkillId(binding.getPassiveSkillId());
+        vo.setSort(binding.getSort());
+        vo.setEnabled(binding.getEnabled());
+        vo.setRemark(binding.getRemark());
+        GameMonster monster = monsterService.getById(binding.getMonsterId());
+        if (monster != null) {
+            vo.setMonsterName(monster.getName());
+        }
+        GamePassiveSkill passive = passiveSkillService.getById(binding.getPassiveSkillId());
+        if (passive != null) {
+            vo.setPassiveSkillName(passive.getName());
+            PassiveConditionType ct = PassiveConditionType.parse(passive.getConditionType());
+            if (ct != null) {
+                vo.setConditionTypeLabel(ct.getLabel());
+            }
+            PassiveEffectType et = PassiveEffectType.parse(passive.getEffectType());
+            if (et != null) {
+                vo.setEffectTypeLabel(et.getLabel());
+            }
+            vo.setEffectValue(passive.getEffectValue());
+        }
+        return vo;
+    }
+
+    private String generateUniqueMonsterPassiveId() {
+        String id;
+        do {
+            id = "mpsv_" + WordUnit.randomKey(8, 3);
+        } while (monsterPassiveService.getById(id) != null);
         return id;
     }
 

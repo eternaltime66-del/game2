@@ -31,6 +31,19 @@ public class GameTriggerV2AdminService {
     private GameTriggerSlotService triggerSlotService;
     @Resource
     private GameItemService gameItemService;
+    @Resource
+    private GameMonsterService monsterService;
+    @Resource
+    private GameReferenceCleanupService referenceCleanupService;
+
+    public List<AdminTriggerSlotVo> listTriggerSlotsByMonster(String monsterId) {
+        if (monsterId == null || monsterId.isBlank()) {
+            return List.of();
+        }
+        return triggerSlotService.listByMonsterId(monsterId).stream()
+                .map(this::buildTriggerSlotVo)
+                .collect(Collectors.toList());
+    }
 
     public IPage<GameFinishedSkill> listFinishedSkills(GameFinishedSkill query) {
         return finishedSkillService.pageQuery(query);
@@ -44,23 +57,31 @@ public class GameTriggerV2AdminService {
 
     @Transactional(rollbackFor = Exception.class)
     public AdminFinishedSkillVo saveFinishedSkill(AdminFinishedSkillVo vo) {
-        ErrorFactory.notNull(vo.getCode(), "编码不能为空");
         ErrorFactory.notNull(vo.getName(), "名称不能为空");
         ErrorFactory.notNull(vo.getTargetType(), "目标槽不能为空");
         SkillTargetType targetType = SkillTargetType.parse(vo.getTargetType());
         ErrorFactory.notNull(targetType, "目标槽类型无效");
 
+        String code = vo.getCode();
+        if (code == null || code.isBlank()) {
+            code = generateSkillCodeFromName(vo.getName());
+        }
+
         GameFinishedSkill skill = new GameFinishedSkill();
         skill.setId(vo.getId());
-        skill.setCode(vo.getCode().trim().toUpperCase());
+        skill.setCode(code.trim().toUpperCase());
         skill.setName(vo.getName().trim());
         skill.setTargetType(targetType.name());
         skill.setTargetParam(vo.getTargetParam());
+        skill.setCatL1(normalizeCatL1(vo.getCatL1()));
+        skill.setCatL2(normalizeCatL2(vo.getCatL2()));
+        skill.setCatL3(normalizeCatL3(vo.getCatL3()));
+        skill.setCatL4(normalizeCatL4(vo.getCatL4()));
         skill.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         skill.setRemark(vo.getRemark());
 
         if (skill.getId() == null || skill.getId().isBlank()) {
-            skill.setId(generateUniqueFinishedSkillId(vo.getCode()));
+            skill.setId(generateUniqueFinishedSkillId(code));
             finishedSkillService.save(skill);
         } else {
             finishedSkillService.updateById(skill);
@@ -116,6 +137,7 @@ public class GameTriggerV2AdminService {
     @Transactional(rollbackFor = Exception.class)
     public void removeFinishedSkill(String id) {
         ErrorFactory.notNull(id, "ID不能为空");
+        referenceCleanupService.removeFinishedSkillBindings(id);
         finishedSkillEffectMapper.delete(new LambdaQueryWrapper<GameFinishedSkillEffect>()
                 .eq(GameFinishedSkillEffect::getFinishedSkillId, id));
         finishedSkillService.removeById(id);
@@ -187,23 +209,55 @@ public class GameTriggerV2AdminService {
 
     @Transactional(rollbackFor = Exception.class)
     public AdminTriggerSlotVo saveTriggerSlot(AdminTriggerSlotVo vo) {
-        ErrorFactory.notNull(vo.getItemId(), "物品ID不能为空");
+        boolean bindItem = vo.getItemId() != null && !vo.getItemId().isBlank();
+        boolean bindMonster = vo.getMonsterId() != null && !vo.getMonsterId().isBlank();
+        ErrorFactory.throwError(!bindItem && !bindMonster, "物品ID或怪物ID不能为空");
+        ErrorFactory.throwError(bindItem && bindMonster, "不能同时绑定物品和怪物");
         ErrorFactory.notNull(vo.getTriggerSlotType(), "扳机槽不能为空");
         ErrorFactory.notNull(vo.getFinishedSkillId(), "成品技能不能为空");
 
-        GameItem item = gameItemService.getById(vo.getItemId());
-        ErrorFactory.notNull(item, "物品不存在");
+        if (bindItem) {
+            GameItem item = gameItemService.getById(vo.getItemId());
+            ErrorFactory.notNull(item, "物品不存在");
+        } else {
+            GameMonster monster = monsterService.getById(vo.getMonsterId());
+            ErrorFactory.notNull(monster, "怪物不存在");
+        }
 
         TriggerSlotType slotType = TriggerSlotType.parse(vo.getTriggerSlotType());
         ErrorFactory.notNull(slotType, "扳机槽类型无效");
         validateTriggerParam(slotType, vo.getTriggerParam(), vo.getTriggerRefId());
+
+        TriggerSlotKind slotKind = TriggerSlotKind.parse(vo.getSlotKind());
+        if (slotType == TriggerSlotType.ACTION_VALUE_FULL
+                && (vo.getSlotKind() == null || vo.getSlotKind().isBlank())) {
+            slotKind = TriggerSlotKind.BASIC_ATTACK;
+        }
+        if (slotKind == TriggerSlotKind.BASIC_ATTACK) {
+            slotType = TriggerSlotType.ACTION_VALUE_FULL;
+            if (bindItem) {
+                ensureSingleBasicAttackSlotForItem(vo.getItemId(), vo.getId());
+            } else {
+                ensureSingleBasicAttackSlotForMonster(vo.getMonsterId(), vo.getId());
+            }
+        } else if (slotKind == TriggerSlotKind.ULTIMATE) {
+            ErrorFactory.throwError(slotType == TriggerSlotType.ACTION_VALUE_FULL,
+                    "大招槽不可使用「行动值满」扳机");
+            if (bindItem) {
+                ensureSingleUltimateSlotForItem(vo.getItemId(), vo.getId());
+            } else {
+                ensureSingleUltimateSlotForMonster(vo.getMonsterId(), vo.getId());
+            }
+        }
 
         GameFinishedSkill finished = finishedSkillService.getById(vo.getFinishedSkillId());
         ErrorFactory.notNull(finished, "成品技能不存在");
 
         GameTriggerSlot entity = new GameTriggerSlot();
         entity.setId(vo.getId());
-        entity.setItemId(vo.getItemId());
+        entity.setItemId(bindItem ? vo.getItemId() : null);
+        entity.setMonsterId(bindMonster ? vo.getMonsterId() : null);
+        entity.setSlotKind(slotKind.name());
         entity.setTriggerSlotType(slotType.name());
         entity.setTriggerParam(vo.getTriggerParam());
         entity.setTriggerRefId(vo.getTriggerRefId());
@@ -223,10 +277,11 @@ public class GameTriggerV2AdminService {
             entity.setId(generateUniqueTriggerSlotId());
             triggerSlotService.save(entity);
         } else {
-            // MyBatis-Plus 默认 updateById 跳过 null，maxCastCount 改为「无限」时必须显式写入 NULL
             LambdaUpdateWrapper<GameTriggerSlot> wrapper = triggerSlotService.updateWrapper()
                     .eq(GameTriggerSlot::getId, entity.getId())
                     .set(GameTriggerSlot::getItemId, entity.getItemId())
+                    .set(GameTriggerSlot::getMonsterId, entity.getMonsterId())
+                    .set(GameTriggerSlot::getSlotKind, entity.getSlotKind())
                     .set(GameTriggerSlot::getTriggerSlotType, entity.getTriggerSlotType())
                     .set(GameTriggerSlot::getTriggerParam, entity.getTriggerParam())
                     .set(GameTriggerSlot::getTriggerRefId, entity.getTriggerRefId())
@@ -317,6 +372,116 @@ public class GameTriggerV2AdminService {
                 .list();
     }
 
+    public FinishedSkillCategoryMetaVo finishedSkillCategoryMeta() {
+        FinishedSkillCategoryMetaVo meta = new FinishedSkillCategoryMetaVo();
+        meta.setCatL1(Arrays.stream(FinishedSkillCatL1.values()).map(this::toCatOption).collect(Collectors.toList()));
+        meta.setCatL2(Arrays.stream(FinishedSkillCatL2.values()).map(this::toCatOption).collect(Collectors.toList()));
+        meta.setCatL4(Arrays.stream(FinishedSkillCatL4.values()).map(this::toCatOption).collect(Collectors.toList()));
+        return meta;
+    }
+
+    private TriggerOptionVo toCatOption(FinishedSkillCatL1 cat) {
+        TriggerOptionVo vo = new TriggerOptionVo();
+        vo.setCode(cat.name());
+        vo.setLabel(cat.getLabel());
+        return vo;
+    }
+
+    private TriggerOptionVo toCatOption(FinishedSkillCatL2 cat) {
+        TriggerOptionVo vo = new TriggerOptionVo();
+        vo.setCode(cat.name());
+        vo.setLabel(cat.getLabel());
+        return vo;
+    }
+
+    private TriggerOptionVo toCatOption(FinishedSkillCatL4 cat) {
+        TriggerOptionVo vo = new TriggerOptionVo();
+        vo.setCode(cat.name());
+        vo.setLabel(cat.getLabel());
+        return vo;
+    }
+
+    private String normalizeCatL1(String code) {
+        return FinishedSkillCatL1.parse(code).name();
+    }
+
+    private String normalizeCatL2(String code) {
+        return FinishedSkillCatL2.parse(code).name();
+    }
+
+    private String normalizeCatL3(String value) {
+        if (value == null || value.isBlank()) {
+            return "通用";
+        }
+        return value.trim();
+    }
+
+    private String normalizeCatL4(String code) {
+        return FinishedSkillCatL4.parse(code).name();
+    }
+
+    private String generateSkillCodeFromName(String name) {
+        String base = "SKILL";
+        if (name != null && !name.isBlank()) {
+            base = name.trim().replaceAll("[^A-Za-z0-9\\u4e00-\\u9fa5]", "");
+            if (base.length() > 12) {
+                base = base.substring(0, 12);
+            }
+            if (base.isBlank()) {
+                base = "SKILL";
+            }
+        }
+        return base.toUpperCase() + "_" + WordUnit.randomKey(4, 2);
+    }
+
+    private void ensureSingleBasicAttackSlotForItem(String itemId, String keepId) {
+        for (GameTriggerSlot existing : triggerSlotService.listByItemId(itemId)) {
+            if (!TriggerSlotKind.isBasicAttack(existing)) {
+                continue;
+            }
+            if (keepId != null && keepId.equals(existing.getId())) {
+                continue;
+            }
+            triggerSlotService.removeById(existing.getId());
+        }
+    }
+
+    private void ensureSingleBasicAttackSlotForMonster(String monsterId, String keepId) {
+        for (GameTriggerSlot existing : triggerSlotService.listByMonsterId(monsterId)) {
+            if (!TriggerSlotKind.isBasicAttack(existing)) {
+                continue;
+            }
+            if (keepId != null && keepId.equals(existing.getId())) {
+                continue;
+            }
+            triggerSlotService.removeById(existing.getId());
+        }
+    }
+
+    private void ensureSingleUltimateSlotForItem(String itemId, String keepId) {
+        for (GameTriggerSlot existing : triggerSlotService.listByItemId(itemId)) {
+            if (!TriggerSlotKind.isUltimate(existing)) {
+                continue;
+            }
+            if (keepId != null && keepId.equals(existing.getId())) {
+                continue;
+            }
+            triggerSlotService.removeById(existing.getId());
+        }
+    }
+
+    private void ensureSingleUltimateSlotForMonster(String monsterId, String keepId) {
+        for (GameTriggerSlot existing : triggerSlotService.listByMonsterId(monsterId)) {
+            if (!TriggerSlotKind.isUltimate(existing)) {
+                continue;
+            }
+            if (keepId != null && keepId.equals(existing.getId())) {
+                continue;
+            }
+            triggerSlotService.removeById(existing.getId());
+        }
+    }
+
     private void validateTriggerParam(TriggerSlotType slotType, BigDecimal param, String refId) {
         if (!slotType.isNeedParam()) {
             return;
@@ -340,6 +505,17 @@ public class GameTriggerV2AdminService {
             vo.setTargetTypeLabel(tt.getLabel());
         }
         vo.setTargetParam(skill.getTargetParam());
+        vo.setCatL1(skill.getCatL1());
+        vo.setCatL2(skill.getCatL2());
+        vo.setCatL3(skill.getCatL3());
+        vo.setCatL3Label(skill.getCatL3());
+        vo.setCatL4(skill.getCatL4());
+        FinishedSkillCatL1 c1 = FinishedSkillCatL1.parse(skill.getCatL1());
+        vo.setCatL1Label(c1.getLabel());
+        FinishedSkillCatL2 c2 = FinishedSkillCatL2.parse(skill.getCatL2());
+        vo.setCatL2Label(c2.getLabel());
+        FinishedSkillCatL4 c4 = FinishedSkillCatL4.parse(skill.getCatL4());
+        vo.setCatL4Label(c4.getLabel());
         vo.setEnabled(skill.getEnabled());
         vo.setRemark(skill.getRemark());
 
@@ -420,6 +596,20 @@ public class GameTriggerV2AdminService {
         if (item != null) {
             vo.setItemName(item.getName());
         }
+        if (entity.getMonsterId() != null) {
+            GameMonster monster = monsterService.getById(entity.getMonsterId());
+            if (monster != null) {
+                vo.setMonsterName(monster.getName());
+            }
+        }
+        vo.setMonsterId(entity.getMonsterId());
+        TriggerSlotKind kind = TriggerSlotKind.isBasicAttack(entity)
+                ? TriggerSlotKind.BASIC_ATTACK
+                : TriggerSlotKind.isUltimate(entity)
+                ? TriggerSlotKind.ULTIMATE
+                : TriggerSlotKind.TRAIT_ACTIVE;
+        vo.setSlotKind(kind.name());
+        vo.setSlotKindLabel(kind.getLabel());
         vo.setTriggerSlotType(entity.getTriggerSlotType());
         TriggerSlotType st = TriggerSlotType.parse(entity.getTriggerSlotType());
         if (st != null) {

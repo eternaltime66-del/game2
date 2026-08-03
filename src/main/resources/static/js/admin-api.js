@@ -80,6 +80,18 @@
         body: { id: uid }
       }).then(ensureSuccess);
     },
+    resetMemberGame: function (uid) {
+      return request('/back/member/reset/game', {
+        json: true,
+        body: { id: uid }
+      }).then(ensureSuccess);
+    },
+    grantMemberItem: function (body) {
+      return request('/back/member/grant/item', {
+        json: true,
+        body: body
+      }).then(ensureSuccess);
+    },
     levelTree: function () {
       return request('/back/game/level/tree', {}).then(ensureSuccess);
     },
@@ -219,8 +231,8 @@
     itemTagOptions: function () {
       return request('/back/game/item/tag/options', {}).then(ensureSuccess);
     },
-    finishedSkillList: function (query) {
-      return pageList('/back/game/trigger-v2/finished-skill/list', {}, query);
+    finishedSkillList: function (query, filter) {
+      return pageList('/back/game/trigger-v2/finished-skill/list', filter || {}, query);
     },
     finishedSkillDetail: function (id) {
       return request('/back/game/trigger-v2/finished-skill/detail', { body: { id: id } }).then(ensureSuccess);
@@ -234,8 +246,8 @@
     passiveSkillMeta: function () {
       return request('/back/game/passive-skill/meta', {}).then(ensureSuccess);
     },
-    passiveSkillList: function (query) {
-      return pageList('/back/game/passive-skill/list', {}, query);
+    passiveSkillList: function (query, filter) {
+      return pageList('/back/game/passive-skill/list', filter || {}, query);
     },
     savePassiveSkill: function (body) {
       return request('/back/game/passive-skill/save', { json: true, body: body }).then(ensureSuccess);
@@ -252,6 +264,15 @@
     removeSkillBadge: function (id) {
       return request('/back/game/passive-skill/badge/remove', { json: true, body: { id: id } }).then(ensureSuccess);
     },
+    monsterPassiveByMonster: function (monsterId) {
+      return request('/back/game/passive-skill/monster-passive/by-monster', { body: { monsterId: monsterId } }).then(ensureSuccess);
+    },
+    saveMonsterPassive: function (body) {
+      return request('/back/game/passive-skill/monster-passive/save', { json: true, body: body }).then(ensureSuccess);
+    },
+    removeMonsterPassive: function (id) {
+      return request('/back/game/passive-skill/monster-passive/remove', { json: true, body: { id: id } }).then(ensureSuccess);
+    },
     itemPassiveByItem: function (itemId) {
       return request('/back/game/passive-skill/item-passive/by-item', { body: { itemId: itemId } }).then(ensureSuccess);
     },
@@ -263,6 +284,9 @@
     },
     triggerSlotList: function (query, filter) {
       return pageList('/back/game/trigger-v2/trigger-slot/list', filter || {}, query);
+    },
+    triggerSlotByMonster: function (monsterId) {
+      return request('/back/game/trigger-v2/trigger-slot/by-monster', { body: { monsterId: monsterId } }).then(ensureSuccess);
     },
     triggerSlotByItem: function (itemId) {
       return request('/back/game/trigger-v2/trigger-slot/by-item', { body: { itemId: itemId } }).then(ensureSuccess);
@@ -293,6 +317,9 @@
     },
     v2FinishedSkillOptions: function () {
       return request('/back/game/trigger-v2/meta/finished-skill-options', {}).then(ensureSuccess);
+    },
+    v2FinishedSkillCategories: function () {
+      return request('/back/game/trigger-v2/meta/finished-skill-categories', {}).then(ensureSuccess);
     }
   };
 })(window);

@@ -37,6 +37,9 @@ public class BattleState {
 
     private List<BattleLog> logs = new ArrayList<>();
 
+    /** 全场总轴：每推进一次行动条 tick +1 */
+    private int timeline;
+
     /** 扳机槽运行时计数 */
     private BattleTriggerCounters triggerCounters;
 
@@ -52,5 +55,28 @@ public class BattleState {
     @JSONField(serialize = false, deserialize = false)
     public boolean isRunning() {
         return STATUS_RUNNING.equals(status);
+    }
+
+    /** 推进总轴（每次行动条 tick 调用一次） */
+    public void advanceTimeline() {
+        timeline++;
+    }
+
+    public BattleLog appendLog(BattleLog log) {
+        if (log == null) {
+            return null;
+        }
+        log.setAxis(timeline);
+        logs.add(log);
+        return log;
+    }
+
+    public void appendLogs(List<BattleLog> batch) {
+        if (batch == null || batch.isEmpty()) {
+            return;
+        }
+        for (BattleLog log : batch) {
+            appendLog(log);
+        }
     }
 }

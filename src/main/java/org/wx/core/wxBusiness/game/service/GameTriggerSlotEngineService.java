@@ -20,6 +20,8 @@ public class GameTriggerSlotEngineService {
 
     @Resource
     private GameTriggerSlotService triggerSlotService;
+    @Resource
+    private BasicAttackService basicAttackService;
     @Lazy
     @Resource
     private FinishedSkillExecutorService finishedSkillExecutorService;
@@ -31,44 +33,31 @@ public class GameTriggerSlotEngineService {
     }
 
     private List<BattleLog> fireActionValueFull(BattleState state, BattleUnit unit, TriggerEventContext ctx) {
+        if (BattleUnit.SIDE_HERO.equals(unit.getSide())) {
+            String skillId = basicAttackService.resolveSkillId(state.getHeroEquippedItemIds());
+            return castFinishedSkill(state, unit, skillId, ctx);
+        }
+        if (BattleUnit.SIDE_MONSTER.equals(unit.getSide())) {
+            String skillId = basicAttackService.resolveMonsterSkillId(unit.getMonsterId());
+            return castFinishedSkill(state, unit, skillId, ctx);
+        }
+
         List<TriggerBinding> bindings = listBindingsForUnit(state, unit).stream()
                 .filter(b -> TriggerSlotType.ACTION_VALUE_FULL.name().equals(b.getTriggerSlotType()))
                 .toList();
         if (bindings.isEmpty()) {
-            if (BattleUnit.SIDE_HERO.equals(unit.getSide())) {
-                return castFinishedSkill(state, unit, "fin_normal_attack", ctx);
-            }
             return List.of();
         }
-        List<TriggerBinding> toFire = bindings;
-        if (BattleUnit.SIDE_HERO.equals(unit.getSide())) {
-            List<TriggerBinding> itemBindings = bindings.stream()
-                    .filter(b -> b.getTriggerSlotId() != null)
-                    .toList();
-            if (!itemBindings.isEmpty()) {
-                toFire = itemBindings;
-            }
-            TriggerBinding primary = toFire.get(0);
-            List<BattleLog> logs = tryCastFromBinding(state, unit, primary, ctx);
-            if (logs.isEmpty() && primary.getTriggerSlotId() != null) {
-                for (TriggerBinding binding : bindings) {
-                    if (binding.getTriggerSlotId() == null) {
-                        return tryCastFromBinding(state, unit, binding, ctx);
-                    }
-                }
-            }
-            return logs;
-        }
         List<BattleLog> logs = new ArrayList<>();
-        for (TriggerBinding binding : toFire) {
+        for (TriggerBinding binding : bindings) {
             logs.addAll(tryCastFromBinding(state, unit, binding, ctx));
         }
         return logs;
     }
 
-    public void onActionValueTick(BattleState state, BattleUnit unit, int gain) {
+    public List<BattleLog> onActionValueTick(BattleState state, BattleUnit unit, int gain) {
         if (gain <= 0 || !unit.isAlive()) {
-            return;
+            return List.of();
         }
         BattleTriggerCounters counters = ensureCounters(state);
         int passed = counters.getActionValuePassed().getOrDefault(unit.getUnitId(), 0) + gain;
@@ -76,6 +65,7 @@ public class GameTriggerSlotEngineService {
 
         TriggerEventContext ctx = new TriggerEventContext();
         ctx.setActor(unit);
+        List<BattleLog> logs = new ArrayList<>();
         for (TriggerBinding binding : listBindingsForUnit(state, unit)) {
             if (!TriggerSlotType.ACTION_VALUE_PASSED.name().equals(binding.getTriggerSlotType())) {
                 continue;
@@ -87,13 +77,14 @@ public class GameTriggerSlotEngineService {
             int need = threshold.intValue();
             while (passed >= need) {
                 passed -= need;
-                state.getLogs().addAll(tryCastFromBinding(state, unit, binding, ctx));
+                logs.addAll(tryCastFromBinding(state, unit, binding, ctx));
             }
         }
         counters.getActionValuePassed().put(unit.getUnitId(), passed);
+        return logs;
     }
 
-    public void onFinishedSkillCast(BattleState state, BattleUnit caster, String finishedSkillId, int depth) {
+    public List<BattleLog> onFinishedSkillCast(BattleState state, BattleUnit caster, String finishedSkillId, int depth) {
         BattleTriggerCounters counters = ensureCounters(state);
         counters.getFinishedSkillCastCount()
                 .computeIfAbsent(caster.getUnitId(), k -> new java.util.HashMap<>())
@@ -104,15 +95,18 @@ public class GameTriggerSlotEngineService {
         ctx.setFinishedSkillId(finishedSkillId);
         ctx.setDepth(depth);
 
+        List<BattleLog> logs = new ArrayList<>();
         for (TriggerBinding binding : listBindingsForUnit(state, caster)) {
             if (!TriggerSlotType.FINISHED_SKILL_CAST_COUNT.name().equals(binding.getTriggerSlotType())) {
                 continue;
             }
-            if (binding.getTriggerRefId() != null && !binding.getTriggerRefId().equals(finishedSkillId)) {
+            if (binding.getTriggerRefId() == null || binding.getTriggerRefId().isBlank()
+                    || !binding.getTriggerRefId().equals(finishedSkillId)) {
                 continue;
             }
-            fireThresholdOnce(state, caster, binding, counters, ctx);
+            logs.addAll(fireThresholdOnce(state, caster, binding, counters, ctx));
         }
+        return logs;
     }
 
     public List<BattleLog> fireInstant(BattleState state, TriggerSlotType type, BattleUnit unit, TriggerEventContext ctx) {
@@ -226,26 +220,30 @@ public class GameTriggerSlotEngineService {
         return logs;
     }
 
-    private void fireThresholdOnce(BattleState state, BattleUnit unit, TriggerBinding binding,
+    private List<BattleLog> fireThresholdOnce(BattleState state, BattleUnit unit, TriggerBinding binding,
                                      BattleTriggerCounters counters, TriggerEventContext ctx) {
         BigDecimal threshold = binding.getTriggerParam();
         if (threshold == null || threshold.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
+            return List.of();
         }
         int need = threshold.intValue();
-        String refSkillId = binding.getTriggerRefId() != null
-                ? binding.getTriggerRefId() : binding.getFinishedSkillId();
+        String refSkillId = binding.getTriggerRefId();
+        if (refSkillId == null || refSkillId.isBlank()) {
+            return List.of();
+        }
         int count = counters.getFinishedSkillCastCount()
                 .getOrDefault(unit.getUnitId(), java.util.Map.of())
                 .getOrDefault(refSkillId, 0);
         int remaining = count;
+        List<BattleLog> logs = new ArrayList<>();
         while (remaining >= need) {
             remaining -= need;
-            state.getLogs().addAll(tryCastFromBinding(state, unit, binding, ctx));
+            logs.addAll(tryCastFromBinding(state, unit, binding, ctx));
         }
         counters.getFinishedSkillCastCount()
                 .computeIfAbsent(unit.getUnitId(), k -> new java.util.HashMap<>())
                 .put(refSkillId, remaining);
+        return logs;
     }
 
     private List<BattleLog> tryCastFromBinding(BattleState state, BattleUnit unit, TriggerBinding binding,
@@ -275,16 +273,26 @@ public class GameTriggerSlotEngineService {
 
     private List<TriggerBinding> listBindingsForUnit(BattleState state, BattleUnit unit) {
         List<TriggerBinding> bindings = new ArrayList<>();
-        List<String> itemIds = listEquippedItemIds(state, unit);
-        if (!itemIds.isEmpty()) {
-            for (GameTriggerSlot slot : triggerSlotService.listEnabledByItemIds(itemIds)) {
-                bindings.add(new TriggerBinding(
-                        slot.getTriggerSlotType(), slot.getTriggerParam(), slot.getTriggerRefId(),
-                        slot.getFinishedSkillId(), slot.getSort(), slot.getId(), slot.getMaxCastCount()));
+        if (BattleUnit.SIDE_HERO.equals(unit.getSide())) {
+            List<String> itemIds = listEquippedItemIds(state, unit);
+            if (!itemIds.isEmpty()) {
+                for (GameTriggerSlot slot : triggerSlotService.listCombatBindingsByItemIds(itemIds)) {
+                    bindings.add(toBinding(slot));
+                }
+            }
+        } else if (BattleUnit.SIDE_MONSTER.equals(unit.getSide()) && unit.getMonsterId() != null) {
+            for (GameTriggerSlot slot : triggerSlotService.listCombatBindingsByMonsterId(unit.getMonsterId())) {
+                bindings.add(toBinding(slot));
             }
         }
         bindings.sort(Comparator.comparingInt(b -> b.getSort() != null ? b.getSort() : 0));
         return bindings;
+    }
+
+    private TriggerBinding toBinding(GameTriggerSlot slot) {
+        return new TriggerBinding(
+                slot.getTriggerSlotType(), slot.getTriggerParam(), slot.getTriggerRefId(),
+                slot.getFinishedSkillId(), slot.getSort(), slot.getId(), slot.getMaxCastCount());
     }
 
     private List<String> listEquippedItemIds(BattleState state, BattleUnit unit) {

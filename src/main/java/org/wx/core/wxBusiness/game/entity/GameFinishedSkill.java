@@ -23,6 +23,18 @@ public class GameFinishedSkill extends WxBaseEntity<GameFinishedSkill> {
 
     private Integer targetParam;
 
+    /** 分类1：通用/装备/怪物 */
+    private String catL1;
+
+    /** 分类2：武器/护甲等 */
+    private String catL2;
+
+    /** 分类3：入口名称（如 大剑、某怪物名） */
+    private String catL3;
+
+    /** 分类4：普攻/大招/特性主动等 */
+    private String catL4;
+
     private Integer enabled;
 
     private String remark;

@@ -31,6 +31,8 @@ public class GameItemCategoryAdminService {
     private GameArmorService armorService;
     @Resource
     private GameInventoryService inventoryService;
+    @Resource
+    private GameReferenceCleanupService referenceCleanupService;
 
     public IPage<AdminMaterialVo> listMaterials(GameItem query) {
         List<GameItem> all = itemService.find().list().stream()
@@ -131,6 +133,7 @@ public class GameItemCategoryAdminService {
         GameItem item = itemService.getById(itemId);
         ErrorFactory.notNull(item, "材料不存在");
         ErrorFactory.throwError(!ItemTagHelper.isPureMaterial(item.getItemTags()), "该物品不是纯材料");
+        referenceCleanupService.removeItemBindings(itemId);
         itemService.removeById(itemId);
     }
 
@@ -179,6 +182,7 @@ public class GameItemCategoryAdminService {
         String itemId = weapon.getItemId();
         weaponService.removeById(weaponId);
         if (itemId != null && !itemId.isBlank()) {
+            referenceCleanupService.removeItemBindings(itemId);
             itemService.removeById(itemId);
         }
     }
@@ -287,6 +291,7 @@ public class GameItemCategoryAdminService {
         String itemId = armor.getItemId();
         armorService.removeById(armorId);
         if (itemId != null && !itemId.isBlank()) {
+            referenceCleanupService.removeItemBindings(itemId);
             itemService.removeById(itemId);
         }
     }

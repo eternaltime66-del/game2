@@ -333,10 +333,12 @@
   position: relative;
   background: linear-gradient(90deg, #228be6, #4dabf7 45%, #74c0fc);
   box-shadow: 0 0 8px rgba(77, 171, 247, 0.45);
+  transition: width 0.06s linear;
 }
 
 .bar-fill.action.growing {
   min-width: 3px;
+  transition: width 0.1s ease-out;
 }
 
 .bar-fill.action::after {
@@ -583,7 +585,7 @@
 }
 
 .settlement-panel {
-  width: min(100%, 320px);
+  width: min(100%, 340px);
   padding: 28px 22px 22px;
   border-radius: 18px;
   text-align: center;
@@ -634,24 +636,48 @@
 
 .settlement-actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-top: 20px;
 }
 
+.settlement-actions-row {
+  display: flex;
+  gap: 10px;
+}
+
+.settlement-actions.is-win .btn-settlement.retry {
+  width: 100%;
+}
+
 .btn-settlement {
   flex: 1;
-  padding: 11px 14px;
+  min-width: 0;
+  padding: 12px 10px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .btn-settlement.primary {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.28);
+}
+
+.btn-settlement.retry {
+  background: linear-gradient(135deg, rgba(255, 212, 59, 0.28), rgba(255, 169, 77, 0.22));
+  border-color: rgba(255, 212, 59, 0.45);
+  color: #ffe066;
+}
+
+.btn-settlement.retry:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .battle-scene.dimmed {
@@ -716,9 +742,26 @@
   color: #ffd43b;
 }
 
+.log-axis {
+  color: #91a7ff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-arrow {
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 2px;
+}
+
 .log-damage {
   color: #ff6b6b;
   font-weight: 700;
+}
+
+.log-formula {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .log-kill {
@@ -805,6 +848,11 @@
 .log-item .log-role {
   font-weight: 700;
   color: #ffd43b;
+}
+
+.log-item .log-axis {
+  color: #91a7ff;
+  font-weight: 600;
 }
 
 .log-item .log-damage {

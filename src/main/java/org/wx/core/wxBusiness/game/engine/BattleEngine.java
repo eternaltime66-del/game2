@@ -33,6 +33,7 @@ public class BattleEngine {
             return;
         }
         int gain = state.getActionTickGain() != null ? state.getActionTickGain() : DEFAULT_TICK_GAIN;
+        state.advanceTimeline();
         for (BattleUnit unit : state.getUnits()) {
             if (!unit.isAlive()) {
                 continue;
@@ -126,7 +127,6 @@ public class BattleEngine {
         }
         BigDecimal damage = calcDamage(actor.getAttack());
         applyDamage(target, damage);
-        resetActionBar(actor);
 
         String damageText = damage.stripTrailingZeros().toPlainString();
         return BattleLog.action(actor.getName(), target.getName(), damageText, !target.isAlive());

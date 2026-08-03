@@ -13,6 +13,14 @@ public class AdminTriggerSlotVo {
 
     private String itemName;
 
+    private String monsterId;
+
+    private String monsterName;
+
+    private String slotKind;
+
+    private String slotKindLabel;
+
     private String triggerSlotType;
 
     private String triggerSlotTypeLabel;

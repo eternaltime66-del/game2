@@ -1,0 +1,21 @@
+---
+description: 数据库 SQL 变更由 Agent 自动执行，无需询问用户
+alwaysApply: true
+---
+
+# 自动执行 SQL
+
+在本项目中，当新增或修改 `src/main/resources/sql/` 下的 SQL 脚本，或任务需要建表/改表/种子数据时：
+
+1. **直接执行**，不要询问用户是否执行 SQL。
+2. 默认连接（来自 `application.yml`）：
+   - 主机：`localhost:3306`
+   - 库名：`game2`
+   - 用户：`root`
+   - 密码：`123456`
+3. Windows 下使用完整路径调用客户端：
+   - `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"`
+   - PowerShell 不支持 `<` 重定向时，用 `cmd /c "mysql ... < file.sql"`。
+4. 执行后简要验证（如 `SHOW TABLES`、`SELECT COUNT(*)`），并在回复中说明已执行的脚本与结果。
+5. 若执行失败，自行排查并重试（路径、权限、语法），不要默认让用户手动跑 SQL。
+6. Windows 终端写中文名时，优先用 `CAST(UNHEX('...') AS CHAR CHARACTER SET utf8mb4)` 生成 UTF-8 名称，避免 PowerShell 管道乱码。

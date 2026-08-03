@@ -28,6 +28,12 @@ public class GamePrepService {
     private HeroCombatService heroCombatService;
     @Resource
     private GameHeroEquipService heroEquipService;
+    @Resource
+    private HeroPassiveService heroPassiveService;
+    @Resource
+    private BasicAttackService basicAttackService;
+    @Resource
+    private WeaponSkillService weaponSkillService;
 
     public PrepSummaryVo getPrepSummary(String uid) {
         GameHero hero = gameHeroService.getOrInitHero(uid);
@@ -65,7 +71,17 @@ public class GamePrepService {
         HeroCombatService.HeroCombatContext combat = heroCombatService.resolve(uid, hero, rows, itemMap, equip);
 
         BattleBagVo weightVo = carryWeightService.buildWeightSummary(hero, rows, new ArrayList<>(itemMap.values()), combat);
+        List<String> equippedIds = combat != null
+                ? new ArrayList<>(combat.getEquippedItemIds())
+                : equip.listEquippedItemIds();
+        weightVo.setBasicAttackSkill(basicAttackService.resolveDetail(equippedIds));
+        weightVo.setBasicAttackSourceLabel(basicAttackService.resolveSourceLabel(equippedIds));
+        weightVo.setWeaponSkill(weaponSkillService.resolveTrigger(equippedIds));
+        weightVo.setWeaponSkillSourceLabel(weaponSkillService.resolveSourceLabel(equippedIds));
         weightVo.setEquipSlots(heroEquipService.buildSlotOverview(equip, itemMap, combat));
+        weightVo.setActivePassives(heroPassiveService.buildHeroPassiveDetails(
+                equip, combat.getEquippedItemIds(), itemMap));
+        weightVo.setStatBreakdown(heroCombatService.buildStatBreakdown(combat, weightVo.getEffectiveActionValue()));
         List<BattleBagItemVo> items = new ArrayList<>();
         for (GameBattleBag row : rows) {
             int qty = row.getQuantity() != null ? row.getQuantity() : 0;
@@ -234,6 +250,10 @@ public class GamePrepService {
 
     public int resolveBattleAttack(String uid) {
         return resolveBattleStats(uid).getNormalAttackDamage();
+    }
+
+    public int resolveBattleTotalAttack(String uid) {
+        return resolveBattleStats(uid).getTotalAttack();
     }
 
     public int resolveBattleDefense(String uid) {

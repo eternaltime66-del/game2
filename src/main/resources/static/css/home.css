@@ -378,9 +378,23 @@
 }
 
 .hero-breakdown-formula .plus,
-.hero-breakdown-formula .eq {
+.hero-breakdown-formula .eq,
+.hero-breakdown-formula .times {
   color: rgba(255, 255, 255, 0.35);
   font-size: 12px;
+}
+
+.hero-breakdown-formula .paren {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hero-breakdown-formula .pct {
+  color: #74c0fc;
+  font-weight: 600;
+}
+
+.hero-breakdown-formula .bonus.passive {
+  color: #91a7ff;
 }
 
 .hero-breakdown-formula .total {
@@ -563,6 +577,13 @@
   margin-bottom: 4px;
 }
 
+.gear-skill-category {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
 .gear-skill-target {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.55);
@@ -672,6 +693,67 @@
   font-size: 12px;
   color: rgba(255, 255, 255, 0.45);
   line-height: 1.4;
+}
+
+.gear-passive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gear-passive-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gear-passive-card.inactive {
+  opacity: 0.55;
+}
+
+.gear-passive-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.gear-passive-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd43b;
+}
+
+.gear-passive-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.gear-passive-status.active {
+  color: #69db7c;
+}
+
+.gear-passive-source {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 6px;
+}
+
+.gear-passive-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.gear-passive-condition {
+  color: #b197fc;
+}
+
+.gear-passive-effect {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .hero-detail-section .section-body {

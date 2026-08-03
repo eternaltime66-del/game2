@@ -54,8 +54,6 @@ public class FinishedSkillExecutorService {
 
         List<BattleLog> logs = new ArrayList<>();
 
-        triggerSlotEngineService.onFinishedSkillCast(state, caster, finishedSkillId, ctx.getDepth());
-
         List<TargetHit> hits = resolveTargetHits(state, caster, skill, targetType, ctx);
         boolean dealtDamage = false;
         for (TargetHit hit : hits) {
@@ -76,6 +74,9 @@ public class FinishedSkillExecutorService {
             logs.addAll(triggerSlotEngineService.fireInstant(state, TriggerSlotType.ON_ATTACK, caster, attackCtx));
         }
 
+        ctx.setFinishedSkillId(finishedSkillId);
+        logs.addAll(triggerSlotEngineService.onFinishedSkillCast(state, caster, finishedSkillId, ctx.getDepth()));
+
         return logs;
     }
 
@@ -88,6 +89,10 @@ public class FinishedSkillExecutorService {
             case ALL_ENEMIES -> listEnemies(state, caster).stream().map(u -> new TargetHit(u, 0)).toList();
             case RANDOM_ONE_ENEMY -> pickRandomEnemies(state, caster, 1).stream().map(u -> new TargetHit(u, 0)).toList();
             case RANDOM_ENEMIES -> pickRandomEnemies(state, caster, param).stream().map(u -> new TargetHit(u, 0)).toList();
+            case FRONT_ROW_RANDOM_ONE_ENEMY ->
+                    pickRandomEnemiesFromRow(state, caster, true, 1).stream().map(u -> new TargetHit(u, 0)).toList();
+            case BACK_ROW_RANDOM_ONE_ENEMY ->
+                    pickRandomEnemiesFromRow(state, caster, false, 1).stream().map(u -> new TargetHit(u, 0)).toList();
             case RANDOM_ONE_ENEMY_REPEAT -> {
                 List<BattleUnit> one = pickRandomEnemies(state, caster, 1);
                 if (one.isEmpty()) {
@@ -154,8 +159,10 @@ public class FinishedSkillExecutorService {
             logs.addAll(triggerSlotEngineService.fireInstant(state, skillHitType, target, preCtx));
 
             BattleEngine.applyDamage(target, amount);
-            logs.add(BattleLog.skillDamage(caster.getName(), target.getName(), skill.getName(),
-                    amount.stripTrailingZeros().toPlainString(), !target.isAlive()));
+            String formula = buildStatFormulaText(state, caster, effect);
+            String skillLabel = BattleLog.buildSkillDisplayLabel(skill);
+            logs.add(BattleLog.skillDamage(caster.getName(), target.getName(), skillLabel,
+                    amount.stripTrailingZeros().toPlainString(), formula, !target.isAlive()));
 
             TriggerEventContext postCtx = copyCtx(preCtx, caster, target);
             postCtx.setDamageAmount(amount);
@@ -167,7 +174,8 @@ public class FinishedSkillExecutorService {
             int nextHp = Math.min(target.getMaxHp(), target.getHp() + heal);
             int actualHeal = nextHp - target.getHp();
             target.setHp(nextHp);
-            logs.add(BattleLog.skillHeal(caster.getName(), target.getName(), skill.getName(), String.valueOf(actualHeal)));
+            logs.add(BattleLog.skillHeal(caster.getName(), target.getName(),
+                    BattleLog.buildSkillDisplayLabel(skill), String.valueOf(actualHeal)));
 
             TriggerEventContext healCtx = copyCtx(ctx, caster, target);
             healCtx.setHealAmount(BigDecimal.valueOf(actualHeal));
@@ -237,6 +245,39 @@ public class FinishedSkillExecutorService {
         };
     }
 
+    private String buildStatFormulaText(BattleState state, BattleUnit caster, GameFinishedSkillEffect effect) {
+        AdvancedEffectKind kind = AdvancedEffectKind.parse(effect.getEffectKind());
+        if (kind == AdvancedEffectKind.FIXED_VALUE) {
+            BigDecimal val = effect.getFixedValue() != null ? effect.getFixedValue() : BigDecimal.ZERO;
+            return "(固定值 " + val.stripTrailingZeros().toPlainString() + ")";
+        }
+        if (kind != AdvancedEffectKind.STAT_FORMULA) {
+            return null;
+        }
+        StatRefType statRef = StatRefType.parse(effect.getStatRef());
+        String statLabel = statRef != null ? statRef.getLabel() : "攻击";
+        int base = readStat(caster, statRef);
+        BigDecimal y = effect.getRatioY() != null ? effect.getRatioY() : BigDecimal.ONE;
+        StringBuilder sb = new StringBuilder();
+        sb.append("(").append(statLabel).append(" ").append(base)
+                .append(" × ").append(formatRatioPercent(y));
+        if (Integer.valueOf(1).equals(effect.getUseWeaponRatio())) {
+            BigDecimal weaponRatio = resolveWeaponDamageRatio(state, caster);
+            sb.append(" × 武器 ").append(formatRatioPercent(weaponRatio));
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    private String formatRatioPercent(BigDecimal ratio) {
+        if (ratio == null) {
+            return "100%";
+        }
+        return ratio.multiply(BigDecimal.valueOf(100))
+                .stripTrailingZeros()
+                .toPlainString() + "%";
+    }
+
     private List<BattleUnit> listAllies(BattleState state, BattleUnit caster) {
         return state.getUnits().stream()
                 .filter(BattleUnit::isAlive)
@@ -272,6 +313,16 @@ public class FinishedSkillExecutorService {
             return List.of();
         }
         List<BattleUnit> pool = new ArrayList<>(enemies);
+        Collections.shuffle(pool, ThreadLocalRandom.current());
+        return pool.subList(0, Math.min(count, pool.size()));
+    }
+
+    private List<BattleUnit> pickRandomEnemiesFromRow(BattleState state, BattleUnit caster, boolean frontRow, int count) {
+        List<BattleUnit> row = listEnemiesInRow(state, caster, frontRow);
+        if (row.isEmpty() || count <= 0) {
+            return List.of();
+        }
+        List<BattleUnit> pool = new ArrayList<>(row);
         Collections.shuffle(pool, ThreadLocalRandom.current());
         return pool.subList(0, Math.min(count, pool.size()));
     }

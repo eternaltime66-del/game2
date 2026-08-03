@@ -7,6 +7,7 @@ import org.wx.core.wxBusiness.game.entity.GameItem;
 import org.wx.core.wxBusiness.game.entity.GameItemPassive;
 import org.wx.core.wxBusiness.game.entity.GamePassiveSkill;
 import org.wx.core.wxBusiness.game.entity.GameSkillBadge;
+import org.wx.core.wxBusiness.game.entity.HeroPassiveDetailVo;
 import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
 import org.wx.core.wxBusiness.game.entity.enums.HeroEquipSlot;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
@@ -77,11 +78,88 @@ public class HeroPassiveService {
         int totalDefense = applyFlatThenPct(defenseBase + flatDefense, defenseMul);
         int totalMaxHp = applyFlatThenPct(hpBase + flatHp, hpMul);
 
+        ctx.setPassiveFlatAttack(flatAttack);
+        ctx.setPassiveFlatDefense(flatDefense);
+        ctx.setPassiveFlatHp(flatHp);
+        ctx.setAttackPctMultiplier(attackMul);
+        ctx.setDefensePctMultiplier(defenseMul);
+        ctx.setHpPctMultiplier(hpMul);
         ctx.setTotalAttack(totalAttack);
         ctx.setTotalDefense(totalDefense);
         ctx.setTotalMaxHp(totalMaxHp);
         ctx.setPassiveActionValueFactor(actionFactor.setScale(6, RoundingMode.HALF_UP));
         ctx.setNormalAttackDamage(HeroCombatService.calcNormalAttackDamage(totalAttack, ctx.getDamageRatio()));
+    }
+
+    public List<HeroPassiveDetailVo> buildHeroPassiveDetails(GameHeroEquip equip, Set<String> equippedIds,
+                                                            Map<String, GameItem> itemMap) {
+        if (equip == null) {
+            return List.of();
+        }
+        Set<String> equipped = equippedIds != null ? equippedIds : Set.of();
+        List<HeroPassiveDetailVo> result = new ArrayList<>();
+        for (HeroEquipSlot slot : HeroEquipSlot.values()) {
+            if (slot.getRequiredTag() != GameItemTag.SKILL_BADGE) {
+                continue;
+            }
+            String itemId = slot.getItemId(equip);
+            if (itemId == null || itemId.isBlank()) {
+                continue;
+            }
+            GameSkillBadge badge = skillBadgeService.getByItemId(itemId);
+            if (badge == null || badge.getPassiveSkillId() == null || badge.getPassiveSkillId().isBlank()) {
+                continue;
+            }
+            GameItem item = itemMap != null ? itemMap.get(itemId) : null;
+            String source = item != null ? item.getName() : slot.getLabel();
+            appendHeroPassiveDetail(result, badge.getPassiveSkillId(), equipped, source, itemMap);
+        }
+        if (!equipped.isEmpty()) {
+            for (GameItemPassive binding : itemPassiveService.listEnabledByItemIds(new ArrayList<>(equipped))) {
+                GameItem item = itemMap != null ? itemMap.get(binding.getItemId()) : null;
+                String source = item != null ? "装备·" + item.getName() : "装备";
+                appendHeroPassiveDetail(result, binding.getPassiveSkillId(), equipped, source, itemMap);
+            }
+        }
+        return result;
+    }
+
+    private void appendHeroPassiveDetail(List<HeroPassiveDetailVo> result, String passiveSkillId,
+                                         Set<String> equippedIds, String sourceLabel,
+                                         Map<String, GameItem> itemMap) {
+        GamePassiveSkill passive = passiveSkillService.getById(passiveSkillId);
+        if (passive == null || !Integer.valueOf(1).equals(passive.getEnabled())) {
+            return;
+        }
+        HeroPassiveDetailVo vo = new HeroPassiveDetailVo();
+        vo.setId(passive.getId());
+        vo.setName(passive.getName());
+        vo.setSourceLabel(sourceLabel);
+        vo.setConditionLabel(buildConditionLabel(passive, itemMap));
+        PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
+        if (effectType != null) {
+            vo.setEffectTypeLabel(effectType.getLabel());
+        }
+        vo.setEffectValue(passive.getEffectValue());
+        vo.setActive(matchesCondition(passive, equippedIds));
+        result.add(vo);
+    }
+
+    private String buildConditionLabel(GamePassiveSkill passive, Map<String, GameItem> itemMap) {
+        PassiveConditionType conditionType = PassiveConditionType.parse(passive.getConditionType());
+        if (conditionType == null || conditionType == PassiveConditionType.NONE) {
+            return "无条件";
+        }
+        if (conditionType == PassiveConditionType.REQUIRE_EQUIP) {
+            String requiredItemId = passive.getConditionEquipItemId();
+            if (requiredItemId == null || requiredItemId.isBlank()) {
+                return conditionType.getLabel();
+            }
+            GameItem required = itemMap != null ? itemMap.get(requiredItemId) : null;
+            String name = required != null ? required.getName() : requiredItemId;
+            return "需装备「" + name + "」";
+        }
+        return conditionType.getLabel();
     }
 
     private List<GamePassiveSkill> collectActivePassives(GameHeroEquip equip, Set<String> equippedIds) {

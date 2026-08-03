@@ -74,6 +74,28 @@ public class B17GamePassiveSkillController {
         return WxResult.success();
     }
 
+    @PostMapping("/monster-passive/by-monster")
+    @WxRequestLog(recordRequest = false, recordResponse = false)
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<List<AdminMonsterPassiveVo>> monsterPassiveByMonster(@ParamCheck(msg = "怪物ID") String monsterId) {
+        return WxResult.success(passiveSkillAdminService.listMonsterPassivesByMonster(monsterId));
+    }
+
+    @PostMapping("/monster-passive/save")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<AdminMonsterPassiveVo> monsterPassiveSave(@RequestBody AdminMonsterPassiveVo vo) {
+        return WxResult.success(passiveSkillAdminService.saveMonsterPassive(vo));
+    }
+
+    @PostMapping("/monster-passive/remove")
+    @WxRequestLog()
+    @NeedHeader(roles = MemberRole.ADMIN)
+    public WxResult<?> monsterPassiveRemove(@RequestBody CommonIdVo vo) {
+        passiveSkillAdminService.removeMonsterPassive(vo.stringId());
+        return WxResult.success();
+    }
+
     @PostMapping("/item-passive/by-item")
     @WxRequestLog(recordRequest = false, recordResponse = false)
     @NeedHeader(roles = MemberRole.ADMIN)

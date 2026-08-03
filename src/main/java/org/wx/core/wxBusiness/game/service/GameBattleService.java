@@ -26,6 +26,8 @@ public class GameBattleService {
     private GameLevelService gameLevelService;
     @Resource
     private GameStageGroupService stageGroupService;
+    @Resource
+    private GameReferenceCleanupService referenceCleanupService;
 
     @Transactional(rollbackFor = Exception.class)
     public void saveMonster(GameMonster entity) {
@@ -45,6 +47,7 @@ public class GameBattleService {
         ErrorFactory.notNull(id, "怪物ID不能为空");
         waveMonsterService.remove(new LambdaQueryWrapper<GameWaveMonster>()
                 .eq(GameWaveMonster::getMonsterId, id));
+        referenceCleanupService.removeMonsterBindings(id);
         monsterService.removeById(id);
     }
 

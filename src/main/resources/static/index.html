@@ -201,7 +201,30 @@
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName('WEAPON')" class="prep-equip-slot-name">{{ slotItemName('WEAPON') }}</span>
                     </div>
-                    <div class="prep-hero-avatar">⚔</div>
+                    <div class="prep-character-skill-slots">
+                      <div
+                        class="prep-basic-attack-slot"
+                        :class="{ filled: basicAttackSkill }"
+                        title="点击查看普攻详情"
+                        @click="openBasicAttackDetail"
+                      >
+                        <span class="prep-equip-slot-label">普攻</span>
+                        <span class="prep-basic-attack-icon">⚔</span>
+                        <span v-if="basicAttackSkill" class="prep-equip-slot-name">{{ basicAttackSlotLabel }}</span>
+                        <span v-else class="prep-equip-slot-empty">默认</span>
+                      </div>
+                      <div
+                        class="prep-weapon-skill-slot"
+                        :class="{ filled: weaponSkill }"
+                        title="点击查看武器技能详情"
+                        @click="openWeaponSkillDetail"
+                      >
+                        <span class="prep-equip-slot-label">大招</span>
+                        <span class="prep-weapon-skill-icon">✦</span>
+                        <span v-if="weaponSkill && weaponSkill.finishedSkill" class="prep-equip-slot-name">{{ weaponSkillSlotLabel }}</span>
+                        <span v-else class="prep-equip-slot-empty">空</span>
+                      </div>
+                    </div>
                     <div
                       class="prep-equip-slot"
                       :class="{ filled: slotFilled('ARMOR') }"
@@ -539,15 +562,58 @@
           </div>
         </div>
 
+        <div class="hero-detail-section" v-if="heroActivePassives.length">
+          <div class="section-title">被动技能</div>
+          <div class="gear-passive-list">
+            <div
+              v-for="(ps, idx) in heroActivePassives"
+              :key="ps.id + '-' + idx"
+              class="gear-passive-card"
+              :class="{ inactive: ps.active === false }"
+            >
+              <div class="gear-passive-head">
+                <span class="gear-passive-name">{{ ps.name }}</span>
+                <span class="gear-passive-status" :class="{ active: ps.active !== false }">
+                  {{ ps.active === false ? '未生效' : '生效中' }}
+                </span>
+              </div>
+              <div class="gear-passive-source">来源 · {{ ps.sourceLabel }}</div>
+              <div class="gear-passive-meta">
+                <span class="gear-passive-condition">{{ ps.conditionLabel || '无条件' }}</span>
+                <span class="gear-passive-effect">{{ fmtPassiveEffect(ps) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="hero-detail-section">
           <div class="section-title">属性构成</div>
           <div class="hero-breakdown-list">
             <div v-for="row in heroBreakdownRows" :key="row.label" class="hero-breakdown-row">
               <span class="hero-breakdown-label">{{ row.label }}</span>
-              <span class="hero-breakdown-formula">
+              <span class="hero-breakdown-formula" v-if="row.pctMultiplier && Number(row.pctMultiplier) !== 1">
+                <span class="paren">(</span>
                 <span class="base">{{ row.base }}</span>
                 <span class="plus">+</span>
-                <span class="bonus">{{ row.bonus }}</span>
+                <span class="bonus">{{ row.equipBonus || 0 }}</span>
+                <template v-if="row.passiveFlat">
+                  <span class="plus">+</span>
+                  <span class="bonus passive">{{ row.passiveFlat }}</span>
+                </template>
+                <span class="paren">)</span>
+                <span class="times">×</span>
+                <span class="pct">{{ fmtRatioPercent(row.pctMultiplier) }}</span>
+                <span class="eq">=</span>
+                <span class="total">{{ row.total }}</span>
+              </span>
+              <span class="hero-breakdown-formula" v-else>
+                <span class="base">{{ row.base }}</span>
+                <span class="plus">+</span>
+                <span class="bonus">{{ row.equipBonus || 0 }}</span>
+                <template v-if="row.passiveFlat">
+                  <span class="plus">+</span>
+                  <span class="bonus passive">{{ row.passiveFlat }}</span>
+                </template>
                 <span class="eq">=</span>
                 <span class="total">{{ row.total }}</span>
               </span>
@@ -583,7 +649,7 @@
 
         <div class="hero-detail-section">
           <div class="section-title">当前装备</div>
-          <div class="hero-equip-hint" v-if="heroEquipList.length">点击装备查看扳机与伤害详情</div>
+          <div class="hero-equip-hint" v-if="heroEquipList.length">点击装备查看主动技能与被动详情</div>
           <div v-if="!heroEquipList.length" class="section-empty">暂无装备</div>
           <div v-else class="hero-equip-list">
             <div
@@ -603,6 +669,132 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showBasicAttackDetail" class="hero-detail-mask gear-detail-mask" @click.self="showBasicAttackDetail = false">
+    <div class="hero-detail-panel gear-detail-panel">
+      <div class="hero-detail-head">
+        <h3>普攻详情</h3>
+        <button type="button" class="hero-detail-close" @click="showBasicAttackDetail = false">关闭</button>
+      </div>
+      <div v-if="basicAttackSkill" class="hero-detail-body">
+        <div class="hero-detail-hero">
+          <div class="hero-detail-avatar prep-basic-attack-detail-icon">⚔</div>
+          <div class="hero-detail-name">{{ basicAttackSkill.name }}</div>
+          <div v-if="basicAttackSkill.categoryLabel" class="hero-detail-sub">{{ basicAttackSkill.categoryLabel }}</div>
+          <div class="hero-detail-sub">来源 · {{ basicAttackSourceLabel }}</div>
+        </div>
+        <div class="hero-detail-section">
+          <div class="section-title">释放时机</div>
+          <div class="hero-detail-rows compact">
+            <div class="hero-detail-row">
+              <span>扳机</span>
+              <span class="hero-detail-row-value highlight">行动值满</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-detail-section">
+          <div class="section-title">技能效果</div>
+          <div class="gear-skill-target">目标 · {{ basicAttackSkill.targetLabel || basicAttackSkill.targetType }}</div>
+          <div v-if="basicAttackEffectRows.length" class="gear-effect-list">
+            <div
+              v-for="(row, eidx) in basicAttackEffectRows"
+              :key="eidx"
+              class="gear-effect-row"
+            >
+              <template v-if="row.detail">
+                <div class="gear-formula-breakdown">
+                  <div class="gear-formula-factors">
+                    <template v-for="(part, pi) in row.detail.parts" :key="pi">
+                      <span v-if="pi > 0" class="gear-formula-op">×</span>
+                      <div class="gear-formula-factor">
+                        <span class="gear-formula-factor-label">{{ part.label }}</span>
+                        <span class="gear-formula-factor-value">{{ part.valueText }}</span>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="gear-formula-result-row">
+                    <span class="gear-formula-eq">=</span>
+                    <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
+                    <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="gear-effect-formula">{{ row.effect.formulaText }}</div>
+            </div>
+          </div>
+          <div v-if="basicAttackSkill.remark" class="gear-skill-remark">{{ basicAttackSkill.remark }}</div>
+        </div>
+      </div>
+      <div v-else class="hero-detail-body">
+        <div class="section-empty">暂无普攻数据，请先加载备战信息</div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showWeaponSkillDetail" class="hero-detail-mask gear-detail-mask" @click.self="showWeaponSkillDetail = false">
+    <div class="hero-detail-panel gear-detail-panel">
+      <div class="hero-detail-head">
+        <h3>大招详情</h3>
+        <button type="button" class="hero-detail-close" @click="showWeaponSkillDetail = false">关闭</button>
+      </div>
+      <div v-if="weaponSkill && weaponSkill.finishedSkill" class="hero-detail-body">
+        <div class="hero-detail-hero">
+          <div class="hero-detail-avatar prep-weapon-skill-detail-icon">✦</div>
+          <div class="hero-detail-name">{{ weaponSkill.finishedSkill.name }}</div>
+          <div v-if="weaponSkill.finishedSkill.categoryLabel" class="hero-detail-sub">{{ weaponSkill.finishedSkill.categoryLabel }}</div>
+          <div class="hero-detail-sub">来源 · {{ weaponSkillSourceLabel || '未装备武器' }}</div>
+        </div>
+        <div class="hero-detail-section">
+          <div class="section-title">释放时机</div>
+          <div class="hero-detail-rows compact">
+            <div class="hero-detail-row">
+              <span>扳机</span>
+              <span class="hero-detail-row-value highlight">{{ weaponSkill.triggerDesc || weaponSkill.triggerSlotTypeLabel }}</span>
+            </div>
+            <div class="hero-detail-row" v-if="weaponSkill.castLimitText">
+              <span>释放上限</span>
+              <span class="hero-detail-row-value">{{ weaponSkill.castLimitText }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-detail-section">
+          <div class="section-title">技能效果</div>
+          <div class="gear-skill-target">目标 · {{ weaponSkill.finishedSkill.targetLabel || weaponSkill.finishedSkill.targetType }}</div>
+          <div v-if="weaponSkillEffectRows.length" class="gear-effect-list">
+            <div
+              v-for="(row, eidx) in weaponSkillEffectRows"
+              :key="eidx"
+              class="gear-effect-row"
+            >
+              <template v-if="row.detail">
+                <div class="gear-formula-breakdown">
+                  <div class="gear-formula-factors">
+                    <template v-for="(part, pi) in row.detail.parts" :key="pi">
+                      <span v-if="pi > 0" class="gear-formula-op">×</span>
+                      <div class="gear-formula-factor">
+                        <span class="gear-formula-factor-label">{{ part.label }}</span>
+                        <span class="gear-formula-factor-value">{{ part.valueText }}</span>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="gear-formula-result-row">
+                    <span class="gear-formula-eq">=</span>
+                    <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
+                    <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="gear-effect-formula">{{ row.effect.formulaText }}</div>
+            </div>
+          </div>
+          <div v-if="weaponSkill.finishedSkill.remark" class="gear-skill-remark">{{ weaponSkill.finishedSkill.remark }}</div>
+        </div>
+      </div>
+      <div v-else class="hero-detail-body">
+        <div class="section-empty">未配置大招。请在后台武器编辑中为该武器配置大招槽位。</div>
       </div>
     </div>
   </div>
@@ -653,9 +845,13 @@
           </div>
         </div>
 
-        <div class="hero-detail-section" v-else-if="gearDetail.armorBonusHp != null || gearDetail.armorDefense != null">
-          <div class="section-title">防具属性</div>
+        <div class="hero-detail-section" v-else-if="gearDetail.armorBonusHp != null || gearDetail.armorDefense != null || gearDetail.armorBonusAttack != null">
+          <div class="section-title">{{ gearDetailArmorSectionTitle }}</div>
           <div class="hero-detail-rows">
+            <div class="hero-detail-row" v-if="gearDetail.armorBonusAttack != null && gearDetail.armorBonusAttack > 0">
+              <span>攻击加成</span>
+              <span class="hero-detail-row-value highlight">+{{ gearDetail.armorBonusAttack }}</span>
+            </div>
             <div class="hero-detail-row" v-if="gearDetail.armorBonusHp != null">
               <span>生命加成</span>
               <span class="hero-detail-row-value highlight">+{{ gearDetail.armorBonusHp }}</span>
@@ -671,53 +867,71 @@
           </div>
         </div>
 
-        <div class="hero-detail-section" v-if="gearDetail.triggerSlots && gearDetail.triggerSlots.length">
-          <div class="section-title">扳机槽</div>
-          <div class="gear-trigger-list">
-            <div v-for="(ts, idx) in gearDetail.triggerSlots" :key="ts.id || idx" class="gear-trigger-card">
-              <div class="gear-trigger-head">
-                <span class="gear-trigger-condition">{{ ts.triggerDesc || ts.triggerSlotTypeLabel }}</span>
-                <span class="gear-trigger-limit">{{ ts.castLimitText || '无限' }}</span>
-              </div>
-              <template v-if="ts.finishedSkill">
-                <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
-                <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
-                <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
-                  <div
-                    v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
-                    :key="eidx"
-                    class="gear-effect-row"
-                  >
-                    <template v-if="row.detail">
-                      <div class="gear-formula-breakdown">
-                        <div class="gear-formula-factors">
-                          <template v-for="(part, pi) in row.detail.parts" :key="pi">
-                            <span v-if="pi > 0" class="gear-formula-op">×</span>
-                            <div class="gear-formula-factor">
-                              <span class="gear-formula-factor-label">{{ part.label }}</span>
-                              <span class="gear-formula-factor-value">{{ part.valueText }}</span>
-                            </div>
-                          </template>
-                        </div>
-                        <div class="gear-formula-result-row">
-                          <span class="gear-formula-eq">=</span>
-                          <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
-                          <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
-                        </div>
-                      </div>
-                    </template>
-                    <div v-else class="gear-effect-formula">{{ row.effect.formulaText }}</div>
-                  </div>
+        <template v-if="itemSkillSections(gearDetail).length">
+          <div class="hero-detail-section" v-for="section in itemSkillSections(gearDetail)" :key="'gear-skill-' + section.title">
+            <div class="section-title">{{ section.title }}</div>
+            <div class="gear-trigger-list">
+              <div v-for="(ts, idx) in section.slots" :key="ts.id || section.title + idx" class="gear-trigger-card">
+                <div class="gear-trigger-head">
+                  <span class="gear-trigger-condition">{{ ts.triggerDesc || ts.triggerSlotTypeLabel }}</span>
+                  <span class="gear-trigger-limit">{{ ts.castLimitText || '无限' }}</span>
                 </div>
-                <div v-if="ts.finishedSkill.remark" class="gear-skill-remark">{{ ts.finishedSkill.remark }}</div>
-              </template>
+                <template v-if="ts.finishedSkill">
+                  <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
+                  <div v-if="ts.finishedSkill.categoryLabel" class="gear-skill-category">{{ ts.finishedSkill.categoryLabel }}</div>
+                  <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
+                  <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
+                    <div
+                      v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
+                      :key="eidx"
+                      class="gear-effect-row"
+                    >
+                      <template v-if="row.detail">
+                        <div class="gear-formula-breakdown">
+                          <div class="gear-formula-factors">
+                            <template v-for="(part, pi) in row.detail.parts" :key="pi">
+                              <span v-if="pi > 0" class="gear-formula-op">×</span>
+                              <div class="gear-formula-factor">
+                                <span class="gear-formula-factor-label">{{ part.label }}</span>
+                                <span class="gear-formula-factor-value">{{ part.valueText }}</span>
+                              </div>
+                            </template>
+                          </div>
+                          <div class="gear-formula-result-row">
+                            <span class="gear-formula-eq">=</span>
+                            <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
+                            <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                          </div>
+                        </div>
+                      </template>
+                      <div v-else class="gear-effect-formula">{{ row.effect.formulaText }}</div>
+                    </div>
+                  </div>
+                  <div v-if="ts.finishedSkill.remark" class="gear-skill-remark">{{ ts.finishedSkill.remark }}</div>
+                </template>
+              </div>
             </div>
           </div>
+        </template>
+        <div class="hero-detail-section" v-else-if="isWeaponItem(gearDetail) || isEquipableItem(gearDetail)">
+          <div class="section-title">技能配置</div>
+          <div class="section-empty">暂无普攻 / 大招 / 特性主动配置</div>
         </div>
 
-        <div class="hero-detail-section" v-else-if="isWeaponItem(gearDetail) || isEquipableItem(gearDetail)">
-          <div class="section-title">扳机槽</div>
-          <div class="section-empty">暂无扳机配置</div>
+        <div class="hero-detail-section" v-if="gearDetail.passiveSkills && gearDetail.passiveSkills.length">
+          <div class="section-title">特性被动</div>
+          <div class="gear-passive-list">
+            <div v-for="(ps, idx) in gearDetail.passiveSkills" :key="ps.id || idx" class="gear-passive-card">
+              <div class="gear-passive-head">
+                <span class="gear-passive-name">{{ ps.name }}</span>
+              </div>
+              <div class="gear-passive-meta">
+                <span class="gear-passive-condition">{{ ps.conditionLabel || '无条件' }}</span>
+                <span class="gear-passive-effect">{{ fmtPassiveEffect(ps) }}</span>
+              </div>
+              <div v-if="ps.remark" class="gear-skill-remark">{{ ps.remark }}</div>
+            </div>
+          </div>
         </div>
 
         <div class="hero-detail-section" v-if="gearDetail.remark">
@@ -784,7 +998,11 @@
               <span>{{ fmtRatio(itemDetail.weaponDamageRatio) }}</span>
             </div>
           </template>
-          <template v-if="itemDetail.armorBonusHp != null || itemDetail.armorDefense != null">
+          <template v-if="itemDetail.armorBonusHp != null || itemDetail.armorDefense != null || itemDetail.armorBonusAttack != null">
+            <div class="item-stat-row" v-if="itemDetail.armorBonusAttack != null && itemDetail.armorBonusAttack > 0">
+              <span>攻击加成</span>
+              <span class="highlight">+{{ itemDetail.armorBonusAttack }}</span>
+            </div>
             <div class="item-stat-row" v-if="itemDetail.armorBonusHp != null">
               <span>生命加成</span>
               <span class="highlight">+{{ itemDetail.armorBonusHp }}</span>
@@ -794,6 +1012,71 @@
               <span class="highlight">+{{ itemDetail.armorDefense }}</span>
             </div>
           </template>
+        </div>
+        <template v-if="itemSkillSections(itemDetail).length">
+          <div class="item-detail-section" v-for="section in itemSkillSections(itemDetail)" :key="'item-skill-' + section.title">
+            <div class="section-title">{{ section.title }}</div>
+            <div class="gear-trigger-list">
+              <div v-for="(ts, idx) in section.slots" :key="ts.id || section.title + idx" class="gear-trigger-card">
+                <div class="gear-trigger-head">
+                  <span class="gear-trigger-condition">{{ ts.triggerDesc || ts.triggerSlotTypeLabel }}</span>
+                  <span class="gear-trigger-limit">{{ ts.castLimitText || '无限' }}</span>
+                </div>
+                <template v-if="ts.finishedSkill">
+                  <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
+                  <div v-if="ts.finishedSkill.categoryLabel" class="gear-skill-category">{{ ts.finishedSkill.categoryLabel }}</div>
+                  <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
+                  <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
+                    <div
+                      v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
+                      :key="eidx"
+                      class="gear-effect-row"
+                    >
+                      <template v-if="row.detail">
+                        <div class="gear-formula-breakdown">
+                          <div class="gear-formula-factors">
+                            <template v-for="(part, pi) in row.detail.parts" :key="pi">
+                              <span v-if="pi > 0" class="gear-formula-op">×</span>
+                              <div class="gear-formula-factor">
+                                <span class="gear-formula-factor-label">{{ part.label }}</span>
+                                <span class="gear-formula-factor-value">{{ part.valueText }}</span>
+                              </div>
+                            </template>
+                          </div>
+                          <div class="gear-formula-result-row">
+                            <span class="gear-formula-eq">=</span>
+                            <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
+                            <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                          </div>
+                        </div>
+                      </template>
+                      <div v-else class="gear-effect-formula">{{ row.effect.formulaText }}</div>
+                    </div>
+                  </div>
+                  <div v-if="ts.finishedSkill.remark" class="gear-skill-remark">{{ ts.finishedSkill.remark }}</div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div class="item-detail-section" v-else-if="isWeaponItem(itemDetail) || isEquipableItem(itemDetail)">
+          <div class="section-title">技能配置</div>
+          <div class="section-empty">暂无普攻 / 大招 / 特性主动配置</div>
+        </div>
+        <div class="item-detail-section" v-if="itemDetail.passiveSkills && itemDetail.passiveSkills.length">
+          <div class="section-title">特性被动</div>
+          <div class="gear-passive-list">
+            <div v-for="(ps, idx) in itemDetail.passiveSkills" :key="ps.id || idx" class="gear-passive-card">
+              <div class="gear-passive-head">
+                <span class="gear-passive-name">{{ ps.name }}</span>
+              </div>
+              <div class="gear-passive-meta">
+                <span class="gear-passive-condition">{{ ps.conditionLabel || '无条件' }}</span>
+                <span class="gear-passive-effect">{{ fmtPassiveEffect(ps) }}</span>
+              </div>
+              <div v-if="ps.remark" class="gear-skill-remark">{{ ps.remark }}</div>
+            </div>
+          </div>
         </div>
         <div class="item-detail-section" v-if="itemDetail.crafts && itemDetail.crafts.length">
           <div class="section-title">可参与合成</div>
@@ -866,6 +1149,8 @@ createApp({
       loading: true,
       activeTab: localStorage.getItem('homeTab') || 'home',
       showDetail: false,
+      showBasicAttackDetail: false,
+      showWeaponSkillDetail: false,
       showGearDetail: false,
       gearDetailLoading: false,
       gearDetail: null,
@@ -910,12 +1195,12 @@ createApp({
         { slot: 'ACCESSORY_3', label: '饰品3' }
       ],
       leftSkillBadgeSlots: [
-        { slot: 'SKILL_BADGE_1', label: '技能1' },
-        { slot: 'SKILL_BADGE_2', label: '技能2' }
+        { slot: 'SKILL_BADGE_1', label: '被动1' },
+        { slot: 'SKILL_BADGE_2', label: '被动2' }
       ],
       rightSkillBadgeSlots: [
-        { slot: 'SKILL_BADGE_3', label: '技能3' },
-        { slot: 'SKILL_BADGE_4', label: '技能4' }
+        { slot: 'SKILL_BADGE_3', label: '被动3' },
+        { slot: 'SKILL_BADGE_4', label: '被动4' }
       ],
       tagSlotMap: {
         WEAPON: ['WEAPON'],
@@ -935,14 +1220,57 @@ createApp({
         ACCESSORY_1: '饰品1',
         ACCESSORY_2: '饰品2',
         ACCESSORY_3: '饰品3',
-        SKILL_BADGE_1: '技能1',
-        SKILL_BADGE_2: '技能2',
-        SKILL_BADGE_3: '技能3',
-        SKILL_BADGE_4: '技能4'
+        SKILL_BADGE_1: '被动1',
+        SKILL_BADGE_2: '被动2',
+        SKILL_BADGE_3: '被动3',
+        SKILL_BADGE_4: '被动4'
       }
     };
   },
   computed: {
+    heroActivePassives() {
+      return (this.battleBag && this.battleBag.activePassives) || [];
+    },
+    basicAttackSkill() {
+      return (this.battleBag && this.battleBag.basicAttackSkill) || null;
+    },
+    basicAttackSourceLabel() {
+      return (this.battleBag && this.battleBag.basicAttackSourceLabel) || '角色默认';
+    },
+    basicAttackSlotLabel() {
+      var weaponName = this.slotItemName('WEAPON');
+      if (weaponName) return weaponName;
+      return '默认';
+    },
+    basicAttackEffectRows() {
+      var skill = this.basicAttackSkill;
+      if (!skill || !skill.effects) return [];
+      return this.gearEffectFormulaRows(skill.effects);
+    },
+    weaponSkill() {
+      return (this.battleBag && this.battleBag.weaponSkill) || null;
+    },
+    weaponSkillSourceLabel() {
+      return (this.battleBag && this.battleBag.weaponSkillSourceLabel) || '';
+    },
+    weaponSkillSlotLabel() {
+      var weaponName = this.slotItemName('WEAPON');
+      if (weaponName) return weaponName;
+      var ws = this.weaponSkill;
+      if (ws && ws.finishedSkill && ws.finishedSkill.name) return ws.finishedSkill.name;
+      return '';
+    },
+    weaponSkillEffectRows() {
+      var ws = this.weaponSkill;
+      if (!ws || !ws.finishedSkill || !ws.finishedSkill.effects) return [];
+      return this.gearEffectFormulaRows(ws.finishedSkill.effects);
+    },
+    gearDetailArmorSectionTitle() {
+      if (!this.gearDetail) return '装备属性';
+      var codes = this.gearDetail.itemTagCodes || [];
+      if (codes.indexOf('ACCESSORY') >= 0) return '饰品属性';
+      return '防具属性';
+    },
     heroPrimaryStats() {
       if (!this.hero) return [];
       var w = this.weightInfo;
@@ -976,6 +1304,8 @@ createApp({
     },
     heroBreakdownRows() {
       if (!this.hero) return [];
+      var rows = (this.battleBag && this.battleBag.statBreakdown) || [];
+      if (rows.length) return rows;
       var w = this.weightInfo;
       var baseHp = this.hero.maxHp != null ? this.hero.maxHp : 0;
       var bonusHp = w.equipBonusHp != null ? w.equipBonusHp : 0;
@@ -984,25 +1314,29 @@ createApp({
         {
           label: '攻击',
           base: w.heroAttack || 0,
-          bonus: w.equipAttack || 0,
+          equipBonus: w.equipAttack || 0,
+          passiveFlat: 0,
           total: w.totalAttack || 0
         },
         {
           label: '防御',
           base: w.heroDefense || 0,
-          bonus: w.equipDefense || 0,
+          equipBonus: w.equipDefense || 0,
+          passiveFlat: 0,
           total: w.totalDefense || 0
         },
         {
           label: '生命',
           base: baseHp,
-          bonus: bonusHp,
+          equipBonus: bonusHp,
+          passiveFlat: 0,
           total: w.totalMaxHp || baseHp
         },
         {
           label: '行动值',
           base: w.unarmedActionValue || 0,
-          bonus: actionBonus,
+          equipBonus: actionBonus,
+          passiveFlat: 0,
           total: w.effectiveActionValue || 0
         }
       ];
@@ -1039,12 +1373,19 @@ createApp({
           { label: '重量', value: this.fmtWeight(d.weight), cls: 'stat-hp' }
         ];
       }
-      if (d.armorBonusHp != null || d.armorDefense != null) {
-        return [
-          { label: '生命', value: '+' + (d.armorBonusHp || 0), cls: 'stat-hp' },
-          { label: '防御', value: '+' + (d.armorDefense || 0), cls: 'stat-def' },
-          { label: '重量', value: this.fmtWeight(d.weight), cls: 'stat-atk' }
-        ];
+      if (d.armorBonusHp != null || d.armorDefense != null || d.armorBonusAttack != null) {
+        var stats = [];
+        if (d.armorBonusAttack != null && d.armorBonusAttack > 0) {
+          stats.push({ label: '攻击', value: '+' + d.armorBonusAttack, cls: 'stat-atk' });
+        }
+        if (d.armorBonusHp != null || d.armorDefense != null) {
+          stats.push(
+            { label: '生命', value: '+' + (d.armorBonusHp || 0), cls: 'stat-hp' },
+            { label: '防御', value: '+' + (d.armorDefense || 0), cls: 'stat-def' }
+          );
+        }
+        stats.push({ label: '重量', value: this.fmtWeight(d.weight), cls: 'stat-spd' });
+        return stats;
       }
       return [];
     },
@@ -1263,6 +1604,7 @@ createApp({
       if (tag === '护腿') return 'tag-legs';
       if (tag === '头盔') return 'tag-helmet';
       if (tag === '饰品') return 'tag-accessory';
+      if (tag === '被动徽章') return 'tag-skill-badge';
       if (tag === '技能徽章') return 'tag-skill-badge';
       return '';
     },
@@ -1380,6 +1722,32 @@ createApp({
         result: this.calcEffectDamage(base, ratioY, weaponRatio)
       };
     },
+    fmtPassiveEffect: function (passive) {
+      if (!passive) return '';
+      var label = passive.effectTypeLabel || '';
+      var val = passive.effectValue;
+      if (val == null || val === '') return label;
+      var num = Number(val);
+      var text = isNaN(num) ? String(val) : (num % 1 === 0 ? String(num) : String(num));
+      if (label.indexOf('x') >= 0) return label.replace('x', text);
+      if (label.indexOf('y') >= 0) return label.replace('y', text);
+      return label + ' ' + text;
+    },
+    itemSkillSections: function (detail) {
+      if (!detail) return [];
+      var sections = [];
+      if (detail.basicAttackSlot) {
+        sections.push({ title: '普攻', slots: [detail.basicAttackSlot] });
+      }
+      if (detail.ultimateSlot) {
+        sections.push({ title: '大招', slots: [detail.ultimateSlot] });
+      }
+      var traits = detail.triggerSlots || [];
+      if (traits.length) {
+        sections.push({ title: '特性主动', slots: traits });
+      }
+      return sections;
+    },
     gearEffectFormulaRows: function (effects) {
       var self = this;
       return (effects || []).map(function (effect) {
@@ -1424,17 +1792,31 @@ createApp({
         self.showDetail = true;
       });
     },
+    openBasicAttackDetail: function () {
+      var self = this;
+      if (this.battleBag) {
+        this.showBasicAttackDetail = true;
+        return;
+      }
+      this.loadPrep().then(function () {
+        self.showBasicAttackDetail = true;
+      });
+    },
+    openWeaponSkillDetail: function () {
+      var self = this;
+      if (this.battleBag) {
+        this.showWeaponSkillDetail = true;
+        return;
+      }
+      this.loadPrep().then(function () {
+        self.showWeaponSkillDetail = true;
+      });
+    },
     openGearDetail: function (itemId, slot) {
       var self = this;
       if (!itemId) return;
       self.gearDetailContext = { itemId: itemId, slot: slot || '' };
       self.showGearDetail = true;
-      var cached = self.itemDetailCache[itemId];
-      if (cached && Array.isArray(cached.triggerSlots)) {
-        self.gearDetail = cached;
-        self.gearDetailLoading = false;
-        return;
-      }
       self.gearDetailLoading = true;
       self.gearDetail = null;
       GameApi.getItemDetail(itemId)

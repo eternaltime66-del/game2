@@ -8,8 +8,10 @@ import org.wx.core.wxBusiness.game.entity.enums.HeroEquipSlot;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +51,7 @@ public class HeroCombatService {
         ctx.setUnarmedActionValue(unarmedAction);
         ctx.setHeroAttack(heroAttack);
         ctx.setHeroDefense(heroDefense);
+        ctx.setHeroMaxHp(heroMaxHp);
         ctx.setEquipAttack(0);
         ctx.setEquipDefense(0);
         ctx.setEquipBonusHp(0);
@@ -99,6 +102,12 @@ public class HeroCombatService {
         ctx.setTotalMaxHp(heroMaxHp + equipBonusHp);
         ctx.setTotalAttack(heroAttack + equipBonusAttack);
         ctx.setPassiveActionValueFactor(BigDecimal.ONE);
+        ctx.setPassiveFlatAttack(0);
+        ctx.setPassiveFlatDefense(0);
+        ctx.setPassiveFlatHp(0);
+        ctx.setAttackPctMultiplier(BigDecimal.ONE);
+        ctx.setDefensePctMultiplier(BigDecimal.ONE);
+        ctx.setHpPctMultiplier(BigDecimal.ONE);
 
         String weaponItemId = equip.getWeaponItemId();
         if (weaponItemId != null && equippedIds.contains(weaponItemId)) {
@@ -129,6 +138,36 @@ public class HeroCombatService {
                     .setScale(1, RoundingMode.HALF_UP));
         }
         return ctx;
+    }
+
+    public List<HeroStatBreakdownRowVo> buildStatBreakdown(HeroCombatContext ctx, int effectiveActionValue) {
+        if (ctx == null) {
+            return List.of();
+        }
+        List<HeroStatBreakdownRowVo> rows = new ArrayList<>();
+        rows.add(buildStatRow("攻击", ctx.getHeroAttack(), ctx.getEquipAttack(), ctx.getPassiveFlatAttack(),
+                ctx.getAttackPctMultiplier(), ctx.getTotalAttack()));
+        rows.add(buildStatRow("防御", ctx.getHeroDefense(), ctx.getEquipDefense(), ctx.getPassiveFlatDefense(),
+                ctx.getDefensePctMultiplier(), ctx.getTotalDefense()));
+        rows.add(buildStatRow("生命", ctx.getHeroMaxHp(), ctx.getEquipBonusHp(), ctx.getPassiveFlatHp(),
+                ctx.getHpPctMultiplier(), ctx.getTotalMaxHp()));
+        int actionBonus = effectiveActionValue - ctx.getUnarmedActionValue();
+        rows.add(buildStatRow("行动值", ctx.getUnarmedActionValue(), actionBonus, 0, BigDecimal.ONE, effectiveActionValue));
+        return rows;
+    }
+
+    private HeroStatBreakdownRowVo buildStatRow(String label, int base, int equipBonus, int passiveFlat,
+                                                BigDecimal pctMultiplier, int total) {
+        HeroStatBreakdownRowVo vo = new HeroStatBreakdownRowVo();
+        vo.setLabel(label);
+        vo.setBase(base);
+        vo.setEquipBonus(equipBonus);
+        vo.setPassiveFlat(passiveFlat);
+        if (pctMultiplier != null && pctMultiplier.compareTo(BigDecimal.ONE) != 0) {
+            vo.setPctMultiplier(pctMultiplier.setScale(4, RoundingMode.HALF_UP));
+        }
+        vo.setTotal(total);
+        return vo;
     }
 
     /** 普攻伤害 = 总攻击 × 伤害比例 */
@@ -167,6 +206,7 @@ public class HeroCombatService {
         private int unarmedActionValue;
         private int heroAttack;
         private int heroDefense;
+        private int heroMaxHp;
         private int equipAttack;
         private int equipDefense;
         private int equipBonusHp;
@@ -177,6 +217,12 @@ public class HeroCombatService {
         private int baseActionValue;
         private BigDecimal damageRatio;
         private BigDecimal passiveActionValueFactor = BigDecimal.ONE;
+        private int passiveFlatAttack;
+        private int passiveFlatDefense;
+        private int passiveFlatHp;
+        private BigDecimal attackPctMultiplier = BigDecimal.ONE;
+        private BigDecimal defensePctMultiplier = BigDecimal.ONE;
+        private BigDecimal hpPctMultiplier = BigDecimal.ONE;
 
         public boolean isEquipped() { return equipped; }
         public void setEquipped(boolean equipped) { this.equipped = equipped; }
@@ -198,6 +244,8 @@ public class HeroCombatService {
         public void setHeroAttack(int heroAttack) { this.heroAttack = heroAttack; }
         public int getHeroDefense() { return heroDefense; }
         public void setHeroDefense(int heroDefense) { this.heroDefense = heroDefense; }
+        public int getHeroMaxHp() { return heroMaxHp; }
+        public void setHeroMaxHp(int heroMaxHp) { this.heroMaxHp = heroMaxHp; }
         public int getEquipAttack() { return equipAttack; }
         public void setEquipAttack(int equipAttack) { this.equipAttack = equipAttack; }
         public int getEquipDefense() { return equipDefense; }
@@ -219,6 +267,24 @@ public class HeroCombatService {
         public BigDecimal getPassiveActionValueFactor() { return passiveActionValueFactor; }
         public void setPassiveActionValueFactor(BigDecimal passiveActionValueFactor) {
             this.passiveActionValueFactor = passiveActionValueFactor != null ? passiveActionValueFactor : BigDecimal.ONE;
+        }
+        public int getPassiveFlatAttack() { return passiveFlatAttack; }
+        public void setPassiveFlatAttack(int passiveFlatAttack) { this.passiveFlatAttack = passiveFlatAttack; }
+        public int getPassiveFlatDefense() { return passiveFlatDefense; }
+        public void setPassiveFlatDefense(int passiveFlatDefense) { this.passiveFlatDefense = passiveFlatDefense; }
+        public int getPassiveFlatHp() { return passiveFlatHp; }
+        public void setPassiveFlatHp(int passiveFlatHp) { this.passiveFlatHp = passiveFlatHp; }
+        public BigDecimal getAttackPctMultiplier() { return attackPctMultiplier; }
+        public void setAttackPctMultiplier(BigDecimal attackPctMultiplier) {
+            this.attackPctMultiplier = attackPctMultiplier != null ? attackPctMultiplier : BigDecimal.ONE;
+        }
+        public BigDecimal getDefensePctMultiplier() { return defensePctMultiplier; }
+        public void setDefensePctMultiplier(BigDecimal defensePctMultiplier) {
+            this.defensePctMultiplier = defensePctMultiplier != null ? defensePctMultiplier : BigDecimal.ONE;
+        }
+        public BigDecimal getHpPctMultiplier() { return hpPctMultiplier; }
+        public void setHpPctMultiplier(BigDecimal hpPctMultiplier) {
+            this.hpPctMultiplier = hpPctMultiplier != null ? hpPctMultiplier : BigDecimal.ONE;
         }
     }
 }

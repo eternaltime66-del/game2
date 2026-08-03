@@ -53,6 +53,8 @@ public class PveBattleService {
     private GameHeroEquipService gameHeroEquipService;
     @Resource
     private GamePrepService gamePrepService;
+    @Resource
+    private MonsterCombatService monsterCombatService;
 
     public BattleState startBattle(String uid, String stageId) {
         GameHero hero = gameHeroService.getOrInitHero(uid);
@@ -80,7 +82,7 @@ public class PveBattleService {
 
         spawnHero(state, hero);
         spawnWaveMonsters(state, waves.get(0), 1);
-        state.getLogs().add(BattleLog.of(BattleLog.TYPE_WAVE, "第 1 波开始"));
+        state.appendLog(BattleLog.of(BattleLog.TYPE_WAVE, "第 1 波开始"));
         saveState(uid, state);
         saveInitialSnapshot(uid, state.getBattleId(), state);
         scheduleFinalSimulation(uid, state.getBattleId(), state);
@@ -128,8 +130,15 @@ public class PveBattleService {
         if (!state.isRunning()) {
             return;
         }
-        BattleEngine.advanceUntilReady(state, (unit, gain) ->
-                triggerSlotEngineService.onActionValueTick(state, unit, gain));
+        List<BattleLog> tickLogs = new ArrayList<>();
+        BattleEngine.advanceUntilReady(state, (unit, gain) -> {
+            List<BattleLog> ticked = triggerSlotEngineService.onActionValueTick(state, unit, gain);
+            if (!ticked.isEmpty()) {
+                tickLogs.addAll(ticked);
+            }
+        });
+        state.appendLogs(tickLogs);
+
         BattleUnit actor = BattleEngine.pickReadyUnit(state);
         if (actor == null) {
             resolveEndState(state);
@@ -139,9 +148,19 @@ public class PveBattleService {
             return;
         }
         List<BattleLog> turnLogs = triggerSlotEngineService.onActionValueFull(state, actor);
-        state.getLogs().addAll(turnLogs);
+        if (turnLogs.isEmpty()) {
+            BattleLog fallback = BattleEngine.performAction(state, actor);
+            if (fallback != null) {
+                state.appendLog(fallback);
+                turnLogs = List.of(fallback);
+            }
+        } else {
+            state.appendLogs(turnLogs);
+        }
+        if (actor.isAlive()) {
+            BattleEngine.resetActionBar(actor);
+        }
         handleKillDrops(state, actor, turnLogs);
-        BattleEngine.resetActionBar(actor);
         resolveAfterAction(uid, state, grantLoot);
     }
 
@@ -171,7 +190,7 @@ public class PveBattleService {
             }
             mergeLoot(state, drops);
             for (BattleLootEntry drop : drops) {
-                state.getLogs().add(BattleLog.loot("获得 " + drop.getItemName() + " x" + drop.getQuantity()));
+                state.appendLog(BattleLog.loot("获得 " + drop.getItemName() + " x" + drop.getQuantity()));
             }
         }
     }
@@ -207,7 +226,7 @@ public class PveBattleService {
         }
         gameInventoryService.grantBattleLoot(uid, state.getLootAccumulated(), state.getBattleId());
         state.setLootGranted(true);
-        state.getLogs().add(BattleLog.of(BattleLog.TYPE_RESULT, "战利品已放入仓库"));
+        state.appendLog(BattleLog.of(BattleLog.TYPE_RESULT, "战利品已放入仓库"));
     }
 
     private void finishWin(String uid, BattleState state, boolean grantLoot) {
@@ -215,7 +234,7 @@ public class PveBattleService {
         if (grantLoot) {
             applyLootGrant(uid, state);
         }
-        state.getLogs().add(BattleLog.of(BattleLog.TYPE_RESULT, "怪物全灭，战斗胜利"));
+        state.appendLog(BattleLog.of(BattleLog.TYPE_RESULT, "怪物全灭，战斗胜利"));
     }
 
     private void simulateToEnd(String uid, BattleState state) {
@@ -335,7 +354,7 @@ public class PveBattleService {
 
         if (BattleEngine.heroDead(state)) {
             state.setStatus(BattleState.STATUS_LOSE);
-            state.getLogs().add(BattleLog.of(BattleLog.TYPE_RESULT, "主角阵亡，战斗失败"));
+            state.appendLog(BattleLog.of(BattleLog.TYPE_RESULT, "主角阵亡，战斗失败"));
             return;
         }
 
@@ -361,7 +380,7 @@ public class PveBattleService {
 
         state.setCurrentWave(nextWave);
         spawnWaveMonsters(state, waves.get(nextWave - 1), nextWave);
-        state.getLogs().add(BattleLog.of(BattleLog.TYPE_WAVE, "第 " + nextWave + " 波开始"));
+        state.appendLog(BattleLog.of(BattleLog.TYPE_WAVE, "第 " + nextWave + " 波开始"));
     }
 
     private void resolveEndState(BattleState state) {
@@ -381,7 +400,7 @@ public class PveBattleService {
         unit.setMaxHp(totalMaxHp);
         int startHp = hero.getHp() != null ? hero.getHp() : totalMaxHp;
         unit.setHp(Math.min(Math.max(startHp, 0), totalMaxHp));
-        unit.setAttack(gamePrepService.resolveBattleAttack(state.getUid()));
+        unit.setAttack(gamePrepService.resolveBattleTotalAttack(state.getUid()));
         unit.setDefense(gamePrepService.resolveBattleDefense(state.getUid()));
         unit.setActionValue(gamePrepService.resolveBattleActionValue(state.getUid()));
         unit.setAlive(true);
@@ -423,6 +442,7 @@ public class PveBattleService {
                 unit.setActionValue(wm.getActionValue());
                 unit.setAlive(true);
                 unit.initActionBar();
+                monsterCombatService.applyPassives(unit, wm.getMonsterId());
                 state.getUnits().add(unit);
             }
         }
@@ -507,5 +527,17 @@ public class PveBattleService {
         pendingFinals.remove(finalTaskKey(uid, battleId));
         Wx.RedisFactory.del(initialKey(uid, battleId));
         Wx.RedisFactory.del(finalKey(uid, battleId));
+    }
+
+    /** 后台清空用户战斗缓存（进行中的 PVE） */
+    public void clearUserBattleCache(String uid) {
+        if (uid == null || uid.isBlank()) {
+            return;
+        }
+        BattleState state = loadState(uid);
+        if (state != null && state.getBattleId() != null) {
+            cleanupFinalResources(uid, state.getBattleId());
+        }
+        Wx.RedisFactory.del(redisKey(uid));
     }
 }

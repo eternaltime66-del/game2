@@ -10,8 +10,9 @@
     </parent>
     <groupId>org.wx</groupId>
     <artifactId>000_Work_Demo</artifactId>
+    <version>2.0.0</version>
     <name>000_Work_Demo</name>
-    <description>000_Work_Demo</description>
+    <description>Game2 v2.0</description>
     <url/>
     <licenses>
         <license/>

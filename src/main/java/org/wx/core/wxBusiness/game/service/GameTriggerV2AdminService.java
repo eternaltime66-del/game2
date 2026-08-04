@@ -63,33 +63,29 @@ public class GameTriggerV2AdminService {
     public AdminFinishedSkillVo saveFinishedSkill(AdminFinishedSkillVo vo) {
         ErrorFactory.throwError(UNIVERSAL_BASIC_ATTACK_ID.equals(vo.getId()), "通用普攻为只读，不可修改");
         ErrorFactory.notNull(vo.getName(), "名称不能为空");
-        ErrorFactory.notNull(vo.getTargetType(), "目标槽不能为空");
-        SkillTargetType targetType = SkillTargetType.parse(vo.getTargetType());
-        ErrorFactory.notNull(targetType, "目标槽类型无效");
-        ErrorFactory.throwError(targetType.isLegacy(), "请使用新目标槽类型");
+        ErrorFactory.throwError(vo.getFormulas() == null || vo.getFormulas().isEmpty(), "请至少添加一条公式");
 
         String code = vo.getCode();
         if (code == null || code.isBlank()) {
             code = generateSkillCodeFromName(vo.getName());
         }
 
-        int hitFrequency = vo.getHitFrequency() != null ? vo.getHitFrequency() : 1;
-        ErrorFactory.throwError(hitFrequency < 1, "频率槽最小为1");
-
-        Integer maxCast = Boolean.TRUE.equals(vo.getMaxCastUnlimited()) ? null : vo.getMaxCastCount();
-        if (maxCast != null && maxCast <= 0) {
-            maxCast = null;
-        }
+        List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> formulas = normalizeFormulaGroups(vo.getFormulas());
+        org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo first = formulas.get(0);
+        SkillTargetType targetType = SkillTargetType.parse(first.getTargetType());
+        ErrorFactory.notNull(targetType, "公式目标槽不能为空");
+        ErrorFactory.throwError(targetType.isLegacy(), "请使用新目标槽类型");
 
         GameFinishedSkill skill = new GameFinishedSkill();
         skill.setId(vo.getId());
         skill.setCode(code.trim().toUpperCase());
         skill.setName(vo.getName().trim());
+        // 技能级保留首条公式快照（兼容旧展示 / DB 非空）
         skill.setTargetType(targetType.name());
-        skill.setTargetParam(vo.getTargetParam());
-        skill.setHitFrequency(hitFrequency);
-        skill.setMaxCastCount(maxCast);
-        skill.setFormulasJson(skillJsonHelper.writeFormulas(vo.getFormulas()));
+        skill.setTargetParam(first.getTargetParam());
+        skill.setHitFrequency(first.getHitFrequency() != null ? first.getHitFrequency() : 1);
+        skill.setMaxCastCount(first.getMaxCastCount());
+        skill.setFormulasJson(skillJsonHelper.writeFormulas(formulas));
         skill.setCatL1(normalizeCatL1(vo.getCatL1()));
         skill.setCatL2(normalizeCatL2(vo.getCatL2()));
         skill.setCatL3(normalizeCatL3(vo.getCatL3()));
@@ -111,7 +107,121 @@ public class GameTriggerV2AdminService {
         // 旧效果表清空，统一走公式组
         finishedSkillEffectMapper.delete(new LambdaQueryWrapper<GameFinishedSkillEffect>()
                 .eq(GameFinishedSkillEffect::getFinishedSkillId, skill.getId()));
+
+        if (isPersonActive(skill)) {
+            syncPersonActivePackage(skill, vo);
+        }
         return getFinishedSkillDetail(skill.getId());
+    }
+
+    private List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> normalizeFormulaGroups(
+            List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> raw) {
+        List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> list = new ArrayList<>();
+        for (org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo fg : raw) {
+            ErrorFactory.notNull(fg, "公式不能为空");
+            SkillTargetType targetType = SkillTargetType.parse(fg.getTargetType());
+            ErrorFactory.notNull(targetType, "每条公式必须配置目标槽");
+            ErrorFactory.throwError(targetType.isLegacy(), "请使用新目标槽类型");
+            int hitFrequency = fg.getHitFrequency() != null ? fg.getHitFrequency() : 1;
+            ErrorFactory.throwError(hitFrequency < 1, "频率槽最小为1");
+            Integer maxCast = fg.getMaxCastCount();
+            if (maxCast != null && maxCast <= 0) {
+                maxCast = null;
+            }
+            org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo copy =
+                    new org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo();
+            copy.setTargetType(targetType.name());
+            copy.setTargetParam(fg.getTargetParam());
+            copy.setHitFrequency(hitFrequency);
+            copy.setMaxCastCount(maxCast);
+            copy.setOutcome(fg.getOutcome());
+            copy.setTokens(fg.getTokens() != null ? fg.getTokens() : new ArrayList<>());
+            list.add(copy);
+        }
+        return list;
+    }
+
+    private boolean isPersonActive(GameFinishedSkill skill) {
+        return skill != null
+                && FinishedSkillCatL1.PERSON.name().equals(skill.getCatL1())
+                && FinishedSkillCatL4.ACTIVE.name().equals(skill.getCatL4());
+    }
+
+    /** 人物主动 = 技能物品(SKILL) + 扳机槽 + 实体技能 */
+    private void syncPersonActivePackage(GameFinishedSkill skill, AdminFinishedSkillVo vo) {
+        TriggerMode mode = TriggerMode.parse(vo.getTriggerMode());
+        if (mode == null) {
+            mode = TriggerMode.PRECISE;
+        }
+        TriggerQuickPreset quickPreset = TriggerQuickPreset.parse(vo.getQuickPreset());
+        if (mode == TriggerMode.QUICK) {
+            ErrorFactory.notNull(quickPreset, "请选择快捷扳机预设");
+        }
+
+        GameTriggerSlot existingSlot = findPersonActiveSlot(skill.getId());
+        String itemId = vo.getSkillItemId();
+        if ((itemId == null || itemId.isBlank()) && existingSlot != null) {
+            itemId = existingSlot.getItemId();
+        }
+        GameItem item = (itemId != null && !itemId.isBlank()) ? gameItemService.getById(itemId) : null;
+        if (item == null) {
+            item = new GameItem();
+            item.setId("item_sk_" + WordUnit.randomLowerAlpha(8));
+            item.setCode("SK_" + skill.getCode());
+            item.setName(skill.getName());
+            item.setIcon(null);
+            item.setWeight(BigDecimal.ZERO);
+            item.setItemTags(GameItemTag.SKILL.name());
+            item.setMaxStack(1);
+            item.setSort(0);
+            item.setEnabled(skill.getEnabled() != null ? skill.getEnabled() : 1);
+            item.setRemark("人物主动技能");
+            gameItemService.save(item);
+        } else {
+            item.setName(skill.getName());
+            item.setEnabled(skill.getEnabled() != null ? skill.getEnabled() : 1);
+            if (!GameItemTag.contains(item.getItemTags(), GameItemTag.SKILL)) {
+                item.setItemTags(GameItemTag.SKILL.name());
+            }
+            if (item.getCode() == null || item.getCode().isBlank()) {
+                item.setCode("SK_" + skill.getCode());
+            }
+            gameItemService.updateById(item);
+        }
+
+        AdminTriggerSlotVo slotVo = new AdminTriggerSlotVo();
+        slotVo.setId(vo.getTriggerSlotId() != null && !vo.getTriggerSlotId().isBlank()
+                ? vo.getTriggerSlotId()
+                : (existingSlot != null ? existingSlot.getId() : null));
+        slotVo.setItemId(item.getId());
+        slotVo.setSlotKind(TriggerSlotKind.TRAIT_ACTIVE.name());
+        slotVo.setTriggerMode(mode.name());
+        slotVo.setQuickPreset(mode == TriggerMode.QUICK && quickPreset != null ? quickPreset.name() : null);
+        slotVo.setConditionGroups(vo.getConditionGroups());
+        slotVo.setFinishedSkillId(skill.getId());
+        slotVo.setSort(existingSlot != null && existingSlot.getSort() != null ? existingSlot.getSort() : 0);
+        slotVo.setEnabled(skill.getEnabled() != null ? skill.getEnabled() : 1);
+        slotVo.setRemark(vo.getRemark());
+        saveTriggerSlot(slotVo);
+    }
+
+    private GameTriggerSlot findPersonActiveSlot(String finishedSkillId) {
+        if (finishedSkillId == null || finishedSkillId.isBlank()) {
+            return null;
+        }
+        List<GameTriggerSlot> slots = triggerSlotService.find()
+                .eq(GameTriggerSlot::getFinishedSkillId, finishedSkillId)
+                .list();
+        for (GameTriggerSlot slot : slots) {
+            if (slot.getItemId() == null || slot.getItemId().isBlank()) {
+                continue;
+            }
+            GameItem item = gameItemService.getById(slot.getItemId());
+            if (item != null && GameItemTag.contains(item.getItemTags(), GameItemTag.SKILL)) {
+                return slot;
+            }
+        }
+        return null;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -562,6 +672,7 @@ public class GameTriggerV2AdminService {
         vo.setMaxCastCount(skill.getMaxCastCount());
         vo.setMaxCastUnlimited(skill.getMaxCastCount() == null);
         vo.setFormulas(skillJsonHelper.readFormulas(skill.getFormulasJson()));
+        fillLegacyFormulaMeta(vo.getFormulas(), skill);
         vo.setReadonly(UNIVERSAL_BASIC_ATTACK_ID.equals(skill.getId()));
         vo.setCatL1(skill.getCatL1());
         vo.setCatL2(skill.getCatL2());
@@ -577,7 +688,40 @@ public class GameTriggerV2AdminService {
         vo.setEnabled(skill.getEnabled());
         vo.setRemark(skill.getRemark());
         vo.setEffects(new ArrayList<>());
+        if (isPersonActive(skill)) {
+            GameTriggerSlot slot = findPersonActiveSlot(skill.getId());
+            if (slot != null) {
+                vo.setSkillItemId(slot.getItemId());
+                vo.setTriggerSlotId(slot.getId());
+                vo.setTriggerMode(slot.getTriggerMode() != null ? slot.getTriggerMode() : TriggerMode.PRECISE.name());
+                vo.setQuickPreset(slot.getQuickPreset());
+                vo.setConditionGroups(skillJsonHelper.resolveSlotConditions(
+                        slot.getTriggerMode(), slot.getQuickPreset(), slot.getConditionsJson()));
+            } else {
+                vo.setTriggerMode(TriggerMode.PRECISE.name());
+                vo.setQuickPreset(TriggerQuickPreset.ON_CAST_SKILL.name());
+                vo.setConditionGroups(skillJsonHelper.defaultConditionGroups());
+            }
+        }
         return vo;
+    }
+
+    private void fillLegacyFormulaMeta(List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> formulas,
+                                       GameFinishedSkill skill) {
+        if (formulas == null || formulas.isEmpty() || skill == null) {
+            return;
+        }
+        boolean legacy = formulas.stream()
+                .allMatch(f -> f.getTargetType() == null || f.getTargetType().isBlank());
+        if (!legacy) {
+            return;
+        }
+        for (org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo fg : formulas) {
+            fg.setTargetType(skill.getTargetType());
+            fg.setTargetParam(skill.getTargetParam());
+            fg.setHitFrequency(skill.getHitFrequency() != null ? skill.getHitFrequency() : 1);
+            fg.setMaxCastCount(skill.getMaxCastCount());
+        }
     }
 
     private AdminCompleteSkillVo buildCompleteSkillVo(GameCompleteSkill entity) {

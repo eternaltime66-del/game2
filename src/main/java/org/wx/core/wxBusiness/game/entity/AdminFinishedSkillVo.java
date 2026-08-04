@@ -1,6 +1,7 @@
 package org.wx.core.wxBusiness.game.entity;
 
 import lombok.Data;
+import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo;
 
 import java.util.ArrayList;
@@ -57,4 +58,17 @@ public class AdminFinishedSkillVo {
 
     /** 是否只读（通用普攻） */
     private Boolean readonly;
+
+    /** 人物主动：关联技能物品（可进技能槽） */
+    private String skillItemId;
+
+    /** 人物主动：战斗扳机槽 ID */
+    private String triggerSlotId;
+
+    /** PRECISE / QUICK */
+    private String triggerMode;
+
+    private String quickPreset;
+
+    private List<SkillConditionGroupVo> conditionGroups = new ArrayList<>();
 }

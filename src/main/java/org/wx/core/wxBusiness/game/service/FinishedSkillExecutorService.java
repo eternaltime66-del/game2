@@ -48,6 +48,7 @@ public class FinishedSkillExecutorService {
 
         List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> formulas =
                 skillJsonHelper.readFormulas(skill.getFormulasJson());
+        migrateLegacyFormulaMeta(formulas, skill);
         List<GameFinishedSkillEffect> effects = formulas.isEmpty()
                 ? finishedSkillEffectService.listByFinishedSkillId(finishedSkillId)
                 : List.of();
@@ -55,25 +56,44 @@ public class FinishedSkillExecutorService {
             return Collections.emptyList();
         }
 
-        SkillTargetType targetType = SkillTargetType.parse(skill.getTargetType());
-        if (targetType == null) {
-            return Collections.emptyList();
-        }
-
         List<BattleLog> logs = new ArrayList<>();
-
-        List<TargetHit> hits = resolveTargetHits(state, caster, skill, targetType, ctx);
         boolean dealtDamage = false;
-        for (TargetHit hit : hits) {
-            if (!formulas.isEmpty()) {
-                for (org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo formula : formulas) {
+        BattleUnit firstDamageTarget = null;
+
+        if (!formulas.isEmpty()) {
+            for (int fi = 0; fi < formulas.size(); fi++) {
+                org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo formula = formulas.get(fi);
+                if (!tryConsumeFormulaCast(state, caster, finishedSkillId, fi, formula.getMaxCastCount())) {
+                    continue;
+                }
+                SkillTargetType targetType = SkillTargetType.parse(formula.getTargetType());
+                if (targetType == null) {
+                    targetType = SkillTargetType.parse(skill.getTargetType());
+                }
+                if (targetType == null) {
+                    continue;
+                }
+                List<TargetHit> hits = resolveTargetHits(state, caster, targetType, formula.getTargetParam(),
+                        formula.getHitFrequency(), ctx);
+                for (TargetHit hit : hits) {
                     List<BattleLog> effectLogs = applyFormula(state, caster, hit.target(), formula, skill, ctx, hit.repeatIndex());
                     logs.addAll(effectLogs);
                     if (SkillFormulaOutcome.DAMAGE.name().equals(formula.getOutcome())) {
                         dealtDamage = true;
+                        if (firstDamageTarget == null) {
+                            firstDamageTarget = hit.target();
+                        }
                     }
                 }
-            } else {
+            }
+        } else {
+            SkillTargetType targetType = SkillTargetType.parse(skill.getTargetType());
+            if (targetType == null) {
+                return Collections.emptyList();
+            }
+            List<TargetHit> hits = resolveTargetHits(state, caster, targetType, skill.getTargetParam(),
+                    skill.getHitFrequency(), ctx);
+            for (TargetHit hit : hits) {
                 for (GameFinishedSkillEffect effect : effects) {
                     List<BattleLog> effectLogs = applyEffect(state, caster, hit.target(), effect, skill, ctx, hit.repeatIndex());
                     logs.addAll(effectLogs);
@@ -81,6 +101,9 @@ public class FinishedSkillExecutorService {
                             || AdvancedEffectKind.FIXED_VALUE.name().equals(effect.getEffectKind())) {
                         if (EffectOutcomeType.DAMAGE.name().equals(effect.getOutcomeType())) {
                             dealtDamage = true;
+                            if (firstDamageTarget == null) {
+                                firstDamageTarget = hit.target();
+                            }
                         }
                     }
                 }
@@ -88,7 +111,7 @@ public class FinishedSkillExecutorService {
         }
 
         if (dealtDamage) {
-            TriggerEventContext attackCtx = copyCtx(ctx, caster, hits.isEmpty() ? null : hits.get(0).target());
+            TriggerEventContext attackCtx = copyCtx(ctx, caster, firstDamageTarget);
             logs.addAll(triggerSlotEngineService.fireInstant(state, TriggerSlotType.ON_ATTACK, caster, attackCtx));
         }
 
@@ -98,9 +121,52 @@ public class FinishedSkillExecutorService {
         return logs;
     }
 
-    private List<TargetHit> resolveTargetHits(BattleState state, BattleUnit caster, GameFinishedSkill skill,
-                                                SkillTargetType targetType, TriggerEventContext ctx) {
-        int frequency = skill.getHitFrequency() != null && skill.getHitFrequency() > 0 ? skill.getHitFrequency() : 1;
+    /** 旧数据：公式未带目标/频率时，回退到技能级字段 */
+    private void migrateLegacyFormulaMeta(List<org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo> formulas,
+                                          GameFinishedSkill skill) {
+        if (formulas == null || formulas.isEmpty() || skill == null) {
+            return;
+        }
+        boolean legacy = formulas.stream()
+                .allMatch(f -> f.getTargetType() == null || f.getTargetType().isBlank());
+        if (!legacy) {
+            return;
+        }
+        for (org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo fg : formulas) {
+            fg.setTargetType(skill.getTargetType());
+            fg.setTargetParam(skill.getTargetParam());
+            fg.setHitFrequency(skill.getHitFrequency() != null ? skill.getHitFrequency() : 1);
+            fg.setMaxCastCount(skill.getMaxCastCount());
+        }
+    }
+
+    private boolean tryConsumeFormulaCast(BattleState state, BattleUnit caster, String finishedSkillId,
+                                          int formulaIndex, Integer maxCastCount) {
+        if (maxCastCount == null || maxCastCount <= 0) {
+            return true;
+        }
+        if (state.getTriggerCounters() == null) {
+            state.setTriggerCounters(new BattleTriggerCounters());
+        }
+        BattleTriggerCounters counters = state.getTriggerCounters();
+        if (counters.getFormulaCastCount() == null) {
+            counters.setFormulaCastCount(new HashMap<>());
+        }
+        String key = finishedSkillId + "#" + formulaIndex;
+        Map<String, Integer> unitMap = counters.getFormulaCastCount()
+                .computeIfAbsent(caster.getUnitId(), k -> new HashMap<>());
+        int used = unitMap.getOrDefault(key, 0);
+        if (used >= maxCastCount) {
+            return false;
+        }
+        unitMap.put(key, used + 1);
+        return true;
+    }
+
+    private List<TargetHit> resolveTargetHits(BattleState state, BattleUnit caster,
+                                                SkillTargetType targetType, Integer targetParam,
+                                                Integer hitFrequency, TriggerEventContext ctx) {
+        int frequency = hitFrequency != null && hitFrequency > 0 ? hitFrequency : 1;
         List<BattleUnit> baseTargets = switch (targetType) {
             case SELF -> List.of(caster);
             case ALL_ALLIES -> listAllies(state, caster);
@@ -121,7 +187,7 @@ public class FinishedSkillExecutorService {
                 yield pickRandomEnemies(state, caster, 1);
             }
             case RANDOM_ONE_ENEMY -> pickRandomEnemies(state, caster, 1);
-            case RANDOM_ENEMIES -> pickRandomEnemies(state, caster, skill.getTargetParam() != null ? skill.getTargetParam() : 1);
+            case RANDOM_ENEMIES -> pickRandomEnemies(state, caster, targetParam != null ? targetParam : 1);
             case FRONT_ROW_RANDOM_ONE_ENEMY -> pickRandomEnemiesFromRow(state, caster, true, 1);
             case BACK_ROW_RANDOM_ONE_ENEMY -> pickRandomEnemiesFromRow(state, caster, false, 1);
             case RANDOM_ONE_ENEMY_REPEAT -> pickRandomEnemies(state, caster, 1);
@@ -129,7 +195,7 @@ public class FinishedSkillExecutorService {
             case BACK_ROW_ENEMIES -> listEnemiesInRow(state, caster, false);
         };
         if (targetType == SkillTargetType.RANDOM_ONE_ENEMY_REPEAT) {
-            frequency = skill.getTargetParam() != null && skill.getTargetParam() > 0 ? skill.getTargetParam() : frequency;
+            frequency = targetParam != null && targetParam > 0 ? targetParam : frequency;
         }
         List<TargetHit> hits = new ArrayList<>();
         for (BattleUnit target : baseTargets) {

@@ -5,6 +5,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
 import org.wx.core.wxBusiness.game.entity.enums.HeroEquipSlot;
 import org.wx.core.wxBusiness.game.mapper.GameRecipeMaterialMapper;
 
@@ -48,18 +49,43 @@ public class GameReferenceCleanupService {
     @Resource
     private GameStageDropService stageDropService;
 
-    /** 删除成品技能前：扳机槽 / 完整技能组中引用该技能的绑定 */
+    /** 删除成品技能前：扳机槽 / 完整技能组中引用该技能的绑定；人物主动顺带清理技能物品 */
     @Transactional(rollbackFor = Exception.class)
     public void removeFinishedSkillBindings(String finishedSkillId) {
         if (finishedSkillId == null || finishedSkillId.isBlank()) {
             return;
         }
+        List<GameTriggerSlot> linkedSlots = triggerSlotService.find()
+                .eq(GameTriggerSlot::getFinishedSkillId, finishedSkillId)
+                .list();
+        Set<String> skillItemIds = new HashSet<>();
+        for (GameTriggerSlot slot : linkedSlots) {
+            if (slot.getItemId() == null || slot.getItemId().isBlank()) {
+                continue;
+            }
+            GameItem item = itemService.getById(slot.getItemId());
+            if (item != null && GameItemTag.contains(item.getItemTags(), GameItemTag.SKILL)) {
+                skillItemIds.add(item.getId());
+            }
+        }
+
         triggerSlotService.remove(new LambdaQueryWrapper<GameTriggerSlot>()
                 .eq(GameTriggerSlot::getFinishedSkillId, finishedSkillId)
                 .or(w -> w.eq(GameTriggerSlot::getTriggerRefId, finishedSkillId)));
         completeSkillService.remove(new LambdaQueryWrapper<GameCompleteSkill>()
                 .eq(GameCompleteSkill::getFinishedSkillId, finishedSkillId)
                 .or(w -> w.eq(GameCompleteSkill::getTriggerRefId, finishedSkillId)));
+
+        for (String itemId : skillItemIds) {
+            long remain = triggerSlotService.find()
+                    .eq(GameTriggerSlot::getItemId, itemId)
+                    .count();
+            if (remain > 0) {
+                continue;
+            }
+            removeItemBindings(itemId);
+            itemService.removeById(itemId);
+        }
     }
 
     /** 删除物品前：绑定关系 + 玩家仓库/背包/装备槽 + 掉落/职业技能引用 */

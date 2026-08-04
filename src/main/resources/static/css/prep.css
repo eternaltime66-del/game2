@@ -129,10 +129,10 @@
 }
 
 .prep-hero-card {
-  padding: 8px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   height: 100%;
   min-height: 0;
 }
@@ -140,28 +140,30 @@
 .prep-equip-body {
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .prep-skill-side {
-  width: 48px;
+  width: 42px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   align-self: stretch;
 }
 
 .prep-skill-slot {
-  width: 48px;
-  min-height: 48px;
+  width: 42px;
+  min-height: 42px;
 }
 
 .prep-skill-slot-img {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
 }
 
 .prep-skill-side .prep-equip-slot-name {
@@ -174,12 +176,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  justify-content: center;
+  gap: 4px;
 }
 
 .prep-equip-panel-top .prep-equip-row {
   width: 100%;
-  max-width: 220px;
+  max-width: 200px;
   margin: 0 auto;
 }
 
@@ -188,7 +191,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-top: auto;
+  margin-top: 0;
+  padding-top: 2px;
 }
 
 .prep-hero-name-inline {
@@ -227,7 +231,7 @@
 
 .prep-equip-row {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   justify-content: center;
   align-items: stretch;
 }
@@ -241,28 +245,28 @@
 }
 
 .prep-equip-slot {
-  width: 48px;
-  min-height: 48px;
-  border-radius: 10px;
+  width: 42px;
+  min-height: 42px;
+  border-radius: 9px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 2px;
+  gap: 1px;
+  padding: 3px 2px;
   cursor: pointer;
   position: relative;
 }
 
 .prep-equip-slot-sm {
-  width: 46px;
-  min-height: 48px;
+  width: 40px;
+  min-height: 42px;
 }
 
 .prep-equip-slot-badge {
-  width: 72px;
+  width: 64px;
 }
 
 .prep-equip-slot.filled {
@@ -283,8 +287,8 @@
 }
 
 .prep-equip-slot-img {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 }
 
@@ -302,9 +306,9 @@
 }
 
 .prep-basic-attack-slot {
-  width: 48px;
-  min-height: 48px;
-  border-radius: 12px;
+  width: 42px;
+  min-height: 42px;
+  border-radius: 10px;
   background: rgba(255, 180, 80, 0.12);
   border: 1px solid rgba(255, 180, 80, 0.35);
   flex-shrink: 0;
@@ -312,8 +316,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 2px;
+  gap: 1px;
+  padding: 3px 2px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -328,7 +332,7 @@
 }
 
 .prep-basic-attack-icon {
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
 }
 
@@ -344,14 +348,14 @@
 .prep-character-skill-slots {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
 .prep-weapon-skill-slot {
-  width: 48px;
-  min-height: 48px;
-  border-radius: 12px;
+  width: 42px;
+  min-height: 42px;
+  border-radius: 10px;
   background: rgba(124, 92, 255, 0.12);
   border: 1px solid rgba(124, 92, 255, 0.35);
   flex-shrink: 0;
@@ -359,8 +363,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 2px;
+  gap: 1px;
+  padding: 3px 2px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -375,7 +379,7 @@
 }
 
 .prep-weapon-skill-icon {
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
   color: #d0bfff;
 }
@@ -413,9 +417,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 6px 2px;
-  border-radius: 10px;
+  gap: 2px;
+  padding: 5px 2px 4px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   min-width: 0;
@@ -429,10 +433,10 @@
 }
 
 .prep-stat-chip-value {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #ffd43b;
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
 }
 

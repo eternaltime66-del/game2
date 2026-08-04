@@ -30,4 +30,7 @@ public class BattleTriggerCounters {
 
     /** 装备扳机槽已触发次数 unitId -> triggerSlotId -> count */
     private Map<String, Map<String, Integer>> triggerSlotCastCount = new HashMap<>();
+
+    /** 公式发动次数 unitId -> "finishedSkillId#formulaIndex" -> count */
+    private Map<String, Map<String, Integer>> formulaCastCount = new HashMap<>();
 }

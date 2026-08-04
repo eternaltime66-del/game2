@@ -747,12 +747,13 @@
             <tr><th style="width:140px">ID</th><td>{{ basicAttackDetail.id }}</td></tr>
             <tr><th>编码</th><td>{{ basicAttackDetail.code }}</td></tr>
             <tr><th>名称</th><td>{{ basicAttackDetail.name }}</td></tr>
-            <tr><th>目标槽</th><td>{{ basicAttackDetail.targetTypeLabel || basicAttackDetail.targetType }}</td></tr>
-            <tr><th>频率槽</th><td>{{ basicAttackDetail.hitFrequency || 1 }}</td></tr>
-            <tr><th>全场发动上限</th><td>{{ basicAttackDetail.maxCastUnlimited || basicAttackDetail.maxCastCount == null ? '无限' : basicAttackDetail.maxCastCount }}</td></tr>
             <tr><th>公式组</th><td>
               <div v-for="(f, i) in (basicAttackDetail.formulas || [])" :key="i" class="muted">
-                {{ i + 1 }}. {{ formulaOutcomeLabel(f.outcome) }} · {{ formulaTokensText(f.tokens) }}
+                {{ i + 1 }}. {{ formulaOutcomeLabel(f.outcome) }}
+                · 目标 {{ f.targetType || basicAttackDetail.targetType || '—' }}
+                · 频率 {{ f.hitFrequency || 1 }}
+                · 次数 {{ f.maxCastCount == null ? '无限' : f.maxCastCount }}
+                · {{ formulaTokensText(f.tokens) }}
               </div>
               <span v-if="!(basicAttackDetail.formulas || []).length">—</span>
             </td></tr>
@@ -860,7 +861,7 @@
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
           <h3>{{ personSkillPanelTitle }}</h3>
-          <p class="panel-page-remark">人物技能也是特殊物品（可进技能槽）。分类：人物 → 角色/职业/通用。列表区分主动 / 被动。</p>
+          <p class="panel-page-remark">人物主动 = 技能物品 + 战斗扳机 + 实体技能；被动仍为被动配置。分类：人物 → 角色/职业/通用。</p>
         </div>
         <div class="panel-toolbar-actions">
           <button class="btn-primary btn-mini" :disabled="!personOwnerReady" @click="openPersonSkillCreate('ACTIVE')">+ 主动</button>
@@ -908,7 +909,7 @@
         </div>
         <div class="table-wrap">
           <table class="admin-table">
-            <thead><tr><th>类型</th><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>启用</th><th>操作</th></tr></thead>
+            <thead><tr><th>类型</th><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>扳机</th><th>启用</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="r in filteredPersonSkillRows" :key="r.rowKey">
                 <td>{{ r.skillTypeLabel }}</td>
@@ -916,13 +917,14 @@
                 <td>{{ r.code }}</td>
                 <td>{{ r.name }}</td>
                 <td>{{ r.categoryText }}</td>
+                <td>{{ r.triggerText || '-' }}</td>
                 <td>{{ r.enabled ? '是' : '否' }}</td>
                 <td class="col-actions">
                   <button class="btn-mini" @click="editPersonSkillRow(r)">编辑</button>
                   <button class="btn-mini danger" @click="removePersonSkillRow(r)">删除</button>
                 </td>
               </tr>
-              <tr v-if="!filteredPersonSkillRows.length"><td colspan="7" class="empty-hint">暂无技能</td></tr>
+              <tr v-if="!filteredPersonSkillRows.length"><td colspan="8" class="empty-hint">暂无技能</td></tr>
             </tbody>
           </table>
         </div>
@@ -1130,7 +1132,7 @@
           </div>
 
           <div v-show="equipDrawerTab === 'basicAttack' && (drawerType === 'weapon' || drawerType === 'monster')">
-            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定普攻槽：能量值满时释放；留空使用全局默认普攻' : '武器固定普攻槽：能量值满时释放；技能用公式组配置目标与伤害' }}</div>
+            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定普攻槽：能量值满时释放；留空使用全局默认普攻' : '武器固定普攻槽：能量值满时释放；底部「保存」会同步普攻槽与自定义技能' }}</div>
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置普攻</p>
             <template v-else>
               <div class="trigger-inline-row">
@@ -1151,7 +1153,7 @@
           </div>
 
           <div v-show="equipDrawerTab === 'ultimate' && (drawerType === 'weapon' || drawerType === 'monster')">
-            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定大招槽：有且仅有一个，留空表示无大招' : '武器固定大招槽：有且仅有一个，扳机与技能配置同特性主动' }}</div>
+            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定大招槽：有且仅有一个，留空表示无大招' : '武器固定大招槽：有且仅有一个；底部「保存」会同步大招槽与自定义技能' }}</div>
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置大招</p>
             <template v-else>
               <div class="trigger-inline-row">
@@ -1403,27 +1405,6 @@
           <div class="field full"><label>ID</label><input v-model="finishedSkillForm.id" placeholder="留空自动生成"></div>
           <div class="field"><label>编码</label><input v-model="finishedSkillForm.code"></div>
           <div class="field"><label>名称</label><input v-model="finishedSkillForm.name"></div>
-          <div class="field"><label>目标槽</label>
-            <admin-select v-model="finishedSkillForm.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
-          </div>
-          <div class="field"><label>频率槽</label><input v-model.number="finishedSkillForm.hitFrequency" type="number" min="1" placeholder="最小1"></div>
-          <div class="field full"><label>全场发动上限</label>
-            <div class="cast-limit-row">
-              <label class="admin-switch">
-                <input type="checkbox" v-model="finishedSkillForm.maxCastLimited">
-                <span class="admin-switch-slider"></span>
-                <span class="admin-switch-text">{{ finishedSkillForm.maxCastLimited ? '限制次数' : '无限' }}</span>
-              </label>
-              <input
-                v-if="finishedSkillForm.maxCastLimited"
-                v-model.number="finishedSkillForm.maxCastCount"
-                type="number"
-                min="1"
-                placeholder="次数"
-                class="cast-limit-input"
-              >
-            </div>
-          </div>
           <div class="field"><label>分类1</label><span class="field-value">{{ finishedSkillForm.catL1 === 'PERSON' ? '人物' : '装备' }}</span></div>
           <div class="field" v-if="finishedSkillForm.catL1 !== 'PERSON' && tab !== 'equipCustomSkill' && !finishedSkillForm.id"><label>装备类型</label>
             <admin-select v-model="finishedSkillForm.catL2" :options="equipCatL2Options" value-key="code" label-key="label" :disabled="tab === 'equipGeneralSkill'" />
@@ -1437,13 +1418,36 @@
           <div class="field full"><label>备注</label><input v-model="finishedSkillForm.remark"></div>
           <div class="field full">
             <div class="panel-toolbar" style="margin:0">
-              <span>公式组</span>
+              <span>公式组（每条独立配置目标 / 频率 / 发动次数）</span>
               <button type="button" class="btn-mini" @click="addFormulaGroup">+ 公式</button>
             </div>
             <div class="effect-block formula-editor" v-for="(fg, idx) in finishedSkillForm.formulas" :key="'fg'+idx">
               <div class="effect-block-head">
                 <span>公式 {{ idx + 1 }}</span>
                 <button type="button" class="btn-mini danger" @click="removeFormulaGroup(idx)">删</button>
+              </div>
+              <div class="form-grid" style="margin-bottom:8px">
+                <div class="field"><label>目标槽</label>
+                  <admin-select v-model="fg.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
+                </div>
+                <div class="field"><label>频率槽</label><input v-model.number="fg.hitFrequency" type="number" min="1" placeholder="最小1"></div>
+                <div class="field full"><label>发动次数</label>
+                  <div class="cast-limit-row">
+                    <label class="admin-switch">
+                      <input type="checkbox" v-model="fg.maxCastLimited">
+                      <span class="admin-switch-slider"></span>
+                      <span class="admin-switch-text">{{ fg.maxCastLimited ? '限制次数' : '无限' }}</span>
+                    </label>
+                    <input
+                      v-if="fg.maxCastLimited"
+                      v-model.number="fg.maxCastCount"
+                      type="number"
+                      min="1"
+                      placeholder="次数"
+                      class="cast-limit-input"
+                    >
+                  </div>
+                </div>
               </div>
               <div class="formula-outcome-row">
                 <span class="formula-sub-label">结果类型</span>
@@ -1509,6 +1513,72 @@
             </div>
             <p v-if="!(finishedSkillForm.formulas || []).length" class="muted" style="margin-top:8px">请添加至少一条公式</p>
           </div>
+
+          <template v-if="finishedSkillForm.catL1 === 'PERSON' && finishedSkillForm.catL4 === 'ACTIVE'">
+            <div class="field full">
+              <div class="panel-toolbar" style="margin:0">
+                <span>战斗扳机（装备到技能槽后按此条件触发）</span>
+              </div>
+              <p class="muted" style="margin:6px 0 0" v-if="finishedSkillForm.skillItemId">技能物品：{{ finishedSkillForm.skillItemId }}</p>
+            </div>
+            <div class="field"><label>扳机模式</label>
+              <admin-select v-model="finishedSkillForm.triggerMode" :options="meta.triggerModes" value-key="code" label-key="label" />
+            </div>
+            <div class="field" v-if="finishedSkillForm.triggerMode === 'QUICK'"><label>快捷预设</label>
+              <admin-select v-model="finishedSkillForm.quickPreset" :options="meta.quickPresets" value-key="code" label-key="label" />
+            </div>
+            <div class="field full" v-if="finishedSkillForm.triggerMode !== 'QUICK'">
+              <div class="panel-toolbar" style="margin:0">
+                <span>条件组（组内且，组间或）</span>
+                <button type="button" class="btn-mini" @click="addConditionGroup(finishedSkillForm)">+ 条件组</button>
+              </div>
+              <div class="effect-block" v-for="(g, gi) in finishedSkillForm.conditionGroups" :key="'pfg'+gi">
+                <div class="effect-block-head">
+                  <span>条件组 {{ gi + 1 }}</span>
+                  <button type="button" class="btn-mini danger" @click="removeConditionGroup(finishedSkillForm, gi)">删组</button>
+                </div>
+                <div class="form-grid" v-for="(it, ii) in g.items" :key="'pfi'+ii">
+                  <div class="field"><label>左</label>
+                    <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
+                  </div>
+                  <template v-if="it.leftKind === 'READ'">
+                    <div class="field"><label>左·读取</label>
+                      <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
+                    </div>
+                    <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
+                      <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
+                    </div>
+                    <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
+                      <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                    </div>
+                  </template>
+                  <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
+                  <div class="field"><label>判定</label>
+                    <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
+                  </div>
+                  <div class="field"><label>右</label>
+                    <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
+                  </div>
+                  <template v-if="it.rightKind === 'READ'">
+                    <div class="field"><label>右·读取</label>
+                      <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
+                    </div>
+                    <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
+                      <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
+                    </div>
+                    <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
+                      <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                    </div>
+                  </template>
+                  <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
+                  <div class="field full" style="display:flex;gap:8px">
+                    <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
+                    <button type="button" class="btn-mini danger" @click="removeConditionItem(g, ii)">删条件</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
 
         <div v-if="drawerType === 'passiveSkill'" class="form-grid">
@@ -1917,13 +1987,10 @@
           <div><span class="skill-detail-label">启用</span>{{ skillDetailModal.data.enabled ? '是' : '否' }}</div>
           <div class="full"><span class="skill-detail-label">备注</span>{{ skillDetailModal.data.remark || '—' }}</div>
         </div>
-        <div class="skill-detail-grid" style="margin-top:8px">
-          <div><span class="skill-detail-label">频率</span>{{ skillDetailModal.data.hitFrequency || 1 }}</div>
-          <div><span class="skill-detail-label">全场上限</span>{{ skillDetailModal.data.maxCastUnlimited || skillDetailModal.data.maxCastCount == null ? '无限' : skillDetailModal.data.maxCastCount }}</div>
-        </div>
         <div class="drawer-section-title">公式组</div>
         <div class="effect-block" v-for="(fg, idx) in (skillDetailModal.data.formulas || [])" :key="idx">
           <div class="effect-block-head"><span>公式 {{ idx + 1 }}</span><span>{{ formulaOutcomeLabel(fg.outcome) }}</span></div>
+          <div class="muted">目标 {{ fg.targetType || skillDetailModal.data.targetType || '—' }} · 频率 {{ fg.hitFrequency || 1 }} · 次数 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
           <div class="muted">{{ formulaTokensText(fg.tokens) || '（空）' }}</div>
         </div>
         <div v-if="!(skillDetailModal.data.formulas || []).length" class="empty-hint">无公式</div>
@@ -1943,27 +2010,6 @@
     <div class="level-tree-compact">自定义扳机技能 · {{ categoryText }} · 名称已按四级分类自动生成</div>
     <div class="form-grid">
       <div class="field full"><label>名称</label><input v-model="draft.name" placeholder="装备 - 武器 - 大剑 - 普攻"></div>
-      <div class="field"><label>目标槽</label>
-        <admin-select v-model="draft.targetType" :options="meta.targetTypes" value-key="code" label-key="label" />
-      </div>
-      <div class="field"><label>频率槽</label><input v-model.number="draft.hitFrequency" type="number" min="1" placeholder="最小1"></div>
-      <div class="field full"><label>全场发动上限</label>
-        <div class="cast-limit-row">
-          <label class="admin-switch">
-            <input type="checkbox" v-model="draft.maxCastLimited">
-            <span class="admin-switch-slider"></span>
-            <span class="admin-switch-text">{{ draft.maxCastLimited ? '限制次数' : '无限' }}</span>
-          </label>
-          <input
-            v-if="draft.maxCastLimited"
-            v-model.number="draft.maxCastCount"
-            type="number"
-            min="1"
-            placeholder="次数"
-            class="cast-limit-input"
-          >
-        </div>
-      </div>
       <div class="field"><label>启用</label>
         <admin-select v-model="draft.enabled" :options="yesNoOptions" />
       </div>
@@ -1971,13 +2017,36 @@
     </div>
     <div class="field full">
       <div class="panel-toolbar" style="margin:0">
-        <span>公式组</span>
+        <span>公式组（每条独立配置目标 / 频率 / 发动次数）</span>
         <button type="button" class="btn-mini" @click="addFormula">+ 公式</button>
       </div>
       <div class="effect-block formula-editor" v-for="(fg, idx) in draft.formulas" :key="'cfg'+idx">
         <div class="effect-block-head">
           <span>公式 {{ idx + 1 }}</span>
           <button type="button" class="btn-mini danger" @click="removeFormula(idx)">删</button>
+        </div>
+        <div class="form-grid" style="margin-bottom:8px">
+          <div class="field"><label>目标槽</label>
+            <admin-select v-model="fg.targetType" :options="meta.targetTypes" value-key="code" label-key="label" />
+          </div>
+          <div class="field"><label>频率槽</label><input v-model.number="fg.hitFrequency" type="number" min="1" placeholder="最小1"></div>
+          <div class="field full"><label>发动次数</label>
+            <div class="cast-limit-row">
+              <label class="admin-switch">
+                <input type="checkbox" v-model="fg.maxCastLimited">
+                <span class="admin-switch-slider"></span>
+                <span class="admin-switch-text">{{ fg.maxCastLimited ? '限制次数' : '无限' }}</span>
+              </label>
+              <input
+                v-if="fg.maxCastLimited"
+                v-model.number="fg.maxCastCount"
+                type="number"
+                min="1"
+                placeholder="次数"
+                class="cast-limit-input"
+              >
+            </div>
+          </div>
         </div>
         <div class="formula-outcome-row">
           <span class="formula-sub-label">结果类型</span>
@@ -2043,7 +2112,8 @@
       </div>
       <p v-if="!(draft.formulas || []).length" class="muted" style="margin-top:8px">请添加至少一条公式</p>
     </div>
-    <div style="margin-top:8px">
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button type="button" class="btn-primary btn-mini" @click="$emit('save')">保存技能</button>
       <button type="button" class="btn-mini secondary" @click="$emit('cancel')">取消</button>
     </div>
   </div>
@@ -2056,6 +2126,7 @@
       :category-text="categoryText"
       :meta="meta"
       :yes-no-options="yesNoOptions"
+      @save="saveCustom"
       @cancel="cancelCustom" />
     <div v-else class="skill-picker-display" :class="{ empty: !skillId }">
       <div class="skill-picker-display-body">
@@ -2090,7 +2161,7 @@ const SkillCustomInline = {
     meta: { type: Object, default: function () { return {}; } },
     yesNoOptions: { type: Array, default: function () { return []; } }
   },
-  emits: ['cancel'],
+  emits: ['cancel', 'save'],
   computed: {
     formulaOutcomeOptions: function () {
       var list = (this.meta && this.meta.formulaOutcomes) || [];
@@ -2111,20 +2182,50 @@ const SkillCustomInline = {
     }
   },
   created: function () {
-    if (!this.draft.formulas) this.draft.formulas = [];
-    if (this.draft.maxCastLimited == null) {
-      this.draft.maxCastLimited = this.draft.maxCastCount != null;
+    this.hydrateFormulas();
+  },
+  watch: {
+    draft: {
+      deep: false,
+      handler: function () { this.hydrateFormulas(); }
     }
-    if (this.draft.hitFrequency == null) this.draft.hitFrequency = 1;
-    (this.draft.formulas || []).forEach(function (fg) {
-      if (!fg._paramMode) fg._paramMode = 'CONST';
-    });
   },
   methods: {
+    hydrateFormulas: function () {
+      if (!this.draft) return;
+      if (!this.draft.formulas) this.draft.formulas = [];
+      if (!this.draft.formulas.length) {
+        this.draft.formulas.push({
+          outcome: 'DAMAGE',
+          targetType: this.draft.targetType || 'FIRST_TARGET',
+          hitFrequency: this.draft.hitFrequency != null ? this.draft.hitFrequency : 1,
+          maxCastCount: this.draft.maxCastCount != null ? this.draft.maxCastCount : null,
+          maxCastLimited: this.draft.maxCastCount != null,
+          tokens: [],
+          _paramMode: 'CONST',
+          _readDraft: '',
+          _constDraft: null
+        });
+      }
+      (this.draft.formulas || []).forEach(function (fg) {
+        if (!fg._paramMode) fg._paramMode = 'CONST';
+        if (!fg.targetType) fg.targetType = 'FIRST_TARGET';
+        if (fg.hitFrequency == null) fg.hitFrequency = 1;
+        if (fg.maxCastLimited == null) fg.maxCastLimited = fg.maxCastCount != null;
+      });
+    },
     addFormula: function () {
       if (!this.draft.formulas) this.draft.formulas = [];
       this.draft.formulas.push({
-        outcome: 'DAMAGE', tokens: [], _paramMode: 'CONST', _readDraft: '', _constDraft: null
+        outcome: 'DAMAGE',
+        targetType: 'FIRST_TARGET',
+        hitFrequency: 1,
+        maxCastLimited: false,
+        maxCastCount: null,
+        tokens: [],
+        _paramMode: 'CONST',
+        _readDraft: '',
+        _constDraft: null
       });
     },
     removeFormula: function (idx) {
@@ -2257,6 +2358,7 @@ const SkillPickerPanel = {
     detail: function () { this.panel.viewBoundSkillDetail(this.pickerKey); },
     edit: function () { this.panel.editBoundSkill(this.pickerKey); },
     remove: function () { this.panel.removeBoundSkill(this.pickerKey); },
+    saveCustom: function () { this.panel.saveCustomSkillFromPicker(this.pickerKey); },
     cancelCustom: function () { this.panel.cancelCustomSkill(this.pickerKey); }
   }
 };
@@ -2451,7 +2553,7 @@ createApp({
       weaponUltimateForm: { id: '', itemId: '', triggerMode: 'PRECISE', quickPreset: 'ON_HIT_BY_SKILL', conditionGroups: [], finishedSkillId: '', enabled: 1, remark: '' },
       armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
-      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: 1, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [] },
+      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: 1, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [], skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL', conditionGroups: [] },
       passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditions: [{ type: 'NONE' }], effects: [], sort: 0, enabled: 1, remark: '' },
       professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
       professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
@@ -3550,6 +3652,7 @@ createApp({
       });
     },
     startCustomSkill(pickerKey) {
+      this.ensureSkillMetaLoaded();
       this.onFinishedSkillPickerUpdate(pickerKey, '__CUSTOM__');
     },
     viewBoundSkillDetail(pickerKey) {
@@ -3576,6 +3679,7 @@ createApp({
       var self = this;
       var id = this.getSkillFormField(pickerKey);
       if (!id) return;
+      this.ensureSkillMetaLoaded();
       AdminApi.finishedSkillDetail(id)
         .then(function (res) {
           var data = self.prepareFinishedSkillDraft(res.data || {});
@@ -3587,6 +3691,108 @@ createApp({
           };
         })
         .catch(function (err) { self.showToast(err.message); });
+    },
+    /** 武器/装备抽屉内：保存自定义技能（公式含目标/频率/次数），并同步绑定槽 */
+    saveCustomSkillFromPicker(pickerKey) {
+      var self = this;
+      this.ensureSkillPickerSaved(pickerKey)
+        .then(function (skillId) {
+          if (!skillId) {
+            self.showToast('技能保存失败');
+            return null;
+          }
+          if (pickerKey === 'basicAttack' && self.currentItemIdForTriggers) {
+            return self.persistWeaponBasicAttackSlot(skillId, { toast: '技能与普攻槽已同步' });
+          }
+          if (pickerKey === 'ultimate' && self.currentItemIdForTriggers) {
+            return self.persistWeaponUltimateSlot(skillId, { toast: '技能与大招槽已同步' });
+          }
+          if (pickerKey === 'traitActive' && self.showTriggerInlineForm) {
+            self.triggerInlineForm.finishedSkillId = skillId;
+          }
+          self.showToast('技能已保存', 'success');
+          return null;
+        })
+        .catch(function (err) { self.showToast(err.message || String(err)); });
+    },
+    persistWeaponBasicAttackSlot(skillId, opts) {
+      var self = this;
+      var options = opts || {};
+      var form = this.weaponBasicAttackForm;
+      form.finishedSkillId = skillId || form.finishedSkillId;
+      var payload = this.slotOwnerPayload({
+        id: form.id || '',
+        slotKind: 'BASIC_ATTACK',
+        triggerMode: 'QUICK',
+        quickPreset: 'ACTION_VALUE_FULL',
+        finishedSkillId: form.finishedSkillId,
+        enabled: form.enabled != null ? form.enabled : 1,
+        remark: form.remark || '',
+        sort: 0
+      });
+      return AdminApi.saveTriggerSlot(payload).then(function (res) {
+        if (res.data) self.weaponBasicAttackForm = self.applyWeaponBasicAttackForm(res.data);
+        if (!options.quiet) {
+          self.showToast(options.toast || '普攻已保存', 'success');
+          self.loadItemTriggers(self.currentItemIdForTriggers);
+        }
+        return res;
+      });
+    },
+    persistWeaponUltimateSlot(skillId, opts) {
+      var self = this;
+      var options = opts || {};
+      var form = this.weaponUltimateForm;
+      form.finishedSkillId = skillId || form.finishedSkillId;
+      if (form.triggerMode === 'QUICK' && !form.quickPreset) {
+        return Promise.reject(new Error('请选择快捷预设'));
+      }
+      var payload = this.slotOwnerPayload({
+        id: form.id || '',
+        slotKind: 'ULTIMATE',
+        triggerMode: form.triggerMode || 'PRECISE',
+        quickPreset: form.triggerMode === 'QUICK' ? form.quickPreset : null,
+        conditionGroups: form.triggerMode === 'QUICK' ? null : self.normalizeConditionGroups(form.conditionGroups),
+        finishedSkillId: form.finishedSkillId,
+        enabled: form.enabled != null ? form.enabled : 1,
+        remark: form.remark || '',
+        sort: 0
+      });
+      return AdminApi.saveTriggerSlot(payload).then(function (res) {
+        if (res.data) self.weaponUltimateForm = self.applyWeaponUltimateForm(res.data);
+        if (!options.quiet) {
+          self.showToast(options.toast || '大招已保存', 'success');
+          self.loadItemTriggers(self.currentItemIdForTriggers);
+        }
+        return res;
+      });
+    },
+    /** 抽屉底部保存时：一并落库普攻/大招槽（含未提交的自定义技能） */
+    syncWeaponCombatSlots(quiet) {
+      var self = this;
+      if (!this.currentItemIdForTriggers) return Promise.resolve();
+      if (!(this.drawerType === 'weapon' || this.drawerType === 'monster')) return Promise.resolve();
+      var opts = quiet ? { quiet: true } : {};
+      return this.ensureSkillPickersSaved(['basicAttack', 'ultimate'])
+        .then(function () {
+          var chain = Promise.resolve();
+          var baId = self.weaponBasicAttackForm.finishedSkillId;
+          if (baId) {
+            chain = chain.then(function () {
+              return self.persistWeaponBasicAttackSlot(baId, opts);
+            });
+          }
+          var ultId = self.weaponUltimateForm.finishedSkillId;
+          if (ultId) {
+            chain = chain.then(function () {
+              return self.persistWeaponUltimateSlot(ultId, opts);
+            });
+          }
+          return chain;
+        })
+        .then(function () {
+          if (quiet) self.loadItemTriggers(self.currentItemIdForTriggers);
+        });
     },
     removeBoundSkill(pickerKey) {
       if (!confirm('移除当前技能？移除后可重新筛选或自定义添加')) return;
@@ -3683,6 +3889,11 @@ createApp({
       }
       if (!draft.formulas || !draft.formulas.length) {
         return Promise.reject(new Error('自定义技能至少添加一条公式'));
+      }
+      for (var i = 0; i < draft.formulas.length; i++) {
+        if (!draft.formulas[i].targetType) {
+          return Promise.reject(new Error('公式 ' + (i + 1) + ' 请选择目标槽'));
+        }
       }
       return AdminApi.saveFinishedSkill(this.normalizeFinishedSkillPayload(draft)).then(function (res) {
         var id = (res.data && res.data.id) ? res.data.id : '';
@@ -3830,11 +4041,22 @@ createApp({
     prepareFinishedSkillDraft(raw) {
       var data = Object.assign({}, raw || {});
       if (!data.formulas) data.formulas = [];
-      data.maxCastLimited = data.maxCastCount != null;
-      if (data.hitFrequency == null) data.hitFrequency = 1;
+      if (!data.formulas.length) {
+        data.formulas.push({
+          outcome: 'DAMAGE',
+          targetType: data.targetType || 'FIRST_TARGET',
+          hitFrequency: data.hitFrequency != null ? data.hitFrequency : 1,
+          maxCastCount: data.maxCastCount,
+          maxCastLimited: data.maxCastCount != null,
+          tokens: []
+        });
+      }
       data.formulas.forEach(function (fg) {
         if (!fg.tokens) fg.tokens = [];
         if (!fg._paramMode) fg._paramMode = 'CONST';
+        if (!fg.targetType) fg.targetType = data.targetType || 'FIRST_TARGET';
+        if (fg.hitFrequency == null) fg.hitFrequency = data.hitFrequency != null ? data.hitFrequency : 1;
+        if (fg.maxCastLimited == null) fg.maxCastLimited = fg.maxCastCount != null;
       });
       return data;
     },
@@ -4287,15 +4509,21 @@ createApp({
           var data = res.data || {};
           this.finishedSkillForm = Object.assign({
             catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM',
-            hitFrequency: 1, maxCastLimited: false, maxCastCount: 1, formulas: [], effects: []
+            formulas: [], effects: [],
+            skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+            conditionGroups: []
           }, data);
           if (!this.finishedSkillForm.formulas) this.finishedSkillForm.formulas = [];
           this.finishedSkillForm.formulas.forEach(function (fg) {
             if (!fg._paramMode) fg._paramMode = 'CONST';
+            if (!fg.targetType) fg.targetType = data.targetType || 'FIRST_TARGET';
+            if (fg.hitFrequency == null) fg.hitFrequency = data.hitFrequency != null ? data.hitFrequency : 1;
+            if (fg.maxCastLimited == null) fg.maxCastLimited = fg.maxCastCount != null;
           });
-          this.finishedSkillForm.maxCastLimited = this.finishedSkillForm.maxCastCount != null;
-          if (this.finishedSkillForm.maxCastLimited && !this.finishedSkillForm.maxCastCount) {
-            this.finishedSkillForm.maxCastCount = 1;
+          if (this.finishedSkillForm.catL1 === 'PERSON' && this.finishedSkillForm.catL4 === 'ACTIVE') {
+            this.finishedSkillForm.conditionGroups = this.normalizeConditionGroups(this.finishedSkillForm.conditionGroups);
+            if (!this.finishedSkillForm.triggerMode) this.finishedSkillForm.triggerMode = 'PRECISE';
+            this.ensureSkillMetaLoaded();
           }
           this.openDrawer('finishedSkill');
         })
@@ -4401,6 +4629,7 @@ createApp({
             name: s.name,
             enabled: s.enabled,
             categoryText: '人物 · ' + (s.catL2Label || scope.catL2) + ' · ' + (s.catL3 || '通用'),
+            triggerText: '…',
             raw: s
           };
         });
@@ -4415,10 +4644,32 @@ createApp({
             name: s.name,
             enabled: s.enabled,
             categoryText: '人物 · ' + (s.catL2Label || scope.catL2) + (s.ownerRef ? (' · ' + s.ownerRef) : ''),
+            triggerText: '-',
             raw: s
           };
         });
-        self.personSkillRows = actives.concat(passives);
+        if (!actives.length) {
+          self.personSkillRows = actives.concat(passives);
+          return;
+        }
+        return Promise.all(actives.map(function (row) {
+          return AdminApi.finishedSkillDetail(row.id).then(function (res) {
+            var d = res.data || {};
+            if (d.triggerSlotId) {
+              row.triggerText = (d.triggerMode === 'QUICK' ? '快捷' : '精准')
+                + (d.skillItemId ? ' · 已绑物品' : '');
+            } else {
+              row.triggerText = '未配置';
+            }
+            row.raw = Object.assign({}, row.raw, d);
+            return row;
+          }).catch(function () {
+            row.triggerText = '未配置';
+            return row;
+          });
+        })).then(function (rows) {
+          self.personSkillRows = rows.concat(passives);
+        });
       }).catch(function (err) { self.showToast(err.message); });
     },
     openPersonSkillCreate(type) {
@@ -4429,14 +4680,29 @@ createApp({
       var scope = this.personScopeForTab();
       if (type === 'ACTIVE') {
         this.finishedSkillForm = {
-          id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null,
+          id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null,
+          formulas: [{
+            outcome: 'DAMAGE',
+            targetType: 'FIRST_TARGET',
+            hitFrequency: 1,
+            maxCastLimited: false,
+            maxCastCount: null,
+            tokens: [],
+            _paramMode: 'CONST',
+            _readDraft: '',
+            _constDraft: null
+          }],
           catL1: 'PERSON', catL2: scope.catL2, catL3: scope.ownerRef || '通用', catL4: 'ACTIVE',
-          enabled: 1, remark: '', effects: [this.newEffectRow()]
+          enabled: 1, remark: '', effects: [],
+          skillItemId: '', triggerSlotId: '',
+          triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+          conditionGroups: [this.emptyConditionGroup()]
         };
         this.drawerTitle = '新增人物主动技能';
         this.drawerType = 'finishedSkill';
         this.drawerOpen = true;
         if (!this.categoryMeta.catL1.length) this.loadV2Meta();
+        this.ensureSkillMetaLoaded();
         return;
       }
       this.passiveSkillForm = {
@@ -4599,24 +4865,9 @@ createApp({
             } else {
               self.showToast('未配置普攻，将使用默认普攻', 'success');
             }
-            return;
+            return null;
           }
-          var payload = self.slotOwnerPayload({
-            id: form.id || '',
-            slotKind: 'BASIC_ATTACK',
-            triggerMode: 'QUICK',
-            quickPreset: 'ACTION_VALUE_FULL',
-            finishedSkillId: skillId,
-            enabled: form.enabled,
-            remark: form.remark,
-            sort: 0
-          });
-          return AdminApi.saveTriggerSlot(payload);
-        })
-        .then(function (result) {
-          if (!result) return;
-          self.showToast('普攻已保存', 'success');
-          self.loadItemTriggers(itemId);
+          return self.persistWeaponBasicAttackSlot(skillId);
         })
         .catch(function (err) { self.showToast(err.message); });
     },
@@ -4654,29 +4905,9 @@ createApp({
             } else {
               self.showToast('请选择扳机技能');
             }
-            return;
+            return null;
           }
-          if (form.triggerMode === 'QUICK' && !form.quickPreset) {
-            self.showToast('请选择快捷预设');
-            return;
-          }
-          var payload = self.slotOwnerPayload({
-            id: form.id || '',
-            slotKind: 'ULTIMATE',
-            triggerMode: form.triggerMode || 'PRECISE',
-            quickPreset: form.triggerMode === 'QUICK' ? form.quickPreset : null,
-            conditionGroups: form.triggerMode === 'QUICK' ? null : self.normalizeConditionGroups(form.conditionGroups),
-            finishedSkillId: skillId,
-            enabled: form.enabled,
-            remark: form.remark,
-            sort: 0
-          });
-          return AdminApi.saveTriggerSlot(payload);
-        })
-        .then(function (result) {
-          if (!result) return;
-          self.showToast('大招已保存', 'success');
-          self.loadItemTriggers(itemId);
+          return self.persistWeaponUltimateSlot(skillId);
         })
         .catch(function (err) { self.showToast(err.message); });
     },
@@ -5030,6 +5261,10 @@ createApp({
       if (!this.finishedSkillForm.formulas) this.finishedSkillForm.formulas = [];
       this.finishedSkillForm.formulas.push({
         outcome: 'DAMAGE',
+        targetType: 'FIRST_TARGET',
+        hitFrequency: 1,
+        maxCastLimited: false,
+        maxCastCount: null,
         tokens: [],
         _paramMode: 'CONST',
         _readDraft: '',
@@ -5081,15 +5316,17 @@ createApp({
     },
     normalizeFinishedSkillPayload(form) {
       var payload = Object.assign({}, form);
-      payload.maxCastUnlimited = !form.maxCastLimited;
-      if (!form.maxCastLimited) {
-        payload.maxCastCount = null;
-      } else if (!payload.maxCastCount || payload.maxCastCount < 1) {
-        payload.maxCastCount = 1;
-      }
       payload.formulas = (form.formulas || []).map(function (fg) {
+        var maxCast = null;
+        if (fg.maxCastLimited) {
+          maxCast = fg.maxCastCount && fg.maxCastCount > 0 ? fg.maxCastCount : 1;
+        }
         return {
           outcome: fg.outcome,
+          targetType: fg.targetType || 'FIRST_TARGET',
+          targetParam: fg.targetParam != null ? fg.targetParam : null,
+          hitFrequency: fg.hitFrequency != null && fg.hitFrequency > 0 ? fg.hitFrequency : 1,
+          maxCastCount: maxCast,
           tokens: (fg.tokens || []).map(function (t) {
             return {
               kind: t.kind,
@@ -5102,6 +5339,27 @@ createApp({
           })
         };
       });
+      if (payload.formulas.length) {
+        var first = payload.formulas[0];
+        payload.targetType = first.targetType;
+        payload.targetParam = first.targetParam;
+        payload.hitFrequency = first.hitFrequency;
+        payload.maxCastCount = first.maxCastCount;
+        payload.maxCastUnlimited = first.maxCastCount == null;
+      }
+      if (form.catL1 === 'PERSON' && form.catL4 === 'ACTIVE') {
+        payload.triggerMode = form.triggerMode || 'PRECISE';
+        payload.quickPreset = form.quickPreset || 'ON_CAST_SKILL';
+        payload.conditionGroups = form.conditionGroups || [];
+        payload.skillItemId = form.skillItemId || '';
+        payload.triggerSlotId = form.triggerSlotId || '';
+      } else {
+        delete payload.triggerMode;
+        delete payload.quickPreset;
+        delete payload.conditionGroups;
+        delete payload.skillItemId;
+        delete payload.triggerSlotId;
+      }
       delete payload.maxCastLimited;
       return payload;
     },
@@ -5131,10 +5389,6 @@ createApp({
         this.showToast('请先保存或取消自定义技能');
         return;
       }
-      if ((this.drawerType === 'weapon' || this.drawerType === 'monster') && (this.isSkillCustom('basicAttack') || this.isSkillCustom('ultimate'))) {
-        this.showToast('请先保存或取消自定义技能（普攻/大招）');
-        return;
-      }
       if ((this.drawerType === 'weapon' || this.isEquipPartDrawer || this.drawerType === 'monster') && this.showPassiveInlineForm) {
         this.showToast('请先点击「保存特性被动」或取消特性被动编辑');
         return;
@@ -5155,10 +5409,11 @@ createApp({
         p = AdminApi.saveWeapon(this.weaponForm).then((res) => {
           if (res.data) {
             self.weaponForm = Object.assign({}, self.weaponForm, res.data);
-            if (res.data.itemId) self.loadEquipItemExtras(res.data.itemId);
           }
           self.loadWeapons();
           self.loadAllItems();
+          // 必须先同步普攻/大招槽，再刷新列表；否则 loadItemTriggers 会冲掉未落库的内存配置
+          return self.syncWeaponCombatSlots(true);
         });
       } else if (this.isEquipPartDrawer) {
         var meta = this.activeEquipPartMeta;
@@ -5192,11 +5447,32 @@ createApp({
           this.showToast('请至少添加一条公式');
           return;
         }
-        p = AdminApi.saveFinishedSkill(this.normalizeFinishedSkillPayload(this.finishedSkillForm)).then(() => {
+        for (var fi = 0; fi < this.finishedSkillForm.formulas.length; fi++) {
+          if (!this.finishedSkillForm.formulas[fi].targetType) {
+            this.showToast('公式 ' + (fi + 1) + ' 请选择目标槽');
+            return;
+          }
+        }
+        if (this.finishedSkillForm.catL1 === 'PERSON' && this.finishedSkillForm.catL4 === 'ACTIVE') {
+          if (!this.finishedSkillForm.triggerMode) {
+            this.showToast('请选择扳机模式');
+            return;
+          }
+          if (this.finishedSkillForm.triggerMode === 'QUICK' && !this.finishedSkillForm.quickPreset) {
+            this.showToast('请选择快捷预设');
+            return;
+          }
+        }
+        p = AdminApi.saveFinishedSkill(this.normalizeFinishedSkillPayload(this.finishedSkillForm)).then((res) => {
+          if (res && res.data) {
+            this.finishedSkillForm.skillItemId = res.data.skillItemId || this.finishedSkillForm.skillItemId;
+            this.finishedSkillForm.triggerSlotId = res.data.triggerSlotId || this.finishedSkillForm.triggerSlotId;
+          }
           if (this.isPersonSkillTab) this.loadPersonSkills();
           else if (this.tab === 'equipCustomSkill') this.loadCustomEquipSkills();
           else this.loadFinishedSkills();
           this.loadV2Meta();
+          this.loadAllItems();
         });
       } else if (this.drawerType === 'passiveSkill') {
         if (!this.passiveSkillForm.catL1) this.passiveSkillForm.catL1 = 'EQUIP';
@@ -5259,8 +5535,8 @@ createApp({
           return;
         }
         p = AdminApi.saveMonster(this.monsterForm).then(function () {
-          if (self.monsterForm.id) self.loadMonsterExtras(self.monsterForm.id);
           self.loadMonsters();
+          return self.syncWeaponCombatSlots(true);
         });
       } else if (this.drawerType === 'wave') {
         p = AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.waveForm)).then(() => { this.loadStageBattleForPick(); });

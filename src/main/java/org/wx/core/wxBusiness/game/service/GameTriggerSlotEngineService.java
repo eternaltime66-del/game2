@@ -510,6 +510,9 @@ public class GameTriggerSlotEngineService {
         if (counters.getHitCount() == null) {
             counters.setHitCount(new java.util.HashMap<>());
         }
+        if (counters.getFormulaCastCount() == null) {
+            counters.setFormulaCastCount(new java.util.HashMap<>());
+        }
         return counters;
     }
 }

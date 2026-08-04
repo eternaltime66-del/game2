@@ -33,16 +33,6 @@
       padding: 16px 20px 40px;
       overflow: auto;
     }
-    .main-top {
-      display: flex;
-      flex-direction: column;
-    }
-    .main-top > .line { order: 10; }
-    .main-top > .line.top-title { order: 0; }
-    .main-top > .line.top-kind { order: 1; }
-    .main-top > .line.top-anchor { order: 2; }
-    .main[data-mode="passive"] > .main-top > .line.top-anchor { order: 1; }
-    .main[data-mode="passive"] > .main-top > .line.top-kind { order: 2; }
     .line {
       margin-bottom: 12px;
       color: #c8ccd8;
@@ -442,20 +432,18 @@
 </head>
 <body>
   <div class="app">
-    <div class="main" id="mainPanel" data-mode="active">
-      <div class="main-top">
-        <div class="line top-title">这是个技能开发模拟页</div>
-        <div class="line top-kind" id="skillKindLine">
-          <select id="skillKind">
-            <option value="active">达成条件 → 主动产生效果（完整主动技能）</option>
-            <option value="passive">被动触发锚点切入 → 触发被动效果（完整被动技能）</option>
-          </select>
-        </div>
-        <div class="line top-anchor passive-only" id="passiveAnchorBlock">
-          <label class="field-label" for="passiveAnchor">选择一个锚点</label>
-          <select id="passiveAnchor"></select>
-          <p class="anchor-note" id="passiveAnchorNote"></p>
-        </div>
+    <div class="main">
+      <div class="line">这是个技能开发模拟页</div>
+      <div class="line" id="skillKindLine">
+        <select id="skillKind">
+          <option value="active">达成条件 → 主动产生效果（完整主动技能）</option>
+          <option value="passive">被动触发锚点切入 → 触发被动效果（完整被动技能）</option>
+        </select>
+      </div>
+      <div class="line passive-only" id="passiveAnchorBlock">
+        <label class="field-label" for="passiveAnchor">选择一个锚点</label>
+        <select id="passiveAnchor"></select>
+        <p class="anchor-note" id="passiveAnchorNote"></p>
       </div>
       <div class="line active-only" id="chargeBlock">
         <label class="field-label" for="castCost">释放技能所需充能</label>
@@ -484,9 +472,9 @@
         </div>
       </div>
 
-      <div class="line passive-only" id="passiveSkillFilterBlock">
-        <div class="block-title">锚定技能范围</div>
-        <p class="block-hint">对应文案里的「某技能」：指定某个 / 指定类型 / 全部（模拟选项）。普攻也视为技能。</p>
+      <div class="line hidden" id="passiveSkillFilterBlock">
+        <div class="block-title">技能选择</div>
+        <p class="block-hint">仅技能生命周期锚点可用：指定某个 / 指定类型 / 全部（普攻也视为技能）。</p>
         <div class="cascade" id="passiveSkillFilter"></div>
       </div>
       <div class="line passive-only" id="passiveEffectBlock">
@@ -766,67 +754,62 @@
        * 12 被动锚点梳理
        * common = 通用读取；exclusive = 本锚点专属读取
        */
+      var COMMON_DEALER_V2 = ["输出方属性", "全局统计"];
+
       var PASSIVE_ANCHORS = [
         {
-          group: "第一组·技能生命周期（普攻也视为技能）",
+          group: "第一组：技能生命周期锚点（普攻也视为技能）",
+          needsSkillSelect: true,
           items: [
             {
               code: "BEFORE_CAST",
               label: "释放某技能前（施法者侧）",
               note: "本层锚点尚未生成伤害 / 治疗数值",
               common: COMMON_CASTER,
-              exclusive: [
-                "来源技能·配置数据（技能ID/类型/效果配置）",
-                "已确定的目标列表",
-                "各目标·最大血量",
-                "各目标·当前血量",
-                "各目标·攻击力"
-              ]
+              exclusive: ["目标属性"],
+              extraTargets: [{ v: "HIT_TARGETS", t: "受击目标" }]
             },
             {
               code: "AFTER_CAST",
               label: "释放某技能后（施法者侧）",
               note: "本层锚点尚未生成伤害 / 治疗数值",
-              common: COMMON_CASTER,
-              exclusive: [
-                "来源技能·配置数据",
-                "目标列表"
-              ]
+              common: [],
+              exclusive: ["目标槽", "受击目标"],
+              extraTargets: [
+                { v: "TARGET_SLOT", t: "目标槽" },
+                { v: "HIT_TARGETS", t: "受击目标" }
+              ],
+              noReadSlot: true
             },
             {
               code: "BEFORE_HIT_BY_SKILL",
               label: "被某技能攻击前（受击方侧）",
               note: "本层锚点尚未生成伤害 / 治疗数值",
               common: COMMON_SELF,
-              exclusive: [
-                "来源技能信息",
-                "施法者单位信息（最大血量/当前血量/攻击力）",
-                "技能目标列表"
-              ]
+              exclusive: ["施法者单位信息（角色 · 角色信息）"],
+              extraTargets: []
             },
             {
               code: "AFTER_HIT_BY_SKILL",
               label: "被某技能攻击后（受击方侧）",
               note: "本层锚点尚未生成伤害 / 治疗数值",
               common: COMMON_SELF,
-              exclusive: [
-                "来源技能信息",
-                "施法者单位信息"
-              ]
+              exclusive: ["施法者单位信息（角色 · 角色信息）"],
+              extraTargets: []
             }
           ]
         },
         {
-          group: "第二组·伤害类业务锚点",
+          group: "第二组：伤害类业务锚点",
           items: [
             {
               code: "BEFORE_DEAL_DAMAGE",
               label: "造成伤害前（输出方）",
               note: "可修改待结算原始伤害值",
-              common: COMMON_DEALER,
+              common: COMMON_DEALER_V2,
               exclusive: [
                 "来源技能",
-                "施法者单位",
+                "施法者",
                 "目标单位",
                 "待结算原始伤害值（可修改）"
               ]
@@ -835,12 +818,8 @@
               code: "AFTER_DEAL_DAMAGE",
               label: "造成伤害后（输出方）",
               note: "",
-              common: COMMON_DEALER,
-              exclusive: [
-                "来源技能",
-                "目标单位",
-                "最终实际伤害数值"
-              ]
+              common: COMMON_DEALER_V2,
+              exclusive: ["目标单位"]
             },
             {
               code: "BEFORE_TAKE_DAMAGE",
@@ -848,8 +827,7 @@
               note: "可修改即将受到的待结算伤害值",
               common: COMMON_RECV,
               exclusive: [
-                "伤害来源单位",
-                "来源技能",
+                "伤害来源（目标）",
                 "即将受到的待结算伤害值（可修改）"
               ]
             },
@@ -859,27 +837,23 @@
               note: "",
               common: COMMON_RECV,
               exclusive: [
-                "伤害来源",
-                "来源技能",
-                "实际扣减伤害",
-                "血量变化前快照",
-                "血量变化后快照"
+                "伤害来源（目标）",
+                "实际受到伤害"
               ]
             }
           ]
         },
         {
-          group: "第三组·治疗类业务锚点",
+          group: "第三组：治疗类业务锚点",
           items: [
             {
               code: "BEFORE_DEAL_HEAL",
               label: "提供治疗前（输出方）",
-              note: "可修改待结算原始治疗量",
+              note: "可修改即将获得的待结算治疗量",
               common: COMMON_DEALER,
               exclusive: [
-                "来源技能",
                 "治疗目标",
-                "待结算原始治疗量（可修改）"
+                "即将获得的待结算治疗量（可修改）"
               ]
             },
             {
@@ -888,7 +862,6 @@
               note: "",
               common: COMMON_DEALER,
               exclusive: [
-                "来源技能",
                 "治疗目标",
                 "实际生效治疗量"
               ]
@@ -899,8 +872,7 @@
               note: "可修改即将获得的待结算治疗量",
               common: COMMON_RECV,
               exclusive: [
-                "治疗来源单位",
-                "来源技能",
+                "治疗来源单位（目标槽）",
                 "即将获得的待结算治疗量（可修改）"
               ]
             },
@@ -910,11 +882,8 @@
               note: "",
               common: COMMON_RECV,
               exclusive: [
-                "治疗来源",
-                "来源技能",
-                "实际生效治疗数值",
-                "血量变化前快照",
-                "血量变化后快照"
+                "治疗来源单位（目标槽）",
+                "实际生效治疗数值"
               ]
             }
           ]
@@ -924,13 +893,30 @@
       function flatAnchors() {
         var list = [];
         PASSIVE_ANCHORS.forEach(function (g) {
-          g.items.forEach(function (it) { list.push(it); });
+          g.items.forEach(function (it) {
+            list.push({
+              code: it.code,
+              label: it.label,
+              note: it.note,
+              common: it.common || [],
+              exclusive: it.exclusive || [],
+              extraTargets: it.extraTargets || [],
+              needsSkillSelect: !!g.needsSkillSelect,
+              noReadSlot: !!it.noReadSlot
+            });
+          });
         });
         return list;
       }
 
       function findAnchor(code) {
         return flatAnchors().find(function (a) { return a.code === code; }) || flatAnchors()[0];
+      }
+
+      function syncPassiveSkillFilter() {
+        var block = document.getElementById("passiveSkillFilterBlock");
+        var show = kind.value === "passive" && findAnchor(anchorSel.value).needsSkillSelect;
+        block.classList.toggle("hidden", !show);
       }
 
       var kind = document.getElementById("skillKind");
@@ -985,7 +971,6 @@
 
       function syncKind() {
         var isActive = kind.value === "active";
-        document.getElementById("mainPanel").setAttribute("data-mode", isActive ? "active" : "passive");
         activeBlocks.forEach(function (el) {
           el.classList.toggle("hidden", !isActive);
         });
@@ -1002,6 +987,7 @@
           anchorNote.textContent = findAnchor(anchorSel.value).note || "";
           renderPassiveReads();
         }
+        syncPassiveSkillFilter();
       }
 
       // 被动「某技能」范围：1级范围 → 2级再选
@@ -1040,6 +1026,7 @@
         anchorNote.textContent = a.note || "";
         document.getElementById("sideSub").textContent = a.label || "随锚点切换";
         renderPassiveReads();
+        syncPassiveSkillFilter();
         renderEffectList(passiveEffectListEl, passiveEffects);
       });
 
@@ -1058,6 +1045,15 @@
         { v: "DAMAGE", t: "伤害" },
         { v: "HEAL", t: "治疗" }
       ];
+
+      function targetOptionsForCurrentContext(listRoot) {
+        var base = EFFECT_TARGETS.slice();
+        if (listRoot === passiveEffectListEl) {
+          var extra = findAnchor(anchorSel.value).extraTargets || [];
+          if (extra.length) return extra.concat(base);
+        }
+        return base;
+      }
 
       function emptyEffect() {
         return {
@@ -1122,12 +1118,16 @@
           targetLab.className = "xy-label";
           targetLab.textContent = "目标选择";
           var targetSel = document.createElement("select");
-          EFFECT_TARGETS.forEach(function (o) {
+          var targetOpts = targetOptionsForCurrentContext(listRoot);
+          targetOpts.forEach(function (o) {
             var opt = document.createElement("option");
             opt.value = o.v;
             opt.textContent = o.t;
             targetSel.appendChild(opt);
           });
+          if (!targetOpts.some(function (o) { return o.v === effect.target; })) {
+            effect.target = targetOpts[0] ? targetOpts[0].v : "ALL_ENEMIES";
+          }
           targetSel.value = effect.target;
           targetSel.addEventListener("change", function () {
             effect.target = targetSel.value;
@@ -1362,42 +1362,54 @@
 
           if (listRoot === passiveEffectListEl) {
             var a = findAnchor(anchorSel.value);
-            var exLabel = document.createElement("div");
-            exLabel.className = "calc-section-label";
-            exLabel.textContent = "本锚点专属读取（可点选插入）";
-            var exReads = document.createElement("div");
-            exReads.className = "calc-reads";
-            a.exclusive.forEach(function (t) {
-              var b = document.createElement("button");
-              b.type = "button";
-              b.className = "calc-read-btn";
-              b.setAttribute("data-need-slot", "1");
-              b.textContent = t;
-              b.addEventListener("click", function () {
-                pushToken({ kind: "READ", label: t });
+            if (a.noReadSlot) {
+              var noRead = document.createElement("div");
+              noRead.className = "calc-section-label";
+              noRead.textContent = "读取槽：无";
+              var noReadHint = document.createElement("div");
+              noReadHint.className = "block-hint";
+              noReadHint.style.marginTop = "0";
+              noReadHint.textContent = "本锚点公式不可插入读取项；目标走上方「目标选择」。";
+              body.appendChild(noRead);
+              body.appendChild(noReadHint);
+            } else {
+              var exLabel = document.createElement("div");
+              exLabel.className = "calc-section-label";
+              exLabel.textContent = "本锚点专属读取（可点选插入）";
+              var exReads = document.createElement("div");
+              exReads.className = "calc-reads";
+              a.exclusive.forEach(function (t) {
+                var b = document.createElement("button");
+                b.type = "button";
+                b.className = "calc-read-btn";
+                b.setAttribute("data-need-slot", "1");
+                b.textContent = t;
+                b.addEventListener("click", function () {
+                  pushToken({ kind: "READ", label: t });
+                });
+                exReads.appendChild(b);
               });
-              exReads.appendChild(b);
-            });
-            var commonLabel = document.createElement("div");
-            commonLabel.className = "calc-section-label";
-            commonLabel.textContent = "本锚点通用读取";
-            var commonReads = document.createElement("div");
-            commonReads.className = "calc-reads";
-            a.common.forEach(function (t) {
-              var b = document.createElement("button");
-              b.type = "button";
-              b.className = "calc-read-btn";
-              b.setAttribute("data-need-slot", "1");
-              b.textContent = t;
-              b.addEventListener("click", function () {
-                pushToken({ kind: "READ", label: t });
+              var commonLabel = document.createElement("div");
+              commonLabel.className = "calc-section-label";
+              commonLabel.textContent = "本锚点通用读取";
+              var commonReads = document.createElement("div");
+              commonReads.className = "calc-reads";
+              a.common.forEach(function (t) {
+                var b = document.createElement("button");
+                b.type = "button";
+                b.className = "calc-read-btn";
+                b.setAttribute("data-need-slot", "1");
+                b.textContent = t;
+                b.addEventListener("click", function () {
+                  pushToken({ kind: "READ", label: t });
+                });
+                commonReads.appendChild(b);
               });
-              commonReads.appendChild(b);
-            });
-            body.appendChild(exLabel);
-            body.appendChild(exReads);
-            body.appendChild(commonLabel);
-            body.appendChild(commonReads);
+              body.appendChild(exLabel);
+              body.appendChild(exReads);
+              body.appendChild(commonLabel);
+              body.appendChild(commonReads);
+            }
           } else {
             body.appendChild(readLabel);
             body.appendChild(cascadeBox);

@@ -61,6 +61,9 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
     private GameFinishedSkillService finishedSkillService;
     @Resource
     private GameFinishedSkillEffectService finishedSkillEffectService;
+
+    @Resource
+    private PlayerSkillDisplayHelper playerSkillDisplayHelper;
     @Resource
     private GameItemPassiveService itemPassiveService;
     @Resource
@@ -219,10 +222,22 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         if (slotKind == TriggerSlotKind.BASIC_ATTACK) {
             vo.setTriggerDesc(TriggerSlotType.ACTION_VALUE_FULL.getLabel());
         } else {
-            vo.setTriggerDesc(formatTriggerDesc(slot, vo.getTriggerRefName()));
+            String v2Desc = playerSkillDisplayHelper.formatSlotTriggerDesc(slot, vo.getTriggerRefName());
+            if (v2Desc != null && !v2Desc.isBlank()) {
+                vo.setTriggerDesc(v2Desc);
+            } else {
+                vo.setTriggerDesc(formatTriggerDesc(slot, vo.getTriggerRefName()));
+            }
         }
         vo.setMaxCastCount(slot.getMaxCastCount());
-        vo.setCastLimitText(formatCastLimit(slot.getMaxCastCount()));
+        Integer skillMaxCast = null;
+        if (slot.getFinishedSkillId() != null && !slot.getFinishedSkillId().isBlank()) {
+            GameFinishedSkill linked = finishedSkillService.getById(slot.getFinishedSkillId());
+            if (linked != null) {
+                skillMaxCast = linked.getMaxCastCount();
+            }
+        }
+        vo.setCastLimitText(playerSkillDisplayHelper.formatCastLimit(slot.getMaxCastCount(), skillMaxCast));
         if (slot.getFinishedSkillId() != null && !slot.getFinishedSkillId().isBlank()) {
             vo.setFinishedSkill(buildFinishedSkillDetail(slot.getFinishedSkillId()));
         }
@@ -246,8 +261,14 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         vo.setTargetParam(skill.getTargetParam());
         vo.setCategoryLabel(buildSkillCategoryLabel(skill));
         vo.setRemark(skill.getRemark());
+        vo.setHitFrequency(skill.getHitFrequency());
+        vo.setMaxCastCount(skill.getMaxCastCount());
+        vo.setCastLimitText(playerSkillDisplayHelper.formatCastLimit(null, skill.getMaxCastCount()));
         for (GameFinishedSkillEffect effect : finishedSkillEffectService.listByFinishedSkillId(finishedSkillId)) {
             vo.getEffects().add(buildEffectDetail(effect));
+        }
+        if (vo.getEffects().isEmpty()) {
+            vo.getEffects().addAll(playerSkillDisplayHelper.buildEffectsFromFormulas(skill));
         }
         return vo;
     }

@@ -25,5 +25,13 @@ public class ItemFinishedSkillDetailVo {
 
     private String remark;
 
+    /** 频率槽 */
+    private Integer hitFrequency;
+
+    /** 全场发动上限 */
+    private Integer maxCastCount;
+
+    private String castLimitText;
+
     private List<ItemSkillEffectDetailVo> effects = new ArrayList<>();
 }

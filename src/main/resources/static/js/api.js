@@ -206,56 +206,8 @@
         itemId: itemId
       }).then(ensureSuccess);
     },
-    getCraftDetail: function (recipeId) {
-      return request('/api/game/craft/detail', {
-        recipeId: recipeId
-      }).then(ensureSuccess);
-    },
     getLevelTree: function () {
       return request('/api/game/level/tree', {}).then(ensureSuccess);
-    },
-    getUserInfo: function () {
-      return request('/api/user/info', {}).then(ensureSuccess);
-    },
-    submitKyc: function (passPort, userName) {
-      return request('/api/user/kyc', {
-        passPort: passPort,
-        userName: userName
-      }).then(ensureSuccess);
-    },
-    bindInviteCode: function (code) {
-      return request('/api/user/bind/up', {
-        code: code
-      }).then(ensureSuccess);
-    },
-    getDownlineList: function () {
-      return request('/api/user/down/list', {}).then(ensureSuccess);
-    },
-    submitWithdraw: function (amount) {
-      return request('/api/user/withdraw', {
-        amount: amount
-      }).then(ensureSuccess);
-    },
-    getWalletBalance: function () {
-      return request('/api/user/wallet/balance', {}).then(ensureSuccess);
-    },
-    getMoneyRecords: function (pageNo, pageSize) {
-      return request('/api/user/money/record', {
-        current: pageNo || 1,
-        size: pageSize || 20
-      }).then(ensureSuccess);
-    },
-    getArticleList: function (pageNo, pageSize) {
-      return request('/api/media/article/list', {
-        current: pageNo || 1,
-        size: pageSize || 10
-      }).then(ensureSuccess);
-    },
-    getBannerList: function () {
-      return request('/api/media/banner/list', {
-        current: 1,
-        size: 20
-      }).then(ensureSuccess);
     }
   };
 })(window);

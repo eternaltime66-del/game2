@@ -19,7 +19,6 @@
   <div class="home-header">
     <h1>PVE</h1>
     <div class="home-header-actions">
-      <button type="button" @click="goProfile">我的</button>
       <button @click="logout">退出</button>
     </div>
   </div>
@@ -27,18 +26,6 @@
   <div class="home-main">
     <!-- 主页 -->
     <div class="tab-panel" :class="{ hidden: activeTab !== 'home' }">
-      <div v-if="banners.length" class="home-banner-strip">
-        <a v-for="b in banners" :key="b.id" class="home-banner-item" :href="b.jumpUrl || '#'" :target="b.jumpUrl ? '_blank' : null" @click.prevent="openBanner(b)">
-          <img v-if="b.imageUrl" :src="b.imageUrl" :alt="'banner-' + b.id">
-        </a>
-      </div>
-      <div v-if="articles.length" class="home-announce-panel">
-        <div class="home-announce-head">公告</div>
-        <button v-for="a in articles" :key="a.id" type="button" class="home-announce-item" @click="openArticle(a)">
-          <span class="home-announce-title">{{ a.title }}</span>
-          <span class="home-announce-arrow">›</span>
-        </button>
-      </div>
       <div class="home-scene">
         <div v-if="loading" class="loading-text">加载中...</div>
         <div v-else class="hero-actor" @click="openHeroDetail">
@@ -186,7 +173,8 @@
                     @click="onEquipSlotClick(sb.slot)"
                   >
                     <span class="prep-equip-slot-label">{{ sb.label }}</span>
-                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
+                    <img v-if="slotDisplayIcon(sb.slot).type === 'img'" class="prep-equip-slot-img prep-skill-slot-img" :src="slotDisplayIcon(sb.slot).src" alt="">
+                    <span v-else-if="slotDisplayIcon(sb.slot).type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon(sb.slot).text }}</span>
                     <span v-else class="prep-equip-slot-empty">空</span>
                     <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
                   </div>
@@ -199,7 +187,8 @@
                       @click="onEquipSlotClick('HELMET')"
                     >
                       <span class="prep-equip-slot-label">头盔</span>
-                      <img v-if="slotIcon('HELMET')" class="prep-equip-slot-img" :src="slotIcon('HELMET')" alt="">
+                      <img v-if="slotDisplayIcon('HELMET').type === 'img'" class="prep-equip-slot-img" :src="slotDisplayIcon('HELMET').src" alt="">
+                      <span v-else-if="slotDisplayIcon('HELMET').type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon('HELMET').text }}</span>
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName('HELMET')" class="prep-equip-slot-name">{{ slotItemName('HELMET') }}</span>
                     </div>
@@ -211,7 +200,8 @@
                       @click="onEquipSlotClick('WEAPON')"
                     >
                       <span class="prep-equip-slot-label">武器</span>
-                      <img v-if="slotIcon('WEAPON')" class="prep-equip-slot-img" :src="slotIcon('WEAPON')" alt="">
+                      <img v-if="slotDisplayIcon('WEAPON').type === 'img'" class="prep-equip-slot-img" :src="slotDisplayIcon('WEAPON').src" alt="">
+                      <span v-else-if="slotDisplayIcon('WEAPON').type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon('WEAPON').text }}</span>
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName('WEAPON')" class="prep-equip-slot-name">{{ slotItemName('WEAPON') }}</span>
                     </div>
@@ -245,7 +235,8 @@
                       @click="onEquipSlotClick('ARMOR')"
                     >
                       <span class="prep-equip-slot-label">护甲</span>
-                      <img v-if="slotIcon('ARMOR')" class="prep-equip-slot-img" :src="slotIcon('ARMOR')" alt="">
+                      <img v-if="slotDisplayIcon('ARMOR').type === 'img'" class="prep-equip-slot-img" :src="slotDisplayIcon('ARMOR').src" alt="">
+                      <span v-else-if="slotDisplayIcon('ARMOR').type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon('ARMOR').text }}</span>
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName('ARMOR')" class="prep-equip-slot-name">{{ slotItemName('ARMOR') }}</span>
                     </div>
@@ -257,7 +248,8 @@
                       @click="onEquipSlotClick('GLOVES')"
                     >
                       <span class="prep-equip-slot-label">护手</span>
-                      <img v-if="slotIcon('GLOVES')" class="prep-equip-slot-img" :src="slotIcon('GLOVES')" alt="">
+                      <img v-if="slotDisplayIcon('GLOVES').type === 'img'" class="prep-equip-slot-img" :src="slotDisplayIcon('GLOVES').src" alt="">
+                      <span v-else-if="slotDisplayIcon('GLOVES').type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon('GLOVES').text }}</span>
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName('GLOVES')" class="prep-equip-slot-name">{{ slotItemName('GLOVES') }}</span>
                     </div>
@@ -267,7 +259,8 @@
                       @click="onEquipSlotClick('LEGS')"
                     >
                       <span class="prep-equip-slot-label">护腿</span>
-                      <img v-if="slotIcon('LEGS')" class="prep-equip-slot-img" :src="slotIcon('LEGS')" alt="">
+                      <img v-if="slotDisplayIcon('LEGS').type === 'img'" class="prep-equip-slot-img" :src="slotDisplayIcon('LEGS').src" alt="">
+                      <span v-else-if="slotDisplayIcon('LEGS').type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon('LEGS').text }}</span>
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName('LEGS')" class="prep-equip-slot-name">{{ slotItemName('LEGS') }}</span>
                     </div>
@@ -281,7 +274,8 @@
                       @click="onEquipSlotClick(acc.slot)"
                     >
                       <span class="prep-equip-slot-label">{{ acc.label }}</span>
-                      <img v-if="slotIcon(acc.slot)" class="prep-equip-slot-img" :src="slotIcon(acc.slot)" alt="">
+                      <img v-if="slotDisplayIcon(acc.slot).type === 'img'" class="prep-equip-slot-img" :src="slotDisplayIcon(acc.slot).src" alt="">
+                      <span v-else-if="slotDisplayIcon(acc.slot).type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon(acc.slot).text }}</span>
                       <span v-else class="prep-equip-slot-empty">空</span>
                       <span v-if="slotItemName(acc.slot)" class="prep-equip-slot-name">{{ slotItemName(acc.slot) }}</span>
                     </div>
@@ -296,7 +290,8 @@
                     @click="onEquipSlotClick(sb.slot)"
                   >
                     <span class="prep-equip-slot-label">{{ sb.label }}</span>
-                    <img v-if="slotIcon(sb.slot)" class="prep-equip-slot-img prep-skill-slot-img" :src="slotIcon(sb.slot)" alt="">
+                    <img v-if="slotDisplayIcon(sb.slot).type === 'img'" class="prep-equip-slot-img prep-skill-slot-img" :src="slotDisplayIcon(sb.slot).src" alt="">
+                    <span v-else-if="slotDisplayIcon(sb.slot).type === 'emoji'" class="prep-equip-slot-emoji">{{ slotDisplayIcon(sb.slot).text }}</span>
                     <span v-else class="prep-equip-slot-empty">空</span>
                     <span v-if="slotItemName(sb.slot)" class="prep-equip-slot-name">{{ slotItemName(sb.slot) }}</span>
                   </div>
@@ -424,7 +419,15 @@
             <img v-if="itemIconIsImage(selectedCraftRecipe.resultItemIcon)" class="craft-result-img" :src="selectedCraftRecipe.resultItemIcon" alt="">
             <span v-else class="craft-result-icon">{{ selectedCraftRecipe.resultItemIcon || '📦' }}</span>
             <div>
-              <div class="craft-result-name">{{ selectedCraftRecipe.resultItemName || selectedCraftRecipe.name }}</div>
+              <div class="craft-result-head">
+                <div class="craft-result-name">{{ selectedCraftRecipe.resultItemName || selectedCraftRecipe.name }}</div>
+                <button
+                  v-if="selectedCraftRecipe.resultItemId"
+                  type="button"
+                  class="prep-detail-btn-inline craft-result-detail-btn"
+                  @click.stop="openItemDetail(selectedCraftRecipe.resultItemId)"
+                >详情</button>
+              </div>
               <div class="craft-result-meta" v-if="selectedCraftRecipe.armorBonusHp != null || selectedCraftRecipe.armorDefense != null">
                 <span v-if="selectedCraftRecipe.armorBonusHp != null">生命 +{{ selectedCraftRecipe.armorBonusHp }}</span>
                 <span v-if="selectedCraftRecipe.armorDefense != null">防御 +{{ selectedCraftRecipe.armorDefense }}</span>
@@ -552,16 +555,6 @@
           @click="startBattle"
         >开始战斗</button>
       </div>
-    </div>
-  </div>
-
-  <div v-if="showArticleDetail" class="item-detail-mask" @click.self="showArticleDetail = false">
-    <div class="item-detail-panel home-article-panel">
-      <div class="item-detail-head">
-        <h3>{{ articleDetail.title }}</h3>
-        <button class="item-detail-close" @click="showArticleDetail = false">关闭</button>
-      </div>
-      <div class="home-article-body">{{ articleDetail.content }}</div>
     </div>
   </div>
 
@@ -796,6 +789,8 @@
         <div class="hero-detail-section">
           <div class="section-title">技能效果</div>
           <div class="gear-skill-target">目标 · {{ basicAttackSkill.targetLabel || basicAttackSkill.targetType }}</div>
+          <div v-if="basicAttackSkill.castLimitText" class="gear-skill-meta">次数 · {{ basicAttackSkill.castLimitText }}</div>
+          <div v-if="basicAttackSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ basicAttackSkill.hitFrequency }}</div>
           <div v-if="basicAttackEffectRows.length" class="gear-effect-list">
             <div
               v-for="(row, eidx) in basicAttackEffectRows"
@@ -813,7 +808,7 @@
                       </div>
                     </template>
                   </div>
-                  <div class="gear-formula-result-row">
+                  <div v-if="row.detail.result != null" class="gear-formula-result-row">
                     <span class="gear-formula-eq">=</span>
                     <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
                     <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
@@ -861,6 +856,8 @@
         <div class="hero-detail-section">
           <div class="section-title">技能效果</div>
           <div class="gear-skill-target">目标 · {{ weaponSkill.finishedSkill.targetLabel || weaponSkill.finishedSkill.targetType }}</div>
+          <div v-if="weaponSkill.finishedSkill.castLimitText" class="gear-skill-meta">次数 · {{ weaponSkill.finishedSkill.castLimitText }}</div>
+          <div v-if="weaponSkill.finishedSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ weaponSkill.finishedSkill.hitFrequency }}</div>
           <div v-if="weaponSkillEffectRows.length" class="gear-effect-list">
             <div
               v-for="(row, eidx) in weaponSkillEffectRows"
@@ -878,7 +875,7 @@
                       </div>
                     </template>
                   </div>
-                  <div class="gear-formula-result-row">
+                  <div v-if="row.detail.result != null" class="gear-formula-result-row">
                     <span class="gear-formula-eq">=</span>
                     <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
                     <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
@@ -978,6 +975,8 @@
                   <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
                   <div v-if="ts.finishedSkill.categoryLabel" class="gear-skill-category">{{ ts.finishedSkill.categoryLabel }}</div>
                   <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
+                  <div v-if="ts.finishedSkill.castLimitText" class="gear-skill-meta">次数 · {{ ts.finishedSkill.castLimitText }}</div>
+                  <div v-if="ts.finishedSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ ts.finishedSkill.hitFrequency }}</div>
                   <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
                     <div
                       v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
@@ -1124,6 +1123,8 @@
                   <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
                   <div v-if="ts.finishedSkill.categoryLabel" class="gear-skill-category">{{ ts.finishedSkill.categoryLabel }}</div>
                   <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
+                  <div v-if="ts.finishedSkill.castLimitText" class="gear-skill-meta">次数 · {{ ts.finishedSkill.castLimitText }}</div>
+                  <div v-if="ts.finishedSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ ts.finishedSkill.hitFrequency }}</div>
                   <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
                     <div
                       v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
@@ -1257,10 +1258,6 @@ createApp({
       stages: [],
       chapters: [],
       selectedChapterId: localStorage.getItem('selectedChapterId') || '',
-      banners: [],
-      articles: [],
-      showArticleDetail: false,
-      articleDetail: { title: '', content: '' },
       showItemLog: false,
       itemLogLoading: false,
       itemLogs: [],
@@ -1518,10 +1515,16 @@ createApp({
     },
     gearPreviewStatBase() {
       var w = this.weightInfo;
+      var maxHp = w.totalMaxHp || ((this.hero && this.hero.maxHp) || 0);
+      var atk = w.totalAttack || 0;
+      var def = w.totalDefense || 0;
       return {
-        ATTACK: w.totalAttack || 0,
-        DEFENSE: w.totalDefense || 0,
-        MAX_HP: w.totalMaxHp || ((this.hero && this.hero.maxHp) || 0)
+        ATTACK: atk,
+        DEFENSE: def,
+        MAX_HP: maxHp,
+        CHAR_ATTACK: atk,
+        CHAR_DEFENSE: def,
+        CHAR_MAX_HP: maxHp
       };
     },
     gearPreviewDamageRatio() {
@@ -1684,7 +1687,6 @@ createApp({
     if (params.get('craft')) this.pendingCraftId = params.get('craft');
     if (params.get('warehouse') === '1') this.warehouseOpen = true;
     this.loadHero();
-    this.loadHomeMedia();
     this.loadLevelChapters();
     this.loadStages();
     if (this.activeTab === 'prep') {
@@ -1768,6 +1770,15 @@ createApp({
       var icon = slot.item.icon;
       return this.itemIconIsImage(icon) ? icon : '';
     },
+    slotDisplayIcon: function (slotCode) {
+      var slot = this.equipSlotMap[slotCode];
+      if (!slot || !slot.item) return { type: 'empty' };
+      var icon = slot.item.icon;
+      if (this.itemIconIsImage(icon)) return { type: 'img', src: icon };
+      if (icon && String(icon).trim()) return { type: 'emoji', text: icon };
+      if (String(slotCode).indexOf('SKILL_') === 0) return { type: 'emoji', text: '✨' };
+      return { type: 'empty' };
+    },
     slotItemName: function (slotCode) {
       var slot = this.equipSlotMap[slotCode];
       return slot && slot.item ? slot.item.itemName : '';
@@ -1814,14 +1825,28 @@ createApp({
       var outcomeLabel = effect.outcomeLabel || (effect.outcomeType === 'HEAL' ? '治疗' : '伤害');
       var statLabels = {
         ATTACK: '角色攻击力',
+        CHAR_ATTACK: '角色攻击力',
         DEFENSE: '角色防御力',
-        MAX_HP: '角色生命上限'
+        CHAR_DEFENSE: '角色防御力',
+        MAX_HP: '角色生命上限',
+        CHAR_MAX_HP: '角色生命上限'
       };
       var ratioLabels = {
         ATTACK: effect.outcomeType === 'HEAL' ? '技能治疗比例' : '技能伤害比例',
+        CHAR_ATTACK: effect.outcomeType === 'HEAL' ? '技能治疗比例' : '技能伤害比例',
         DEFENSE: '技能倍率',
-        MAX_HP: '技能治疗比例'
+        CHAR_DEFENSE: '技能倍率',
+        MAX_HP: '技能治疗比例',
+        CHAR_MAX_HP: '技能治疗比例'
       };
+
+      if (effect.formulaText && effect.effectKind !== 'STAT_FORMULA' && effect.effectKind !== 'FIXED_VALUE') {
+        return {
+          outcomeLabel: outcomeLabel,
+          parts: [{ label: '公式', valueText: effect.formulaText }],
+          result: null
+        };
+      }
 
       if (effect.effectKind === 'FIXED_VALUE') {
         var fixedVal = Math.ceil(Number(effect.fixedValue) || 0);
@@ -1832,9 +1857,21 @@ createApp({
         };
       }
 
-      if (effect.effectKind !== 'STAT_FORMULA') return null;
+      if (effect.effectKind !== 'STAT_FORMULA') {
+        if (effect.formulaText) {
+          return {
+            outcomeLabel: outcomeLabel,
+            parts: [{ label: '公式', valueText: effect.formulaText }],
+            result: null
+          };
+        }
+        return null;
+      }
 
       var statKey = effect.statRef || 'ATTACK';
+      if (statKey === 'CHAR_MAX_HP') statKey = 'MAX_HP';
+      if (statKey === 'CHAR_ATTACK') statKey = 'ATTACK';
+      if (statKey === 'CHAR_DEFENSE') statKey = 'DEFENSE';
       var baseMap = this.gearPreviewStatBase;
       var base = baseMap[statKey] != null ? baseMap[statKey] : baseMap.ATTACK;
       var ratioY = Number(effect.ratioY) || 1;
@@ -1871,6 +1908,7 @@ createApp({
     },
     itemSkillSections: function (detail) {
       if (!detail) return [];
+      var isSkillItem = detail.itemTagCodes && detail.itemTagCodes.indexOf('SKILL') >= 0;
       var sections = [];
       if (detail.basicAttackSlot) {
         sections.push({ title: '普攻', slots: [detail.basicAttackSlot] });
@@ -1880,7 +1918,10 @@ createApp({
       }
       var traits = detail.triggerSlots || [];
       if (traits.length) {
-        sections.push({ title: '特性主动', slots: traits });
+        var traitTitle = (isSkillItem && !detail.basicAttackSlot && !detail.ultimateSlot)
+          ? '人物技能'
+          : '特性主动';
+        sections.push({ title: traitTitle, slots: traits });
       }
       return sections;
     },
@@ -2018,25 +2059,6 @@ createApp({
       this.selectedStageId = '';
       localStorage.removeItem(APP_CONFIG.selectedStageKey);
       this.loadStages();
-    },
-    loadHomeMedia: function () {
-      var self = this;
-      GameApi.getBannerList()
-        .then(function (res) { self.banners = res.data || []; })
-        .catch(function () { self.banners = []; });
-      GameApi.getArticleList(1, 5)
-        .then(function (res) { self.articles = res.data || []; })
-        .catch(function () { self.articles = []; });
-    },
-    openBanner: function (banner) {
-      if (banner.jumpUrl) window.open(banner.jumpUrl, '_blank');
-    },
-    openArticle: function (article) {
-      this.articleDetail = { title: article.title, content: article.content || '' };
-      this.showArticleDetail = true;
-    },
-    goProfile: function () {
-      location.href = '/profile.html';
     },
     openItemLog: function () {
       var self = this;

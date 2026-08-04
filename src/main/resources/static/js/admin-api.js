@@ -400,54 +400,6 @@
     },
     professionSkillRemove: function (id) {
       return request('/back/game/character/profession/skill/remove', { json: true, body: { id: id } }).then(ensureSuccess);
-    },
-    kycList: function (query, filter) {
-      return pageList('/back/member/kyc/list', filter || {}, query);
-    },
-    kycAction: function (body) {
-      return request('/back/member/kyc/action', { json: true, body: body }).then(ensureSuccess);
-    },
-    setMemberToAddress: function (body) {
-      return request('/back/member/set/to/address', { json: true, body: body }).then(ensureSuccess);
-    },
-    withdrawList: function (query, filter) {
-      return pageList('/back/withdraw/list', filter || {}, query);
-    },
-    withdrawSuccess: function (id, hash) {
-      return request('/back/withdraw/success', { json: true, body: { id: id, hash: hash || '' } }).then(ensureSuccess);
-    },
-    withdrawFail: function (id, hash) {
-      return request('/back/withdraw/fail', { json: true, body: { id: id, hash: hash || '' } }).then(ensureSuccess);
-    },
-    withdrawTotalWaiting: function () {
-      return request('/back/withdraw/total/waiting', {}).then(ensureSuccess);
-    },
-    moneyRecordList: function (query, filter) {
-      return pageList('/back/record/list', filter || {}, query);
-    },
-    sysParamList: function (query, filter) {
-      return pageList('/back/param/list', filter || {}, query);
-    },
-    sysParamUpdate: function (body) {
-      return request('/back/param/update', { json: true, body: body }).then(ensureSuccess);
-    },
-    articleList: function (query, filter) {
-      return pageList('/back/media/article/list', filter || {}, query);
-    },
-    saveArticle: function (body) {
-      return request('/back/media/article/saveOrUpdate', { json: true, body: body }).then(ensureSuccess);
-    },
-    removeArticle: function (id) {
-      return request('/back/media/article/remove/byId', { json: true, body: { id: id } }).then(ensureSuccess);
-    },
-    completeSkillList: function (query, filter) {
-      return pageList('/back/game/trigger-v2/complete-skill/list', filter || {}, query);
-    },
-    saveCompleteSkill: function (body) {
-      return request('/back/game/trigger-v2/complete-skill/save', { json: true, body: body }).then(ensureSuccess);
-    },
-    removeCompleteSkill: function (id) {
-      return request('/back/game/trigger-v2/complete-skill/remove', { json: true, body: { id: id } }).then(ensureSuccess);
     }
   };
 })(window);

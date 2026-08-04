@@ -53,7 +53,11 @@ public enum PassiveEffectKind {
         if (code == null || code.isBlank()) {
             return null;
         }
-        return valueOf(code.trim().toUpperCase());
+        try {
+            return valueOf(code.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     public static List<PassiveEffectKind> all() {

@@ -430,6 +430,12 @@ public class FinishedSkillExecutorService {
             case ATTACK -> unit.getAttack() != null ? unit.getAttack() : 0;
             case DEFENSE -> unit.getDefense() != null ? unit.getDefense() : 0;
             case MAX_HP -> unit.getMaxHp() != null ? unit.getMaxHp() : 0;
+            case CUR_HP -> unit.getHp() != null ? unit.getHp() : 0;
+            case MAX_ACTION -> unit.getActionValue() != null ? unit.getActionValue() : 0;
+            case CUR_ACTION -> unit.getActionBar() != null ? unit.getActionBar() : 0;
+            case WEAPON_ATTACK -> unit.getWeaponAttack() != null ? unit.getWeaponAttack() : 0;
+            case WEAPON_DAMAGE_RATIO -> unit.getWeaponDamageRatio() != null
+                    ? unit.getWeaponDamageRatio().intValue() : 1;
         };
     }
 
@@ -443,7 +449,11 @@ public class FinishedSkillExecutorService {
             return null;
         }
         StatRefType statRef = StatRefType.parse(effect.getStatRef());
-        String statLabel = statRef != null ? statRef.getLabel() : "攻击";
+        String statLabel = statRef != null ? statRef.getLabel()
+                : org.wx.core.wxBusiness.game.entity.enums.SkillReadResolver.resolveLabel(effect.getStatRef());
+        if (statLabel == null || statLabel.isBlank()) {
+            statLabel = "攻击";
+        }
         int base = readStat(caster, statRef);
         BigDecimal y = effect.getRatioY() != null ? effect.getRatioY() : BigDecimal.ONE;
         StringBuilder sb = new StringBuilder();

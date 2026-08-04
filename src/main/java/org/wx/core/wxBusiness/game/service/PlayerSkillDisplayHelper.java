@@ -5,13 +5,19 @@ import org.springframework.stereotype.Component;
 import org.wx.core.wxBusiness.game.entity.GameFinishedSkill;
 import org.wx.core.wxBusiness.game.entity.GameTriggerSlot;
 import org.wx.core.wxBusiness.game.entity.ItemSkillEffectDetailVo;
+import org.wx.core.wxBusiness.game.entity.enums.AdvancedEffectKind;
 import org.wx.core.wxBusiness.game.entity.enums.EffectOutcomeType;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionKind;
+import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectKind;
 import org.wx.core.wxBusiness.game.entity.enums.SkillCompareOp;
 import org.wx.core.wxBusiness.game.entity.enums.SkillFormulaOutcome;
+import org.wx.core.wxBusiness.game.entity.enums.SkillReadResolver;
 import org.wx.core.wxBusiness.game.entity.enums.SkillReadType;
 import org.wx.core.wxBusiness.game.entity.enums.SkillScopeFilter;
 import org.wx.core.wxBusiness.game.entity.enums.SkillTargetType;
 import org.wx.core.wxBusiness.game.entity.enums.StatRefType;
+import org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo;
+import org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionItemVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo;
@@ -44,9 +50,10 @@ public class PlayerSkillDisplayHelper {
                 continue;
             }
             ItemSkillEffectDetailVo vo = new ItemSkillEffectDetailVo();
-            vo.setEffectKind("STAT_FORMULA");
-            vo.setEffectKindLabel("属性公式");
             SkillFormulaOutcome outcome = SkillFormulaOutcome.parse(formula.getOutcome());
+            AdvancedEffectKind effectKind = resolveFormulaEffectKind(outcome);
+            vo.setEffectKind(effectKind.name());
+            vo.setEffectKindLabel(effectKind.getLabel());
             if (outcome == SkillFormulaOutcome.DAMAGE || outcome == SkillFormulaOutcome.HEAL) {
                 EffectOutcomeType legacy = EffectOutcomeType.parse(outcome.name());
                 if (legacy != null) {
@@ -58,7 +65,7 @@ public class PlayerSkillDisplayHelper {
                 vo.setOutcomeLabel(outcome.getLabel());
             }
             vo.setFormulaText(buildFormulaText(formula));
-            applySimpleFormulaMeta(formula, vo);
+            applySimpleFormulaMeta(formula, vo, effectKind);
             int frequency = formula.getHitFrequency() != null && formula.getHitFrequency() > 0
                     ? formula.getHitFrequency() : 1;
             vo.setHitFrequency(frequency);
@@ -67,6 +74,88 @@ public class PlayerSkillDisplayHelper {
             effects.add(vo);
         }
         return effects;
+    }
+
+    public String formatPassiveConditions(List<PassiveConditionVo> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            return "无条件";
+        }
+        List<String> parts = new ArrayList<>();
+        for (PassiveConditionVo condition : conditions) {
+            if (condition == null) {
+                continue;
+            }
+            PassiveConditionKind kind = PassiveConditionKind.parse(condition.getType());
+            if (kind == null || kind == PassiveConditionKind.NONE) {
+                continue;
+            }
+            if (kind == PassiveConditionKind.REQUIRE_EQUIP) {
+                parts.add("需装备指定物品");
+            } else if (kind == PassiveConditionKind.COMPARE) {
+                String left = formatOperand(null, condition.getLeftKind(), condition.getLeftRead(),
+                        condition.getLeftFilter(), condition.getLeftFilterRef(), condition.getLeftConst(), null);
+                String right = formatOperand(null, condition.getRightKind(), condition.getRightRead(),
+                        condition.getRightFilter(), condition.getRightFilterRef(), condition.getRightConst(), null);
+                SkillCompareOp op = SkillCompareOp.parse(condition.getOp());
+                String opText = op != null ? op.getSymbol() : (condition.getOp() != null ? condition.getOp() : "?");
+                parts.add(left + " " + opText + " " + right);
+            } else {
+                parts.add(kind.getLabel());
+            }
+        }
+        return parts.isEmpty() ? "无条件" : String.join("；", parts);
+    }
+
+    public String formatPassiveEffects(List<PassiveEffectVo> effects) {
+        if (effects == null || effects.isEmpty()) {
+            return null;
+        }
+        return effects.stream()
+                .map(this::formatPassiveEffect)
+                .filter(s -> s != null && !s.isBlank())
+                .collect(Collectors.joining("；"));
+    }
+
+    private String formatPassiveEffect(PassiveEffectVo effect) {
+        if (effect == null) {
+            return null;
+        }
+        PassiveEffectKind kind = PassiveEffectKind.parse(effect.getKind());
+        String kindLabel = kind != null ? kind.getLabel() : effect.getKind();
+        if (kind != null && kind.isFormula()) {
+            String expr = formatFormulaTokens(effect.getTokens());
+            return kindLabel + (expr.isBlank() ? "" : "：" + expr);
+        }
+        String statLabel = SkillReadResolver.resolveLabel(effect.getStat());
+        if (statLabel == null || statLabel.isBlank()) {
+            statLabel = effect.getStat() != null ? effect.getStat() : "";
+        }
+        int sign = effect.getSign() != null && effect.getSign() < 0 ? -1 : 1;
+        BigDecimal raw = effect.getValue() != null ? effect.getValue() : BigDecimal.ZERO;
+        BigDecimal signed = raw.multiply(BigDecimal.valueOf(sign));
+        String valText = signed.stripTrailingZeros().toPlainString();
+        if (statLabel.isBlank()) {
+            return kindLabel + " " + valText;
+        }
+        return kindLabel + " · " + statLabel + " " + (sign < 0 ? "" : "+") + valText;
+    }
+
+    private String formatFormulaTokens(List<SkillFormulaTokenVo> tokens) {
+        if (tokens == null || tokens.isEmpty()) {
+            return "";
+        }
+        return tokens.stream()
+                .map(t -> formatToken(t, null))
+                .collect(Collectors.joining(""))
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private AdvancedEffectKind resolveFormulaEffectKind(SkillFormulaOutcome outcome) {
+        if (outcome == SkillFormulaOutcome.ACTION_INC || outcome == SkillFormulaOutcome.ACTION_DEC) {
+            return AdvancedEffectKind.ACTION_VALUE;
+        }
+        return AdvancedEffectKind.STAT_FORMULA;
     }
 
     public String formatSlotTriggerDesc(GameTriggerSlot slot, String triggerRefName) {
@@ -214,8 +303,18 @@ public class PlayerSkillDisplayHelper {
         return prefix + expr;
     }
 
-    private void applySimpleFormulaMeta(SkillFormulaGroupVo formula, ItemSkillEffectDetailVo vo) {
-        if (formula.getTokens() == null || formula.getTokens().size() < 3) {
+    private void applySimpleFormulaMeta(SkillFormulaGroupVo formula, ItemSkillEffectDetailVo vo,
+                                        AdvancedEffectKind effectKind) {
+        if (formula.getTokens() == null || formula.getTokens().isEmpty()) {
+            return;
+        }
+        if (effectKind == AdvancedEffectKind.ACTION_VALUE && formula.getTokens().size() == 1) {
+            SkillFormulaTokenVo only = formula.getTokens().get(0);
+            if ("CONST".equalsIgnoreCase(only.getKind()) && only.getValue() != null) {
+                vo.setActionDelta(only.getValue().intValue());
+            }
+        }
+        if (formula.getTokens().size() < 3) {
             return;
         }
         SkillFormulaTokenVo read = formula.getTokens().get(0);
@@ -225,35 +324,24 @@ public class PlayerSkillDisplayHelper {
                 || !"CONST".equalsIgnoreCase(val.getKind())) {
             return;
         }
-        StatRefType stat = mapReadToStat(read.getRead());
+        String readCode = read.getRead();
+        StatRefType stat = SkillReadResolver.toStatRef(readCode);
         if (stat != null) {
             vo.setStatRef(stat.name());
             vo.setStatRefLabel(stat.getLabel());
-        } else if (read.getRead() != null) {
-            SkillReadType rt = SkillReadType.parse(read.getRead());
-            if (rt != null) {
-                vo.setStatRef(read.getRead());
-                vo.setStatRefLabel(rt.getLabel());
-            }
+        } else if (readCode != null) {
+            vo.setStatRef(readCode);
+            vo.setStatRefLabel(SkillReadResolver.resolveLabel(readCode));
         }
         if (val.getValue() != null) {
             vo.setRatioY(val.getValue());
+            if (effectKind == AdvancedEffectKind.ACTION_VALUE) {
+                vo.setActionDelta(val.getValue().intValue());
+            }
         }
-        if (StatRefType.ATTACK == stat || "WEAPON_ATTACK".equalsIgnoreCase(read.getRead())) {
+        if (SkillReadResolver.usesWeaponRatio(readCode)) {
             vo.setUseWeaponRatio(1);
         }
-    }
-
-    private StatRefType mapReadToStat(String read) {
-        if (read == null || read.isBlank()) {
-            return null;
-        }
-        return switch (read.trim().toUpperCase()) {
-            case "CHAR_ATTACK", "ATTACK" -> StatRefType.ATTACK;
-            case "CHAR_DEFENSE", "DEFENSE" -> StatRefType.DEFENSE;
-            case "CHAR_MAX_HP", "MAX_HP" -> StatRefType.MAX_HP;
-            default -> null;
-        };
     }
 
     private void applyFormulaTarget(SkillFormulaGroupVo formula, GameFinishedSkill skill, ItemSkillEffectDetailVo vo) {

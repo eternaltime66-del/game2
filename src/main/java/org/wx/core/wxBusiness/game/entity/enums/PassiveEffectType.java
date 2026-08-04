@@ -23,7 +23,11 @@ public enum PassiveEffectType {
         if (code == null || code.isBlank()) {
             return null;
         }
-        return valueOf(code.trim().toUpperCase());
+        try {
+            return valueOf(code.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     public boolean isPercent() {

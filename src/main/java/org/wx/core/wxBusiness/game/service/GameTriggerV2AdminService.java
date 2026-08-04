@@ -564,7 +564,7 @@ public class GameTriggerV2AdminService {
     }
 
     public List<TriggerOptionVo> listStatRefOptions() {
-        return Arrays.stream(StatRefType.values()).map(type -> {
+        return StatRefType.all().stream().map(type -> {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
             vo.setLabel(type.getLabel());

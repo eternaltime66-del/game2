@@ -30,6 +30,7 @@ import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL4;
 import org.wx.core.wxBusiness.game.entity.enums.GameItemTag;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveConditionType;
 import org.wx.core.wxBusiness.game.entity.enums.PassiveEffectType;
+import org.wx.core.wxBusiness.game.entity.enums.SkillReadResolver;
 import org.wx.core.wxBusiness.game.entity.enums.SkillTargetType;
 import org.wx.core.wxBusiness.game.entity.enums.StatRefType;
 import org.wx.core.wxBusiness.game.entity.enums.TriggerSlotKind;
@@ -64,6 +65,8 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
 
     @Resource
     private PlayerSkillDisplayHelper playerSkillDisplayHelper;
+    @Resource
+    private SkillJsonHelper skillJsonHelper;
     @Resource
     private GameItemPassiveService itemPassiveService;
     @Resource
@@ -145,16 +148,29 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         vo.setId(passive.getId());
         vo.setName(passive.getName());
         vo.setConditionLabel(buildPassiveConditionLabel(passive));
-        PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
-        if (effectType != null) {
-            vo.setEffectTypeLabel(effectType.getLabel());
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo> v2Effects =
+                skillJsonHelper.readPassiveEffects(passive.getEffectsJson());
+        String v2EffectText = playerSkillDisplayHelper.formatPassiveEffects(v2Effects);
+        if (v2EffectText != null && !v2EffectText.isBlank()) {
+            vo.setEffectTypeLabel(v2EffectText);
+            vo.setEffectValue(null);
+        } else {
+            PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
+            if (effectType != null) {
+                vo.setEffectTypeLabel(effectType.getLabel());
+            }
+            vo.setEffectValue(passive.getEffectValue());
         }
-        vo.setEffectValue(passive.getEffectValue());
         vo.setRemark(passive.getRemark());
         return vo;
     }
 
     private String buildPassiveConditionLabel(GamePassiveSkill passive) {
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo> v2Conditions =
+                skillJsonHelper.readPassiveConditions(passive.getConditionsJson());
+        if (!v2Conditions.isEmpty()) {
+            return playerSkillDisplayHelper.formatPassiveConditions(v2Conditions);
+        }
         PassiveConditionType conditionType = PassiveConditionType.parse(passive.getConditionType());
         if (conditionType == null || conditionType == PassiveConditionType.NONE) {
             return "无条件";
@@ -316,6 +332,8 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         StatRefType statRef = StatRefType.parse(effect.getStatRef());
         if (statRef != null) {
             vo.setStatRefLabel(statRef.getLabel());
+        } else if (effect.getStatRef() != null && !effect.getStatRef().isBlank()) {
+            vo.setStatRefLabel(SkillReadResolver.resolveLabel(effect.getStatRef()));
         }
         vo.setRatioY(effect.getRatioY());
         vo.setUseWeaponRatio(effect.getUseWeaponRatio());
@@ -370,7 +388,11 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
             return prefix + val.stripTrailingZeros().toPlainString();
         }
         StatRefType statRef = StatRefType.parse(effect.getStatRef());
-        String statLabel = statRef != null ? statRef.getLabel() : "属性";
+        String statLabel = statRef != null ? statRef.getLabel()
+                : SkillReadResolver.resolveLabel(effect.getStatRef());
+        if (statLabel == null || statLabel.isBlank()) {
+            statLabel = "属性";
+        }
         BigDecimal y = effect.getRatioY() != null ? effect.getRatioY() : BigDecimal.ONE;
         String formula = statLabel + " × " + y.stripTrailingZeros().toPlainString();
         if (Integer.valueOf(1).equals(effect.getUseWeaponRatio())) {

@@ -29,6 +29,8 @@ public class HeroPassiveService {
     private GamePassiveSkillService passiveSkillService;
     @Resource
     private SkillJsonHelper skillJsonHelper;
+    @Resource
+    private PlayerSkillDisplayHelper playerSkillDisplayHelper;
 
     public void applyPassives(HeroCombatService.HeroCombatContext ctx, GameHeroEquip equip,
                               Map<String, GameItem> itemMap) {
@@ -150,16 +152,29 @@ public class HeroPassiveService {
         vo.setName(passive.getName());
         vo.setSourceLabel(sourceLabel);
         vo.setConditionLabel(buildConditionLabel(passive, itemMap));
-        PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
-        if (effectType != null) {
-            vo.setEffectTypeLabel(effectType.getLabel());
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo> v2Effects =
+                skillJsonHelper.readPassiveEffects(passive.getEffectsJson());
+        String v2EffectText = playerSkillDisplayHelper.formatPassiveEffects(v2Effects);
+        if (v2EffectText != null && !v2EffectText.isBlank()) {
+            vo.setEffectTypeLabel(v2EffectText);
+            vo.setEffectValue(null);
+        } else {
+            PassiveEffectType effectType = PassiveEffectType.parse(passive.getEffectType());
+            if (effectType != null) {
+                vo.setEffectTypeLabel(effectType.getLabel());
+            }
+            vo.setEffectValue(passive.getEffectValue());
         }
-        vo.setEffectValue(passive.getEffectValue());
         vo.setActive(matchesCondition(passive, equippedIds));
         result.add(vo);
     }
 
     private String buildConditionLabel(GamePassiveSkill passive, Map<String, GameItem> itemMap) {
+        List<org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo> v2Conditions =
+                skillJsonHelper.readPassiveConditions(passive.getConditionsJson());
+        if (!v2Conditions.isEmpty()) {
+            return playerSkillDisplayHelper.formatPassiveConditions(v2Conditions);
+        }
         PassiveConditionType conditionType = PassiveConditionType.parse(passive.getConditionType());
         if (conditionType == null || conditionType == PassiveConditionType.NONE) {
             return "无条件";

@@ -716,6 +716,24 @@ body.admin-body .bg-glow {
   font-size: 13px;
 }
 
+.member-grant-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.member-grant-tabs .btn-mini.active {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  border-color: transparent;
+}
+
+.member-grant-hint {
+  margin: 0;
+  font-size: 12px;
+  grid-column: 1 / -1;
+}
+
 .col-actions .btn-mini + .btn-mini {
   margin-left: 6px;
 }

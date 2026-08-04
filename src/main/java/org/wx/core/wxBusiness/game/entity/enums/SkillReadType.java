@@ -30,7 +30,7 @@ public enum SkillReadType {
     CHAR_CUR_ACTION("角色当前行动值", 240, false, false),
     CHAR_MAX_ACTION("角色最大行动值", 250, false, false),
     EQUIP_USES_LEFT("装备剩余使用次数", 260, false, false),
-    WEAPON_DAMAGE_RATIO("当前武器伤害比", 270, false, false);
+    WEAPON_DAMAGE_RATIO("当前武器伤害比（无武器=1）", 270, false, false);
 
     private final String label;
     private final int sort;

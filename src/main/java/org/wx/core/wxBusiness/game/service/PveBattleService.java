@@ -426,6 +426,7 @@ public class PveBattleService {
     }
 
     private void applyHeroWeaponRatio(BattleState state, BattleUnit unit) {
+        unit.setWeaponDamageRatio(null);
         List<String> itemIds = state.getHeroEquippedItemIds();
         if (itemIds == null || itemIds.isEmpty()) {
             return;

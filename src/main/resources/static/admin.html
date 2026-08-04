@@ -645,7 +645,7 @@
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
           <h3>自定义扳机技能</h3>
-          <p class="panel-page-remark">装备配置产生的自定义扳机（分类2≠通用）。本页只浏览筛选，不可新增/改分类。</p>
+          <p class="panel-page-remark">装备上配置产生的扳机技能（公式组）。完整主动技能 = 装备槽扳机组 + 本扳机技能。本页可编辑公式组，不可改分类。</p>
         </div>
       </div>
       <div class="panel-filter-bar">
@@ -735,9 +735,10 @@
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
           <h3>普通攻击</h3>
-          <p class="panel-page-remark">通用普攻只读模板：能量值满 → 首位目标 → 攻击力100%（无武器覆盖时使用）</p>
+          <p class="panel-page-remark">通用扳机技能（空手兜底）。公式可读「当前武器伤害比」：有武器按武器比例，无武器自动按 1。</p>
         </div>
         <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary btn-mini" :disabled="!basicAttackDetail" @click="editBasicAttack">编辑</button>
           <button type="button" class="btn-mini secondary" @click="loadBasicAttack">刷新</button>
         </div>
       </div>
@@ -748,12 +749,10 @@
             <tr><th>编码</th><td>{{ basicAttackDetail.code }}</td></tr>
             <tr><th>名称</th><td>{{ basicAttackDetail.name }}</td></tr>
             <tr><th>公式组</th><td>
-              <div v-for="(f, i) in (basicAttackDetail.formulas || [])" :key="i" class="muted">
-                {{ i + 1 }}. {{ formulaOutcomeLabel(f.outcome) }}
-                · 目标 {{ f.targetType || basicAttackDetail.targetType || '—' }}
-                · 频率 {{ f.hitFrequency || 1 }}
-                · 次数 {{ f.maxCastCount == null ? '无限' : f.maxCastCount }}
-                · {{ formulaTokensText(f.tokens) }}
+              <div v-for="(f, i) in (basicAttackDetail.formulas || [])" :key="i" style="margin-bottom:6px">
+                <div><strong>公式组 {{ i + 1 }}</strong> · {{ formulaOutcomeLabel(f.outcome) }}</div>
+                <div class="muted">目标槽 {{ targetTypeLabel(f.targetType || basicAttackDetail.targetType) }} · 频率槽 {{ f.hitFrequency || 1 }} · 发动上限 {{ f.maxCastCount == null ? '无限' : f.maxCastCount }}</div>
+                <div class="muted">公式 {{ formulaTokensText(f.tokens) || '—' }}</div>
               </div>
               <span v-if="!(basicAttackDetail.formulas || []).length">—</span>
             </td></tr>
@@ -768,7 +767,7 @@
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
           <h3>{{ finishedSkillPanelTitle }}</h3>
-          <p class="panel-page-remark">分类1=装备 · 通用扳机（分类2=通用）· 技能类型=扳机技能</p>
+          <p class="panel-page-remark">仅编辑「扳机技能」公式组。完整主动技能 = 装备槽「扳机组」+ 本「扳机技能」</p>
         </div>
         <div class="panel-toolbar-actions">
           <button class="btn-primary btn-mini" @click="openDrawer('finishedSkill')">+ 新增</button>
@@ -790,7 +789,7 @@
 
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>技能类型</th><th>目标</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>技能类型</th><th>公式组</th><th>启用</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in finishedSkills" :key="s.id">
               <td class="col-id">{{ s.id }}</td>
@@ -798,7 +797,7 @@
               <td>{{ s.name }}</td>
               <td>{{ s.catL2Label || s.catL2 }}</td>
               <td>{{ finishedSkillTypeLabel(s) }}</td>
-              <td>{{ s.targetType }}</td>
+              <td>{{ finishedSkillFormulaSummary(s) }}</td>
               <td>{{ s.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini" @click="editFinishedSkill(s)">编辑</button>
@@ -861,7 +860,7 @@
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
           <h3>{{ personSkillPanelTitle }}</h3>
-          <p class="panel-page-remark">人物主动 = 技能物品 + 战斗扳机 + 实体技能；被动仍为被动配置。分类：人物 → 角色/职业/通用。</p>
+          <p class="panel-page-remark">完整主动技能 = 扳机组（条件）+ 扳机技能（公式组按序执行）。被动仍为被动配置。</p>
         </div>
         <div class="panel-toolbar-actions">
           <button class="btn-primary btn-mini" :disabled="!personOwnerReady" @click="openPersonSkillCreate('ACTIVE')">+ 主动</button>
@@ -1132,7 +1131,7 @@
           </div>
 
           <div v-show="equipDrawerTab === 'basicAttack' && (drawerType === 'weapon' || drawerType === 'monster')">
-            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定普攻槽：能量值满时释放；留空使用全局默认普攻' : '武器固定普攻槽：能量值满时释放；底部「保存」会同步普攻槽与自定义技能' }}</div>
+            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定普攻：扳机组=能量值满 + 扳机技能公式组' : '武器固定普攻：扳机组=能量值满 + 扳机技能公式组；底部「保存」会同步' }}</div>
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置普攻</p>
             <template v-else>
               <div class="trigger-inline-row">
@@ -1153,7 +1152,7 @@
           </div>
 
           <div v-show="equipDrawerTab === 'ultimate' && (drawerType === 'weapon' || drawerType === 'monster')">
-            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定大招槽：有且仅有一个，留空表示无大招' : '武器固定大招槽：有且仅有一个；底部「保存」会同步大招槽与自定义技能' }}</div>
+            <div class="level-tree-compact">{{ drawerType === 'monster' ? '怪物固定大招：扳机组 + 扳机技能' : '武器固定大招：完整主动 = 扳机组 + 扳机技能；底部「保存」会同步' }}</div>
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置大招</p>
             <template v-else>
               <div class="trigger-inline-row">
@@ -1230,7 +1229,7 @@
           </div>
 
           <div v-show="equipDrawerTab === 'trigger'">
-            <div class="level-tree-compact">特性主动：精准/快捷扳机条件满足后释放扳机技能</div>
+            <div class="level-tree-compact">特性主动：完整主动 = 扳机组 + 扳机技能（条件命中后按公式组顺序执行）</div>
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置特性主动</p>
             <template v-else>
               <div class="trigger-inline-row" v-for="(t, idx) in itemTriggers" :key="t.id || idx">
@@ -1402,8 +1401,13 @@
         </div>
 
         <div v-if="drawerType === 'finishedSkill'" class="form-grid">
-          <div class="field full"><label>ID</label><input v-model="finishedSkillForm.id" placeholder="留空自动生成"></div>
-          <div class="field"><label>编码</label><input v-model="finishedSkillForm.code"></div>
+          <div class="field full" v-if="isUniversalBasicAttackForm">
+            <div class="level-tree-compact">系统普通攻击（扳机技能）· ID/编码/分类固定 · 可改名称、公式组与备注 · 武器伤害比无武器时自动为 1</div>
+          </div>
+          <div class="field full"><label>ID</label>
+            <input v-model="finishedSkillForm.id" placeholder="留空自动生成" :disabled="isUniversalBasicAttackForm">
+          </div>
+          <div class="field"><label>编码</label><input v-model="finishedSkillForm.code" :disabled="isUniversalBasicAttackForm"></div>
           <div class="field"><label>名称</label><input v-model="finishedSkillForm.name"></div>
           <div class="field"><label>分类1</label><span class="field-value">{{ finishedSkillForm.catL1 === 'PERSON' ? '人物' : '装备' }}</span></div>
           <div class="field" v-if="finishedSkillForm.catL1 !== 'PERSON' && tab !== 'equipCustomSkill' && !finishedSkillForm.id"><label>装备类型</label>
@@ -1416,38 +1420,82 @@
             <admin-select v-model="finishedSkillForm.enabled" :options="yesNoOptions" />
           </div>
           <div class="field full"><label>备注</label><input v-model="finishedSkillForm.remark"></div>
+
+          <template v-if="finishedSkillForm.catL1 === 'PERSON' && finishedSkillForm.catL4 === 'ACTIVE'">
+            <div class="field full">
+              <div class="panel-toolbar" style="margin:0">
+                <span>扳机组（条件组：组内且 / 组间或；全部命中后发动扳机技能）</span>
+              </div>
+              <p class="muted" style="margin:6px 0 0" v-if="finishedSkillForm.skillItemId">技能物品：{{ finishedSkillForm.skillItemId }}</p>
+            </div>
+            <div class="field"><label>扳机模式</label>
+              <admin-select v-model="finishedSkillForm.triggerMode" :options="meta.triggerModes" value-key="code" label-key="label" />
+            </div>
+            <div class="field" v-if="finishedSkillForm.triggerMode === 'QUICK'"><label>快捷预设</label>
+              <admin-select v-model="finishedSkillForm.quickPreset" :options="meta.quickPresets" value-key="code" label-key="label" />
+            </div>
+            <div class="field full" v-if="finishedSkillForm.triggerMode !== 'QUICK'">
+              <div class="panel-toolbar" style="margin:0">
+                <span>条件组</span>
+                <button type="button" class="btn-mini" @click="addConditionGroup(finishedSkillForm)">+ 条件组</button>
+              </div>
+              <div class="effect-block" v-for="(g, gi) in finishedSkillForm.conditionGroups" :key="'pfg'+gi">
+                <div class="effect-block-head">
+                  <span>条件组 {{ gi + 1 }}</span>
+                  <button type="button" class="btn-mini danger" @click="removeConditionGroup(finishedSkillForm, gi)">删组</button>
+                </div>
+                <div class="form-grid" v-for="(it, ii) in g.items" :key="'pfi'+ii">
+                  <div class="field"><label>左</label>
+                    <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
+                  </div>
+                  <template v-if="it.leftKind === 'READ'">
+                    <div class="field"><label>左·读取</label>
+                      <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
+                    </div>
+                    <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
+                      <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
+                    </div>
+                    <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
+                      <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                    </div>
+                  </template>
+                  <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
+                  <div class="field"><label>判定</label>
+                    <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
+                  </div>
+                  <div class="field"><label>右</label>
+                    <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
+                  </div>
+                  <template v-if="it.rightKind === 'READ'">
+                    <div class="field"><label>右·读取</label>
+                      <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
+                    </div>
+                    <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
+                      <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
+                    </div>
+                    <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
+                      <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
+                    </div>
+                  </template>
+                  <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
+                  <div class="field full" style="display:flex;gap:8px">
+                    <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
+                    <button type="button" class="btn-mini danger" @click="removeConditionItem(g, ii)">删条件</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <div class="field full">
             <div class="panel-toolbar" style="margin:0">
-              <span>公式组（每条独立配置目标 / 频率 / 发动次数）</span>
-              <button type="button" class="btn-mini" @click="addFormulaGroup">+ 公式</button>
+              <span>扳机技能 · 公式组（按顺序执行；每条=结果类型+公式+目标槽+频率槽+发动上限槽）</span>
+              <button type="button" class="btn-mini" @click="addFormulaGroup">+ 公式组</button>
             </div>
             <div class="effect-block formula-editor" v-for="(fg, idx) in finishedSkillForm.formulas" :key="'fg'+idx">
               <div class="effect-block-head">
-                <span>公式 {{ idx + 1 }}</span>
+                <span>公式组 {{ idx + 1 }}</span>
                 <button type="button" class="btn-mini danger" @click="removeFormulaGroup(idx)">删</button>
-              </div>
-              <div class="form-grid" style="margin-bottom:8px">
-                <div class="field"><label>目标槽</label>
-                  <admin-select v-model="fg.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
-                </div>
-                <div class="field"><label>频率槽</label><input v-model.number="fg.hitFrequency" type="number" min="1" placeholder="最小1"></div>
-                <div class="field full"><label>发动次数</label>
-                  <div class="cast-limit-row">
-                    <label class="admin-switch">
-                      <input type="checkbox" v-model="fg.maxCastLimited">
-                      <span class="admin-switch-slider"></span>
-                      <span class="admin-switch-text">{{ fg.maxCastLimited ? '限制次数' : '无限' }}</span>
-                    </label>
-                    <input
-                      v-if="fg.maxCastLimited"
-                      v-model.number="fg.maxCastCount"
-                      type="number"
-                      min="1"
-                      placeholder="次数"
-                      class="cast-limit-input"
-                    >
-                  </div>
-                </div>
               </div>
               <div class="formula-outcome-row">
                 <span class="formula-sub-label">结果类型</span>
@@ -1510,75 +1558,32 @@
                   <button type="button" class="btn-mini formula-add-btn" @click="pushFormulaRead(fg)">加入</button>
                 </div>
               </div>
+              <div class="form-grid" style="margin-top:8px">
+                <div class="field"><label>目标槽</label>
+                  <admin-select v-model="fg.targetType" :options="meta.targetTypes" value-key="code" label-key="label" placeholder="选择目标槽" />
+                </div>
+                <div class="field"><label>频率槽</label><input v-model.number="fg.hitFrequency" type="number" min="1" placeholder="最小1"></div>
+                <div class="field full"><label>发动上限槽</label>
+                  <div class="cast-limit-row">
+                    <label class="admin-switch">
+                      <input type="checkbox" v-model="fg.maxCastLimited">
+                      <span class="admin-switch-slider"></span>
+                      <span class="admin-switch-text">{{ fg.maxCastLimited ? '限制次数' : '无限' }}</span>
+                    </label>
+                    <input
+                      v-if="fg.maxCastLimited"
+                      v-model.number="fg.maxCastCount"
+                      type="number"
+                      min="1"
+                      placeholder="次数"
+                      class="cast-limit-input"
+                    >
+                  </div>
+                </div>
+              </div>
             </div>
-            <p v-if="!(finishedSkillForm.formulas || []).length" class="muted" style="margin-top:8px">请添加至少一条公式</p>
+            <p v-if="!(finishedSkillForm.formulas || []).length" class="muted" style="margin-top:8px">请添加至少一条公式组</p>
           </div>
-
-          <template v-if="finishedSkillForm.catL1 === 'PERSON' && finishedSkillForm.catL4 === 'ACTIVE'">
-            <div class="field full">
-              <div class="panel-toolbar" style="margin:0">
-                <span>战斗扳机（装备到技能槽后按此条件触发）</span>
-              </div>
-              <p class="muted" style="margin:6px 0 0" v-if="finishedSkillForm.skillItemId">技能物品：{{ finishedSkillForm.skillItemId }}</p>
-            </div>
-            <div class="field"><label>扳机模式</label>
-              <admin-select v-model="finishedSkillForm.triggerMode" :options="meta.triggerModes" value-key="code" label-key="label" />
-            </div>
-            <div class="field" v-if="finishedSkillForm.triggerMode === 'QUICK'"><label>快捷预设</label>
-              <admin-select v-model="finishedSkillForm.quickPreset" :options="meta.quickPresets" value-key="code" label-key="label" />
-            </div>
-            <div class="field full" v-if="finishedSkillForm.triggerMode !== 'QUICK'">
-              <div class="panel-toolbar" style="margin:0">
-                <span>条件组（组内且，组间或）</span>
-                <button type="button" class="btn-mini" @click="addConditionGroup(finishedSkillForm)">+ 条件组</button>
-              </div>
-              <div class="effect-block" v-for="(g, gi) in finishedSkillForm.conditionGroups" :key="'pfg'+gi">
-                <div class="effect-block-head">
-                  <span>条件组 {{ gi + 1 }}</span>
-                  <button type="button" class="btn-mini danger" @click="removeConditionGroup(finishedSkillForm, gi)">删组</button>
-                </div>
-                <div class="form-grid" v-for="(it, ii) in g.items" :key="'pfi'+ii">
-                  <div class="field"><label>左</label>
-                    <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
-                  </div>
-                  <template v-if="it.leftKind === 'READ'">
-                    <div class="field"><label>左·读取</label>
-                      <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
-                    </div>
-                    <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
-                      <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
-                    </div>
-                    <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
-                      <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                    </div>
-                  </template>
-                  <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
-                  <div class="field"><label>判定</label>
-                    <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
-                  </div>
-                  <div class="field"><label>右</label>
-                    <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
-                  </div>
-                  <template v-if="it.rightKind === 'READ'">
-                    <div class="field"><label>右·读取</label>
-                      <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
-                    </div>
-                    <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
-                      <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
-                    </div>
-                    <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
-                      <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                    </div>
-                  </template>
-                  <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
-                  <div class="field full" style="display:flex;gap:8px">
-                    <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                    <button type="button" class="btn-mini danger" @click="removeConditionItem(g, ii)">删条件</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
         </div>
 
         <div v-if="drawerType === 'passiveSkill'" class="form-grid">
@@ -1837,12 +1842,16 @@
   <div v-if="memberGrant.open" class="admin-drawer-mask" @click.self="closeGrantMember">
     <div class="admin-drawer member-grant-drawer" @click.stop>
       <div class="drawer-header">
-        <h3>赠送物品</h3>
+        <h3>赠送</h3>
         <button type="button" class="drawer-close" @click="closeGrantMember">&times;</button>
       </div>
       <div class="drawer-body">
         <p class="muted member-grant-target">用户：{{ memberGrant.email || memberGrant.uid }}（{{ memberGrant.uid }}）</p>
-        <div class="form-grid">
+        <div class="member-grant-tabs">
+          <button type="button" class="btn-mini" :class="{ active: memberGrant.mode === 'item' }" @click="switchGrantMode('item')">物品</button>
+          <button type="button" class="btn-mini" :class="{ active: memberGrant.mode === 'personSkill' }" @click="switchGrantMode('personSkill')">人物技能</button>
+        </div>
+        <div class="form-grid" v-if="memberGrant.mode === 'item'">
           <div class="field">
             <label>物品</label>
             <admin-select v-model="memberGrant.itemId" :options="itemSelectOptions" placeholder="选择物品" searchable clearable />
@@ -1851,6 +1860,17 @@
             <label>数量</label>
             <input v-model.number="memberGrant.quantity" type="number" min="1" step="1">
           </div>
+        </div>
+        <div class="form-grid" v-else>
+          <div class="field">
+            <label>人物技能</label>
+            <admin-select v-model="memberGrant.finishedSkillId" :options="personSkillGrantSelectOptions" placeholder="选择人物主动技能" searchable clearable />
+          </div>
+          <div class="field">
+            <label>数量</label>
+            <input v-model.number="memberGrant.quantity" type="number" min="1" step="1">
+          </div>
+          <p class="muted member-grant-hint">赠送到仓库，玩家可装备到技能槽（SKILL_1～4）</p>
         </div>
       </div>
       <div class="drawer-footer">
@@ -1983,17 +2003,17 @@
           <div><span class="skill-detail-label">名称</span>{{ skillDetailModal.data.name }}</div>
           <div><span class="skill-detail-label">编码</span>{{ skillDetailModal.data.code }}</div>
           <div><span class="skill-detail-label">分类</span>{{ formatSkillCategory(skillDetailModal.data) }}</div>
-          <div><span class="skill-detail-label">目标</span>{{ skillDetailModal.data.targetTypeLabel || skillDetailModal.data.targetType }}</div>
           <div><span class="skill-detail-label">启用</span>{{ skillDetailModal.data.enabled ? '是' : '否' }}</div>
+          <div class="full"><span class="skill-detail-label">公式组</span>{{ finishedSkillFormulaSummary(skillDetailModal.data) }}</div>
           <div class="full"><span class="skill-detail-label">备注</span>{{ skillDetailModal.data.remark || '—' }}</div>
         </div>
-        <div class="drawer-section-title">公式组</div>
+        <div class="drawer-section-title">扳机技能 · 公式组（按顺序执行）</div>
         <div class="effect-block" v-for="(fg, idx) in (skillDetailModal.data.formulas || [])" :key="idx">
-          <div class="effect-block-head"><span>公式 {{ idx + 1 }}</span><span>{{ formulaOutcomeLabel(fg.outcome) }}</span></div>
-          <div class="muted">目标 {{ fg.targetType || skillDetailModal.data.targetType || '—' }} · 频率 {{ fg.hitFrequency || 1 }} · 次数 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
-          <div class="muted">{{ formulaTokensText(fg.tokens) || '（空）' }}</div>
+          <div class="effect-block-head"><span>公式组 {{ idx + 1 }}</span><span>{{ formulaOutcomeLabel(fg.outcome) }}</span></div>
+          <div class="muted">目标槽 {{ fg.targetType || skillDetailModal.data.targetType || '—' }} · 频率槽 {{ fg.hitFrequency || 1 }} · 发动上限 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
+          <div class="muted">{{ formulaTokensText(fg.tokens) || '（空公式）' }}</div>
         </div>
-        <div v-if="!(skillDetailModal.data.formulas || []).length" class="empty-hint">无公式</div>
+        <div v-if="!(skillDetailModal.data.formulas || []).length" class="empty-hint">无公式组</div>
       </div>
       <div class="skill-browser-footer">
         <button type="button" class="btn-mini secondary" @click="closeSkillDetailModal">关闭</button>
@@ -2007,7 +2027,7 @@
 <script src="/js/admin-api.js"></script>
 <script type="text/x-template" id="skill-custom-inline-tpl">
   <div class="skill-custom-panel">
-    <div class="level-tree-compact">自定义扳机技能 · {{ categoryText }} · 名称已按四级分类自动生成</div>
+    <div class="level-tree-compact">扳机技能 · {{ categoryText }} · 发动上限默认无限</div>
     <div class="form-grid">
       <div class="field full"><label>名称</label><input v-model="draft.name" placeholder="装备 - 武器 - 大剑 - 普攻"></div>
       <div class="field"><label>启用</label>
@@ -2017,98 +2037,98 @@
     </div>
     <div class="field full">
       <div class="panel-toolbar" style="margin:0">
-        <span>公式组（每条独立配置目标 / 频率 / 发动次数）</span>
-        <button type="button" class="btn-mini" @click="addFormula">+ 公式</button>
+        <span>扳机技能 · 公式组（按顺序执行；每条=结果类型+公式+目标槽+频率槽+发动上限槽）</span>
+        <button type="button" class="btn-mini" @click="addFormula">+ 公式组</button>
       </div>
       <div class="effect-block formula-editor" v-for="(fg, idx) in draft.formulas" :key="'cfg'+idx">
-        <div class="effect-block-head">
-          <span>公式 {{ idx + 1 }}</span>
-          <button type="button" class="btn-mini danger" @click="removeFormula(idx)">删</button>
-        </div>
-        <div class="form-grid" style="margin-bottom:8px">
-          <div class="field"><label>目标槽</label>
-            <admin-select v-model="fg.targetType" :options="meta.targetTypes" value-key="code" label-key="label" />
-          </div>
-          <div class="field"><label>频率槽</label><input v-model.number="fg.hitFrequency" type="number" min="1" placeholder="最小1"></div>
-          <div class="field full"><label>发动次数</label>
-            <div class="cast-limit-row">
-              <label class="admin-switch">
-                <input type="checkbox" v-model="fg.maxCastLimited">
-                <span class="admin-switch-slider"></span>
-                <span class="admin-switch-text">{{ fg.maxCastLimited ? '限制次数' : '无限' }}</span>
-              </label>
-              <input
-                v-if="fg.maxCastLimited"
-                v-model.number="fg.maxCastCount"
-                type="number"
-                min="1"
-                placeholder="次数"
-                class="cast-limit-input"
-              >
-            </div>
-          </div>
-        </div>
-        <div class="formula-outcome-row">
-          <span class="formula-sub-label">结果类型</span>
-          <div class="formula-outcome-pills">
-            <button
-              v-for="opt in formulaOutcomeOptions"
-              :key="opt.code"
-              type="button"
-              class="formula-pill"
-              :class="{ active: fg.outcome === opt.code }"
-              @click="fg.outcome = opt.code"
-            >{{ opt.label }}</button>
-          </div>
-        </div>
-        <div class="formula-expr-box">
-          <div class="formula-expr-display" :class="{ empty: !(fg.tokens && fg.tokens.length) }">
-            <template v-if="fg.tokens && fg.tokens.length">
-              <button
-                v-for="(tk, ti) in fg.tokens"
-                :key="'ctk'+ti"
-                type="button"
-                class="formula-token-chip"
-                :class="'kind-' + (tk.kind || '').toLowerCase()"
-                title="点击删除该项"
-                @click="removeTokenAt(fg, ti)"
-              >{{ tokenLabel(tk) }}</button>
-            </template>
-            <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
-          </div>
-        </div>
-        <div class="formula-keypad">
-          <button type="button" class="formula-key" @click="pushParen(fg,'LPAREN')">(</button>
-          <button type="button" class="formula-key" @click="pushParen(fg,'RPAREN')">)</button>
-          <button type="button" class="formula-key op" @click="pushOp(fg,'+')">+</button>
-          <button type="button" class="formula-key op" @click="pushOp(fg,'-')">−</button>
-          <button type="button" class="formula-key op" @click="pushOp(fg,'*')">×</button>
-          <button type="button" class="formula-key op" @click="pushOp(fg,'/')">÷</button>
-          <button type="button" class="formula-key danger" @click="popToken(fg)">⌫</button>
-        </div>
-        <div class="formula-param-row">
-          <span class="formula-sub-label">参数</span>
-          <div class="formula-param-mode">
-            <button type="button" class="formula-pill" :class="{ active: fg._paramMode !== 'READ' }" @click="fg._paramMode = 'CONST'">定值</button>
-            <button type="button" class="formula-pill" :class="{ active: fg._paramMode === 'READ' }" @click="fg._paramMode = 'READ'">读取</button>
-          </div>
-          <div class="formula-param-input" v-if="fg._paramMode !== 'READ'">
-            <input v-model.number="fg._constDraft" type="number" step="0.01" placeholder="输入数值">
-            <button type="button" class="btn-mini formula-add-btn" @click="pushConst(fg)">加入</button>
-          </div>
-          <div class="formula-param-input formula-param-input-stack" v-else>
-            <div class="formula-param-select">
-              <admin-select v-model="fg._readDraft" :options="meta.readTypes || []" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraftChange(fg, v)" />
-            </div>
-            <div class="formula-param-select" v-if="readNeedsFilter(fg._readDraft)">
-              <admin-select v-model="fg._filterDraft" :options="scopeOptions(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraftChange(fg, v)" />
-            </div>
-            <div class="formula-param-select" v-if="scopeNeedsRef(fg._filterDraft)">
-              <admin-select v-model="fg._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
-            </div>
-            <button type="button" class="btn-mini formula-add-btn" @click="pushRead(fg)">加入</button>
-          </div>
-        </div>
+              <div class="effect-block-head">
+                <span>公式组 {{ idx + 1 }}</span>
+                <button type="button" class="btn-mini danger" @click="removeFormula(idx)">删</button>
+              </div>
+              <div class="formula-outcome-row">
+                <span class="formula-sub-label">结果类型</span>
+                <div class="formula-outcome-pills">
+                  <button
+                    v-for="opt in formulaOutcomeOptions"
+                    :key="opt.code"
+                    type="button"
+                    class="formula-pill"
+                    :class="{ active: fg.outcome === opt.code }"
+                    @click="fg.outcome = opt.code"
+                  >{{ opt.label }}</button>
+                </div>
+              </div>
+              <div class="formula-expr-box">
+                <div class="formula-expr-display" :class="{ empty: !(fg.tokens && fg.tokens.length) }">
+                  <template v-if="fg.tokens && fg.tokens.length">
+                    <button
+                      v-for="(tk, ti) in fg.tokens"
+                      :key="'ctk'+ti"
+                      type="button"
+                      class="formula-token-chip"
+                      :class="'kind-' + (tk.kind || '').toLowerCase()"
+                      :title="'点击删除该项'"
+                      @click="removeTokenAt(fg, ti)"
+                    >{{ tokenLabel(tk) }}</button>
+                  </template>
+                  <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
+                </div>
+              </div>
+              <div class="formula-keypad">
+                <button type="button" class="formula-key" @click="pushParen(fg,'LPAREN')">(</button>
+                <button type="button" class="formula-key" @click="pushParen(fg,'RPAREN')">)</button>
+                <button type="button" class="formula-key op" @click="pushOp(fg,'+')">+</button>
+                <button type="button" class="formula-key op" @click="pushOp(fg,'-')">−</button>
+                <button type="button" class="formula-key op" @click="pushOp(fg,'*')">×</button>
+                <button type="button" class="formula-key op" @click="pushOp(fg,'/')">÷</button>
+                <button type="button" class="formula-key danger" @click="popToken(fg)">⌫</button>
+              </div>
+              <div class="formula-param-row">
+                <span class="formula-sub-label">参数</span>
+                <div class="formula-param-mode">
+                  <button type="button" class="formula-pill" :class="{ active: fg._paramMode !== 'READ' }" @click="fg._paramMode = 'CONST'">定值</button>
+                  <button type="button" class="formula-pill" :class="{ active: fg._paramMode === 'READ' }" @click="fg._paramMode = 'READ'">读取</button>
+                </div>
+                <div class="formula-param-input" v-if="fg._paramMode !== 'READ'">
+                  <input v-model.number="fg._constDraft" type="number" step="0.01" placeholder="输入数值">
+                  <button type="button" class="btn-mini formula-add-btn" @click="pushConst(fg)">加入</button>
+                </div>
+                <div class="formula-param-input formula-param-input-stack" v-else>
+                  <div class="formula-param-select">
+                    <admin-select v-model="fg._readDraft" :options="meta.readTypes || []" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraftChange(fg, v)" />
+                  </div>
+                  <div class="formula-param-select" v-if="readNeedsFilter(fg._readDraft)">
+                    <admin-select v-model="fg._filterDraft" :options="scopeOptions(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraftChange(fg, v)" />
+                  </div>
+                  <div class="formula-param-select" v-if="scopeNeedsRef(fg._filterDraft)">
+                    <admin-select v-model="fg._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+                  </div>
+                  <button type="button" class="btn-mini formula-add-btn" @click="pushRead(fg)">加入</button>
+                </div>
+              </div>
+              <div class="form-grid" style="margin-top:8px">
+                <div class="field"><label>目标槽</label>
+                  <admin-select v-model="fg.targetType" :options="meta.targetTypes" value-key="code" label-key="label"  />
+                </div>
+                <div class="field"><label>频率槽</label><input v-model.number="fg.hitFrequency" type="number" min="1" placeholder="最小1"></div>
+                <div class="field full"><label>发动上限槽</label>
+                  <div class="cast-limit-row">
+                    <label class="admin-switch">
+                      <input type="checkbox" v-model="fg.maxCastLimited">
+                      <span class="admin-switch-slider"></span>
+                      <span class="admin-switch-text">{{ fg.maxCastLimited ? '限制次数' : '无限' }}</span>
+                    </label>
+                    <input
+                      v-if="fg.maxCastLimited"
+                      v-model.number="fg.maxCastCount"
+                      type="number"
+                      min="1"
+                      placeholder="次数"
+                      class="cast-limit-input"
+                    >
+                  </div>
+                </div>
+              </div>
       </div>
       <p v-if="!(draft.formulas || []).length" class="muted" style="margin-top:8px">请添加至少一条公式</p>
     </div>
@@ -2198,9 +2218,9 @@ const SkillCustomInline = {
         this.draft.formulas.push({
           outcome: 'DAMAGE',
           targetType: this.draft.targetType || 'FIRST_TARGET',
-          hitFrequency: this.draft.hitFrequency != null ? this.draft.hitFrequency : 1,
-          maxCastCount: this.draft.maxCastCount != null ? this.draft.maxCastCount : null,
-          maxCastLimited: this.draft.maxCastCount != null,
+          hitFrequency: 1,
+          maxCastCount: null,
+          maxCastLimited: false,
           tokens: [],
           _paramMode: 'CONST',
           _readDraft: '',
@@ -2209,6 +2229,7 @@ const SkillCustomInline = {
       }
       (this.draft.formulas || []).forEach(function (fg) {
         if (!fg._paramMode) fg._paramMode = 'CONST';
+        if (!fg.outcome) fg.outcome = 'DAMAGE';
         if (!fg.targetType) fg.targetType = 'FIRST_TARGET';
         if (fg.hitFrequency == null) fg.hitFrequency = 1;
         if (fg.maxCastLimited == null) fg.maxCastLimited = fg.maxCastCount != null;
@@ -2446,7 +2467,8 @@ createApp({
       ],
       loginForm: { account: '', password: '' },
       members: [],
-      memberGrant: { open: false, uid: '', email: '', itemId: '', quantity: 1 },
+      memberGrant: { open: false, mode: 'item', uid: '', email: '', itemId: '', finishedSkillId: '', quantity: 1 },
+      personSkillGrantOptions: [],
       pager: null,
       levelTree: { modeGroups: [] },
       levelPick: { modeId: null, chapterId: null, stageGroupId: null, stageId: null },
@@ -2553,7 +2575,7 @@ createApp({
       weaponUltimateForm: { id: '', itemId: '', triggerMode: 'PRECISE', quickPreset: 'ON_HIT_BY_SKILL', conditionGroups: [], finishedSkillId: '', enabled: 1, remark: '' },
       armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
-      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: 1, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [], skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL', conditionGroups: [] },
+      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: null, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [], skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL', conditionGroups: [] },
       passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditions: [{ type: 'NONE' }], effects: [], sort: 0, enabled: 1, remark: '' },
       professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
       professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
@@ -2619,6 +2641,9 @@ createApp({
     },
     isPersonSkillTab() {
       return ['personCharacterSkill', 'personGeneralSkill', 'personProfessionSkill'].indexOf(this.tab) >= 0;
+    },
+    isUniversalBasicAttackForm() {
+      return this.finishedSkillForm && this.finishedSkillForm.id === 'fin_normal_attack';
     },
     finishedSkillCatL1Locked() {
       return true;
@@ -2713,6 +2738,13 @@ createApp({
     itemSelectOptions() {
       return (this.allItems || []).map(function (it) {
         return { value: it.id, label: it.name + ' (' + it.id + ')' };
+      });
+    },
+    personSkillGrantSelectOptions() {
+      return (this.personSkillGrantOptions || []).map(function (sk) {
+        var cat = sk.catL2Label || sk.catL2 || '';
+        var label = sk.name + (cat ? ' · ' + cat : '') + ' (' + (sk.code || sk.id) + ')';
+        return { value: sk.id, label: label };
       });
     },
     drillChapters() {
@@ -2940,24 +2972,56 @@ createApp({
       if (!this.allItems.length) this.loadAllItems();
       this.memberGrant = {
         open: true,
+        mode: 'item',
         uid: member.id,
         email: member.email || '',
         itemId: '',
+        finishedSkillId: '',
         quantity: 1
       };
+      this.loadPersonSkillGrantOptions();
+    },
+    switchGrantMode(mode) {
+      this.memberGrant.mode = mode;
+      if (mode === 'personSkill') {
+        this.memberGrant.quantity = 1;
+        if (!this.personSkillGrantOptions.length) this.loadPersonSkillGrantOptions();
+      }
+    },
+    loadPersonSkillGrantOptions() {
+      AdminApi.personSkillGrantOptions()
+        .then((res) => { this.personSkillGrantOptions = res.data || []; })
+        .catch(() => { this.personSkillGrantOptions = []; });
     },
     closeGrantMember() {
       this.memberGrant.open = false;
     },
     submitGrantMember() {
       var g = this.memberGrant;
-      if (!g.uid || !g.itemId) {
-        this.showToast('请选择物品');
+      if (!g.uid) {
+        this.showToast('用户无效');
         return;
       }
       var qty = parseInt(g.quantity, 10);
       if (!qty || qty <= 0) {
         this.showToast('数量必须大于 0');
+        return;
+      }
+      if (g.mode === 'personSkill') {
+        if (!g.finishedSkillId) {
+          this.showToast('请选择人物技能');
+          return;
+        }
+        AdminApi.grantMemberPersonSkill({ id: g.uid, finishedSkillId: g.finishedSkillId, quantity: qty })
+          .then(() => {
+            this.showToast('已赠送人物技能到用户仓库', 'success');
+            this.closeGrantMember();
+          })
+          .catch((err) => this.showToast(err.message));
+        return;
+      }
+      if (!g.itemId) {
+        this.showToast('请选择物品');
         return;
       }
       AdminApi.grantMemberItem({ id: g.uid, itemId: g.itemId, quantity: qty })
@@ -3862,7 +3926,7 @@ createApp({
           draft: this.prepareFinishedSkillDraft({
             id: '', code: '', name: this.buildCustomSkillName(cats),
             targetType: 'FIRST_TARGET', targetParam: null,
-            hitFrequency: 1, maxCastCount: 1, maxCastLimited: false, formulas: [],
+            hitFrequency: 1, maxCastCount: null, maxCastLimited: false, formulas: [],
             catL1: cats.catL1, catL2: cats.catL2, catL3: cats.catL3, catL4: cats.catL4,
             enabled: 1, remark: ''
           })
@@ -4042,23 +4106,55 @@ createApp({
       var data = Object.assign({}, raw || {});
       if (!data.formulas) data.formulas = [];
       if (!data.formulas.length) {
-        data.formulas.push({
-          outcome: 'DAMAGE',
-          targetType: data.targetType || 'FIRST_TARGET',
-          hitFrequency: data.hitFrequency != null ? data.hitFrequency : 1,
-          maxCastCount: data.maxCastCount,
-          maxCastLimited: data.maxCastCount != null,
-          tokens: []
-        });
+        data.formulas.push(this.emptyFormulaGroup({
+          targetType: data.targetType || 'FIRST_TARGET'
+        }));
       }
       data.formulas.forEach(function (fg) {
         if (!fg.tokens) fg.tokens = [];
         if (!fg._paramMode) fg._paramMode = 'CONST';
+        if (!fg.outcome) fg.outcome = 'DAMAGE';
         if (!fg.targetType) fg.targetType = data.targetType || 'FIRST_TARGET';
-        if (fg.hitFrequency == null) fg.hitFrequency = data.hitFrequency != null ? data.hitFrequency : 1;
+        if (fg.hitFrequency == null) fg.hitFrequency = 1;
         if (fg.maxCastLimited == null) fg.maxCastLimited = fg.maxCastCount != null;
       });
       return data;
+    },
+    emptyFormulaGroup(overrides) {
+      return Object.assign({
+        outcome: 'DAMAGE',
+        targetType: 'FIRST_TARGET',
+        hitFrequency: 1,
+        maxCastLimited: false,
+        maxCastCount: null,
+        tokens: [],
+        _paramMode: 'CONST',
+        _readDraft: '',
+        _constDraft: null
+      }, overrides || {});
+    },
+    finishedSkillFormulaSummary(s) {
+      if (!s) return '—';
+      var formulas = s.formulas || [];
+      if (!formulas.length && s.formulasJson) {
+        try {
+          formulas = JSON.parse(s.formulasJson) || [];
+        } catch (e) {
+          formulas = [];
+        }
+      }
+      if (!formulas.length) {
+        if (s.targetType) return '1组 · ' + (s.targetTypeLabel || s.targetType);
+        return '—';
+      }
+      var self = this;
+      return formulas.map(function (f, i) {
+        var cast = f.maxCastCount == null ? '无限' : (f.maxCastCount + '次');
+        return (i + 1) + '.' + self.formulaOutcomeLabel(f.outcome)
+          + ' · ' + (f.targetType || s.targetType || '—')
+          + ' · ×' + (f.hitFrequency || 1)
+          + ' · ' + cast;
+      }).join('；');
     },
     applyTriggerInlineForm(row) {
       if (row) {
@@ -4396,7 +4492,7 @@ createApp({
               code: s.code,
               name: s.name,
               equipTypeLabel: s.catL2Label || s.catL2 || '—',
-              detailText: self.finishedSkillTypeLabel(s) + (s.targetType ? (' · ' + s.targetType) : ''),
+              detailText: self.finishedSkillFormulaSummary(s),
               enabled: s.enabled,
               raw: s
             };
@@ -4506,20 +4602,13 @@ createApp({
     editFinishedSkill(s) {
       AdminApi.finishedSkillDetail(s.id)
         .then((res) => {
-          var data = res.data || {};
+          var data = this.prepareFinishedSkillDraft(res.data || {});
           this.finishedSkillForm = Object.assign({
             catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM',
             formulas: [], effects: [],
             skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
             conditionGroups: []
           }, data);
-          if (!this.finishedSkillForm.formulas) this.finishedSkillForm.formulas = [];
-          this.finishedSkillForm.formulas.forEach(function (fg) {
-            if (!fg._paramMode) fg._paramMode = 'CONST';
-            if (!fg.targetType) fg.targetType = data.targetType || 'FIRST_TARGET';
-            if (fg.hitFrequency == null) fg.hitFrequency = data.hitFrequency != null ? data.hitFrequency : 1;
-            if (fg.maxCastLimited == null) fg.maxCastLimited = fg.maxCastCount != null;
-          });
           if (this.finishedSkillForm.catL1 === 'PERSON' && this.finishedSkillForm.catL4 === 'ACTIVE') {
             this.finishedSkillForm.conditionGroups = this.normalizeConditionGroups(this.finishedSkillForm.conditionGroups);
             if (!this.finishedSkillForm.triggerMode) this.finishedSkillForm.triggerMode = 'PRECISE';
@@ -4681,24 +4770,14 @@ createApp({
       if (type === 'ACTIVE') {
         this.finishedSkillForm = {
           id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null,
-          formulas: [{
-            outcome: 'DAMAGE',
-            targetType: 'FIRST_TARGET',
-            hitFrequency: 1,
-            maxCastLimited: false,
-            maxCastCount: null,
-            tokens: [],
-            _paramMode: 'CONST',
-            _readDraft: '',
-            _constDraft: null
-          }],
+          formulas: [this.emptyFormulaGroup()],
           catL1: 'PERSON', catL2: scope.catL2, catL3: scope.ownerRef || '通用', catL4: 'ACTIVE',
           enabled: 1, remark: '', effects: [],
           skillItemId: '', triggerSlotId: '',
           triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
           conditionGroups: [this.emptyConditionGroup()]
         };
-        this.drawerTitle = '新增人物主动技能';
+        this.drawerTitle = '新增完整主动技能（扳机组 + 扳机技能）';
         this.drawerType = 'finishedSkill';
         this.drawerOpen = true;
         if (!this.categoryMeta.catL1.length) this.loadV2Meta();
@@ -5111,14 +5190,22 @@ createApp({
           if (this.tab === 'equipGeneralSkill') d.catL2 = 'GENERAL';
           this.finishedSkillForm = Object.assign({
             id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null,
-            hitFrequency: 1, maxCastCount: 1, maxCastLimited: false,
-            enabled: 1, remark: '', formulas: [], effects: []
+            hitFrequency: 1, maxCastCount: null, maxCastLimited: false,
+            enabled: 1, remark: '', formulas: [this.emptyFormulaGroup()], effects: [],
+            skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+            conditionGroups: []
           }, d);
         }
         if (!this.categoryMeta.catL1.length) this.loadV2Meta();
-        this.drawerTitle = this.finishedSkillForm.id
-          ? ('编辑' + (this.finishedSkillForm.catL1 === 'PERSON' ? '人物主动技能' : this.finishedSkillPanelTitle))
-          : ('新增' + (this.finishedSkillForm.catL1 === 'PERSON' ? '人物主动技能' : this.finishedSkillPanelTitle));
+        this.ensureSkillMetaLoaded();
+        if (this.finishedSkillForm.id === 'fin_normal_attack') {
+          this.drawerTitle = '编辑普通攻击';
+        } else {
+          var isPersonActive = this.finishedSkillForm.catL1 === 'PERSON' && this.finishedSkillForm.catL4 === 'ACTIVE';
+          this.drawerTitle = this.finishedSkillForm.id
+            ? ('编辑' + (isPersonActive ? '完整主动技能' : this.finishedSkillPanelTitle))
+            : ('新增' + (isPersonActive ? '完整主动技能' : this.finishedSkillPanelTitle));
+        }
       } else if (type === 'passiveSkill') {
         this.drawerTitle = row
           ? ('编辑' + ((row.catL1 === 'PERSON') ? '人物被动' : this.passiveSkillPanelTitle))
@@ -5203,7 +5290,15 @@ createApp({
       this.itemPassives = [];
       this.weaponBasicAttackForm = this.applyWeaponBasicAttackForm(null);
       this.weaponUltimateForm = this.applyWeaponUltimateForm(null);
-      this.finishedSkillForm = { id: '', code: '', name: '', targetType: 'RANDOM_ONE_ENEMY', targetParam: null, catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [] };
+      this.finishedSkillForm = {
+        id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null,
+        hitFrequency: 1, maxCastCount: null, maxCastLimited: false,
+        formulas: [], effects: [],
+        catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL',
+        enabled: 1, remark: '',
+        skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+        conditionGroups: []
+      };
       this.recipeForm = { id: '', outputItemId: '', sort: 0, enabled: 1, remark: '', materials: [] };
     },
     newEffectRow() {
@@ -5225,9 +5320,21 @@ createApp({
         .then((res) => { this.basicAttackDetail = res.data || null; })
         .catch((err) => this.showToast(err.message));
     },
+    editBasicAttack() {
+      if (!this.basicAttackDetail || !this.basicAttackDetail.id) {
+        this.showToast('普攻未加载');
+        return;
+      }
+      this.editFinishedSkill(this.basicAttackDetail);
+    },
     formulaOutcomeLabel(code) {
       var hit = (this.formulaOutcomeOptions || []).find(function (x) { return x.code === code; });
       return hit ? hit.label : (code || '—');
+    },
+    targetTypeLabel(code) {
+      if (!code) return '—';
+      var hit = (this.meta.targetTypes || []).find(function (x) { return x.code === code; });
+      return hit ? hit.label : code;
     },
     formulaTokenLabel(tk) {
       if (!tk) return '';
@@ -5259,17 +5366,7 @@ createApp({
     },
     addFormulaGroup() {
       if (!this.finishedSkillForm.formulas) this.finishedSkillForm.formulas = [];
-      this.finishedSkillForm.formulas.push({
-        outcome: 'DAMAGE',
-        targetType: 'FIRST_TARGET',
-        hitFrequency: 1,
-        maxCastLimited: false,
-        maxCastCount: null,
-        tokens: [],
-        _paramMode: 'CONST',
-        _readDraft: '',
-        _constDraft: null
-      });
+      this.finishedSkillForm.formulas.push(this.emptyFormulaGroup());
     },
     removeFormulaGroup(idx) {
       this.finishedSkillForm.formulas.splice(idx, 1);
@@ -5468,9 +5565,10 @@ createApp({
             this.finishedSkillForm.skillItemId = res.data.skillItemId || this.finishedSkillForm.skillItemId;
             this.finishedSkillForm.triggerSlotId = res.data.triggerSlotId || this.finishedSkillForm.triggerSlotId;
           }
+          if (this.tab === 'personBasicAttack' || this.isUniversalBasicAttackForm) this.loadBasicAttack();
           if (this.isPersonSkillTab) this.loadPersonSkills();
           else if (this.tab === 'equipCustomSkill') this.loadCustomEquipSkills();
-          else this.loadFinishedSkills();
+          else if (this.tab !== 'personBasicAttack') this.loadFinishedSkills();
           this.loadV2Meta();
           this.loadAllItems();
         });

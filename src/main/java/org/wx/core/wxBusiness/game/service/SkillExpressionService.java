@@ -123,8 +123,12 @@ public class SkillExpressionService {
                 case CHAR_DEFENSE -> BigDecimal.valueOf(unit.getDefense() != null ? unit.getDefense() : 0);
                 case CHAR_CUR_ACTION -> BigDecimal.valueOf(unit.getActionBar() != null ? unit.getActionBar() : 0);
                 case CHAR_MAX_ACTION -> BigDecimal.valueOf(unit.getActionValue() != null ? unit.getActionValue() : 0);
-                case WEAPON_DAMAGE_RATIO -> unit.getWeaponDamageRatio() != null
-                        ? unit.getWeaponDamageRatio() : BigDecimal.ONE;
+                case WEAPON_DAMAGE_RATIO -> {
+                    // 未装备武器时不乘比例：视为 1
+                    yield unit.getWeaponDamageRatio() != null
+                            ? unit.getWeaponDamageRatio()
+                            : BigDecimal.ONE;
+                }
                 case EQUIP_USES_LEFT -> BigDecimal.valueOf(9999);
                 default -> null;
             };

@@ -108,11 +108,11 @@ VALUES (
   NULL,
   1,
   NULL,
-  '[{"outcome":"DAMAGE","tokens":[{"kind":"READ","read":"CHAR_ATTACK"},{"kind":"OP","op":"*"},{"kind":"CONST","value":1}]}]',
+  '[{"outcome":"DAMAGE","targetType":"FIRST_TARGET","targetParam":null,"hitFrequency":1,"maxCastCount":null,"tokens":[{"kind":"READ","read":"CHAR_ATTACK","filter":null,"filterRef":null,"value":null,"op":null},{"kind":"OP","read":null,"filter":null,"filterRef":null,"value":null,"op":"*"},{"kind":"CONST","read":null,"filter":null,"filterRef":null,"value":1.0,"op":null},{"kind":"OP","read":null,"filter":null,"filterRef":null,"value":null,"op":"*"},{"kind":"READ","read":"WEAPON_DAMAGE_RATIO","filter":null,"filterRef":null,"value":null,"op":null}]}]',
   'PERSON',
   'GENERAL',
   CAST(UNHEX('E699AEE694BB') AS CHAR CHARACTER SET utf8mb4),
   'BASIC_ATTACK',
   1,
-  CAST(UNHEX('E883BDE9878FE580BCE6BBA1E697B6EFBC9AE9A696E4BD8DE79BAEE6A087EFBC8CE694BBE587BBE58A9B31303025') AS CHAR CHARACTER SET utf8mb4)
+  CAST(UNHEX('E883BDE9878FE580BCE6BBA1EFBC9AE9A696E4BD8DE79BAEE6A087EFBC8CE8A792E889B2E694BBE587BBE58A9BC397312E30C397E6ADA6E599A8E4BCA4E5AEB3E6AF94E4BE8B') AS CHAR CHARACTER SET utf8mb4)
 );

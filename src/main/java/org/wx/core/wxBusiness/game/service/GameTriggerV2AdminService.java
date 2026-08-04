@@ -61,7 +61,6 @@ public class GameTriggerV2AdminService {
 
     @Transactional(rollbackFor = Exception.class)
     public AdminFinishedSkillVo saveFinishedSkill(AdminFinishedSkillVo vo) {
-        ErrorFactory.throwError(UNIVERSAL_BASIC_ATTACK_ID.equals(vo.getId()), "通用普攻为只读，不可修改");
         ErrorFactory.notNull(vo.getName(), "名称不能为空");
         ErrorFactory.throwError(vo.getFormulas() == null || vo.getFormulas().isEmpty(), "请至少添加一条公式");
 
@@ -76,9 +75,10 @@ public class GameTriggerV2AdminService {
         ErrorFactory.notNull(targetType, "公式目标槽不能为空");
         ErrorFactory.throwError(targetType.isLegacy(), "请使用新目标槽类型");
 
+        boolean isUniversalBasic = UNIVERSAL_BASIC_ATTACK_ID.equals(vo.getId());
         GameFinishedSkill skill = new GameFinishedSkill();
-        skill.setId(vo.getId());
-        skill.setCode(code.trim().toUpperCase());
+        skill.setId(isUniversalBasic ? UNIVERSAL_BASIC_ATTACK_ID : vo.getId());
+        skill.setCode(isUniversalBasic ? "NORMAL_ATTACK" : code.trim().toUpperCase());
         skill.setName(vo.getName().trim());
         // 技能级保留首条公式快照（兼容旧展示 / DB 非空）
         skill.setTargetType(targetType.name());
@@ -86,16 +86,28 @@ public class GameTriggerV2AdminService {
         skill.setHitFrequency(first.getHitFrequency() != null ? first.getHitFrequency() : 1);
         skill.setMaxCastCount(first.getMaxCastCount());
         skill.setFormulasJson(skillJsonHelper.writeFormulas(formulas));
-        skill.setCatL1(normalizeCatL1(vo.getCatL1()));
-        skill.setCatL2(normalizeCatL2(vo.getCatL2()));
-        skill.setCatL3(normalizeCatL3(vo.getCatL3()));
-        skill.setCatL4(normalizeCatL4(vo.getCatL4()));
+        if (isUniversalBasic) {
+            skill.setCatL1(FinishedSkillCatL1.PERSON.name());
+            skill.setCatL2(FinishedSkillCatL2.GENERAL.name());
+            skill.setCatL3(vo.getCatL3() != null && !vo.getCatL3().isBlank() ? vo.getCatL3().trim() : "普攻");
+            skill.setCatL4(FinishedSkillCatL4.BASIC_ATTACK.name());
+        } else {
+            skill.setCatL1(normalizeCatL1(vo.getCatL1()));
+            skill.setCatL2(normalizeCatL2(vo.getCatL2()));
+            skill.setCatL3(normalizeCatL3(vo.getCatL3()));
+            skill.setCatL4(normalizeCatL4(vo.getCatL4()));
+        }
         skill.setEnabled(vo.getEnabled() != null ? vo.getEnabled() : 1);
         skill.setRemark(vo.getRemark());
 
-        boolean createNew = skill.getId() == null || skill.getId().isBlank() || !isAsciiSkillId(skill.getId())
-                || finishedSkillService.getById(skill.getId()) == null;
-        if (createNew) {
+        boolean createNew = !isUniversalBasic
+                && (skill.getId() == null || skill.getId().isBlank() || !isAsciiSkillId(skill.getId())
+                || finishedSkillService.getById(skill.getId()) == null);
+        if (isUniversalBasic) {
+            ErrorFactory.notNull(finishedSkillService.getById(UNIVERSAL_BASIC_ATTACK_ID), "通用普攻不存在，请先初始化");
+            skill.setId(UNIVERSAL_BASIC_ATTACK_ID);
+            finishedSkillService.updateById(skill);
+        } else if (createNew) {
             if (skill.getId() == null || skill.getId().isBlank() || !isAsciiSkillId(skill.getId())) {
                 skill.setId(generateUniqueFinishedSkillId());
             }
@@ -222,6 +234,46 @@ public class GameTriggerV2AdminService {
             }
         }
         return null;
+    }
+
+    /** 后台赠送：可选人物主动技能（已生成技能物品） */
+    public List<org.wx.core.wxBusiness.api.vo.MemberPersonSkillOptionVo> listPersonActiveGrantOptions() {
+        List<GameFinishedSkill> skills = finishedSkillService.find()
+                .eq(GameFinishedSkill::getCatL1, FinishedSkillCatL1.PERSON.name())
+                .eq(GameFinishedSkill::getCatL4, FinishedSkillCatL4.ACTIVE.name())
+                .eq(GameFinishedSkill::getEnabled, 1)
+                .orderByAsc(GameFinishedSkill::getCode)
+                .list();
+        List<org.wx.core.wxBusiness.api.vo.MemberPersonSkillOptionVo> out = new ArrayList<>();
+        for (GameFinishedSkill skill : skills) {
+            GameTriggerSlot slot = findPersonActiveSlot(skill.getId());
+            if (slot == null || slot.getItemId() == null || slot.getItemId().isBlank()) {
+                continue;
+            }
+            org.wx.core.wxBusiness.api.vo.MemberPersonSkillOptionVo opt =
+                    new org.wx.core.wxBusiness.api.vo.MemberPersonSkillOptionVo();
+            opt.setId(skill.getId());
+            opt.setCode(skill.getCode());
+            opt.setName(skill.getName());
+            opt.setSkillItemId(slot.getItemId());
+            opt.setCatL2(skill.getCatL2());
+            FinishedSkillCatL2 c2 = FinishedSkillCatL2.parse(skill.getCatL2());
+            opt.setCatL2Label(c2.getLabel());
+            out.add(opt);
+        }
+        return out;
+    }
+
+    /** 解析人物主动技能对应的技能物品 ID */
+    public String requirePersonActiveSkillItemId(String finishedSkillId) {
+        ErrorFactory.notNull(finishedSkillId, "请选择人物技能");
+        GameFinishedSkill skill = finishedSkillService.getById(finishedSkillId);
+        ErrorFactory.notNull(skill, "人物技能不存在");
+        ErrorFactory.throwError(!isPersonActive(skill), "仅可赠送人物主动技能");
+        GameTriggerSlot slot = findPersonActiveSlot(finishedSkillId);
+        ErrorFactory.notNull(slot, "该人物技能尚未生成技能物品，请先在后台保存一次");
+        ErrorFactory.notNull(slot.getItemId(), "该人物技能尚未生成技能物品，请先在后台保存一次");
+        return slot.getItemId();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -673,7 +725,7 @@ public class GameTriggerV2AdminService {
         vo.setMaxCastUnlimited(skill.getMaxCastCount() == null);
         vo.setFormulas(skillJsonHelper.readFormulas(skill.getFormulasJson()));
         fillLegacyFormulaMeta(vo.getFormulas(), skill);
-        vo.setReadonly(UNIVERSAL_BASIC_ATTACK_ID.equals(skill.getId()));
+        vo.setReadonly(false);
         vo.setCatL1(skill.getCatL1());
         vo.setCatL2(skill.getCatL2());
         vo.setCatL3(skill.getCatL3());

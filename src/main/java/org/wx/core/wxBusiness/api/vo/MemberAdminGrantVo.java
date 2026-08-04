@@ -10,5 +10,8 @@ public class MemberAdminGrantVo {
 
     private String itemId;
 
+    /** 人物主动技能（成品技能 ID），赠送人物技能时使用 */
+    private String finishedSkillId;
+
     private Integer quantity;
 }

@@ -17,6 +17,8 @@ import org.wx.core.wxBusiness.account.service.MemberService;
 import org.wx.core.wxBusiness.account.service.Web3WithdrawService;
 import org.wx.core.wxBusiness.api.vo.CommonIdVo;
 import org.wx.core.wxBusiness.api.vo.MemberAdminGrantVo;
+import org.wx.core.wxBusiness.api.vo.MemberPersonSkillOptionVo;
+import org.wx.core.wxBusiness.game.service.GameTriggerV2AdminService;
 import org.wx.core.wxBusiness.game.service.GameUserAdminService;
 import org.wx.core.wxBusiness.log.annotation.WxRequestLog;
 import org.wx.core.wxBase.factory.ErrorFactory;
@@ -39,6 +41,8 @@ public class B3MemberController {
     public Web3WithdrawService web3WithdrawService;
     @Resource
     private GameUserAdminService gameUserAdminService;
+    @Resource
+    private GameTriggerV2AdminService gameTriggerV2AdminService;
 
     /**
      * 用户列表
@@ -130,6 +134,30 @@ public class B3MemberController {
         ErrorFactory.notNull(vo.getItemId(), "请选择物品");
         int quantity = vo.getQuantity() != null ? vo.getQuantity() : 0;
         gameUserAdminService.grantItem(vo.getId(), vo.getItemId(), quantity);
+        return WxResult.success();
+    }
+
+    /**
+     * 可赠送的人物主动技能列表
+     */
+    @PostMapping("/grant/person-skill/options")
+    @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
+    public WxResult<List<MemberPersonSkillOptionVo>> personSkillGrantOptions() {
+        return WxResult.success(gameTriggerV2AdminService.listPersonActiveGrantOptions());
+    }
+
+    /**
+     * 后台赠送人物主动技能到用户仓库（技能物品，可装备到技能槽）
+     */
+    @PostMapping("/grant/person-skill")
+    @WxRequestLog()
+    @NeedHeader(roles = {MemberRole.ADMIN})
+    public WxResult<?> grantPersonSkill(@RequestBody MemberAdminGrantVo vo) {
+        ErrorFactory.notNull(vo.getId(), "用户ID不能为空");
+        ErrorFactory.notNull(vo.getFinishedSkillId(), "请选择人物技能");
+        int quantity = vo.getQuantity() != null ? vo.getQuantity() : 1;
+        gameUserAdminService.grantPersonSkill(vo.getId(), vo.getFinishedSkillId(), quantity);
         return WxResult.success();
     }
 

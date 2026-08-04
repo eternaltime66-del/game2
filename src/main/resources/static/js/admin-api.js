@@ -92,6 +92,18 @@
         body: body
       }).then(ensureSuccess);
     },
+    personSkillGrantOptions: function () {
+      return request('/back/member/grant/person-skill/options', {
+        json: true,
+        body: {}
+      }).then(ensureSuccess);
+    },
+    grantMemberPersonSkill: function (body) {
+      return request('/back/member/grant/person-skill', {
+        json: true,
+        body: body
+      }).then(ensureSuccess);
+    },
     levelTree: function () {
       return request('/back/game/level/tree', {}).then(ensureSuccess);
     },

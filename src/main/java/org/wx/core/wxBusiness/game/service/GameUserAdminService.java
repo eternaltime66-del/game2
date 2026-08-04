@@ -34,6 +34,8 @@ public class GameUserAdminService {
     private MoneyRecordService moneyRecordService;
     @Resource
     private PveBattleService pveBattleService;
+    @Resource
+    private GameTriggerV2AdminService gameTriggerV2AdminService;
 
     @Transactional(rollbackFor = Exception.class)
     public void resetGameData(String uid) {
@@ -71,6 +73,13 @@ public class GameUserAdminService {
                 "admin",
                 "后台赠送"
         );
+    }
+
+    /** 赠送人物主动技能（写入仓库，可装备到技能槽） */
+    @Transactional(rollbackFor = Exception.class)
+    public void grantPersonSkill(String uid, String finishedSkillId, int quantity) {
+        String itemId = gameTriggerV2AdminService.requirePersonActiveSkillItemId(finishedSkillId);
+        grantItem(uid, itemId, quantity > 0 ? quantity : 1);
     }
 
     private void clearHeroEquip(String uid) {

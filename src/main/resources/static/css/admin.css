@@ -1963,15 +1963,17 @@ body.admin-body .bg-glow {
   margin-bottom: 10px;
 }
 
-.skill-picker-display-top {
+.skill-picker-title-row {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
-  margin-bottom: 6px;
 }
 
 .skill-tag-custom,
 .skill-tag-general {
   display: inline-block;
+  flex-shrink: 0;
+  margin-top: 2px;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -1991,6 +1993,8 @@ body.admin-body .bg-glow {
 }
 
 .skill-picker-title {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.45;

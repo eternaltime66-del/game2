@@ -1180,29 +1180,25 @@
                     <div class="tss-subzone">
                       <div class="tss-zone-head">
                         <strong class="tss-sub-title">触发条件区</strong>
-                        <span class="tss-zone-hint">条件组（组内且，组间或）</span>
-                        <admin-select v-model="weaponUltimateForm.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
-                        <button v-if="weaponUltimateForm.numericMode === 'CONFIG'" type="button" class="btn-mini" @click="addConditionGroup(weaponUltimateForm)">+ 条件组</button>
+                        <span class="tss-zone-hint">全部满足（且）</span>
+                        <button type="button" class="btn-mini" @click="addFlatCondition(weaponUltimateForm)">+ 条件</button>
                       </div>
-                      <template v-if="weaponUltimateForm.numericMode === 'CONFIG'">
-                        <div class="effect-block" v-for="(g, gi) in weaponUltimateForm.conditionGroups" :key="'ug'+gi">
-                          <div class="effect-block-head">
-                            <span>条件组 {{ gi + 1 }} <span class="tss-zone-hint">组内且</span></span>
-                            <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                          </div>
-                          <condition-group-panel
-                            :group="g"
-                            :read-types="meta.readTypes"
-                            :compare-ops="meta.compareOps"
-                            :skill-scope-cast="meta.skillScopeCast"
-                            :skill-scope-hit="meta.skillScopeHit"
-                            :finished-skill-options="finishedSkillSelectOptions"
-                            @add-item="addConditionItem(g)"
-                            @remove-item="removeConditionItem(g, $event)"
-                          />
+                      <div class="effect-block" v-for="(it, ii) in flatConditionItems(weaponUltimateForm)" :key="'uc'+ii">
+                        <div class="effect-block-head">
+                          <span>条件 {{ ii + 1 }}</span>
+                          <button type="button" class="btn-mini danger" @click="removeFlatCondition(weaponUltimateForm, ii)">删</button>
                         </div>
-                      </template>
-                      <p v-else class="muted condition-zone-hint">不限：触发条件区恒为 true</p>
+                        <condition-item-editor
+                          :item="it"
+                          :read-types="meta.readTypes"
+                          :compare-ops="meta.compareOps"
+                          :skill-scope-cast="meta.skillScopeCast"
+                          :skill-scope-hit="meta.skillScopeHit"
+                          :finished-skill-options="finishedSkillSelectOptions"
+                          :hide-actions="true"
+                        />
+                      </div>
+                      <button v-if="!flatConditionItems(weaponUltimateForm).length" type="button" class="btn-mini" @click="addFlatCondition(weaponUltimateForm)">+ 条件</button>
                     </div>
                   </section>
                   <div class="tss-divider" role="separator" aria-label="扳机区与技能区分隔"></div>
@@ -1287,29 +1283,25 @@
                     <div class="tss-subzone">
                       <div class="tss-zone-head">
                         <strong class="tss-sub-title">触发条件区</strong>
-                        <span class="tss-zone-hint">条件组（组内且，组间或）</span>
-                        <admin-select v-model="triggerInlineForm.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
-                        <button v-if="triggerInlineForm.numericMode === 'CONFIG'" type="button" class="btn-mini" @click="addConditionGroup(triggerInlineForm)">+ 条件组</button>
+                        <span class="tss-zone-hint">全部满足（且）</span>
+                        <button type="button" class="btn-mini" @click="addFlatCondition(triggerInlineForm)">+ 条件</button>
                       </div>
-                      <template v-if="triggerInlineForm.numericMode === 'CONFIG'">
-                        <div class="effect-block" v-for="(g, gi) in triggerInlineForm.conditionGroups" :key="'tg'+gi">
-                          <div class="effect-block-head">
-                            <span>条件组 {{ gi + 1 }} <span class="tss-zone-hint">组内且</span></span>
-                            <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                          </div>
-                          <condition-group-panel
-                            :group="g"
-                            :read-types="meta.readTypes"
-                            :compare-ops="meta.compareOps"
-                            :skill-scope-cast="meta.skillScopeCast"
-                            :skill-scope-hit="meta.skillScopeHit"
-                            :finished-skill-options="finishedSkillSelectOptions"
-                            @add-item="addConditionItem(g)"
-                            @remove-item="removeConditionItem(g, $event)"
-                          />
+                      <div class="effect-block" v-for="(it, ii) in flatConditionItems(triggerInlineForm)" :key="'tc'+ii">
+                        <div class="effect-block-head">
+                          <span>条件 {{ ii + 1 }}</span>
+                          <button type="button" class="btn-mini danger" @click="removeFlatCondition(triggerInlineForm, ii)">删</button>
                         </div>
-                      </template>
-                      <p v-else class="muted condition-zone-hint">不限：触发条件区恒为 true</p>
+                        <condition-item-editor
+                          :item="it"
+                          :read-types="meta.readTypes"
+                          :compare-ops="meta.compareOps"
+                          :skill-scope-cast="meta.skillScopeCast"
+                          :skill-scope-hit="meta.skillScopeHit"
+                          :finished-skill-options="finishedSkillSelectOptions"
+                          :hide-actions="true"
+                        />
+                      </div>
+                      <button v-if="!flatConditionItems(triggerInlineForm).length" type="button" class="btn-mini" @click="addFlatCondition(triggerInlineForm)">+ 条件</button>
                     </div>
                   </section>
                   <div class="tss-divider" role="separator" aria-label="扳机区与技能区分隔"></div>
@@ -1477,31 +1469,27 @@
                     </div>
                 <div class="tss-divider tss-divider-inner" role="separator"></div>
                 <div class="tss-subzone">
-                <div class="tss-zone-head">
-                  <strong class="tss-sub-title">触发条件区</strong>
-                  <span class="tss-zone-hint">条件组（组内且，组间或）</span>
-                  <admin-select v-model="finishedSkillForm.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
-                  <button v-if="finishedSkillForm.numericMode === 'CONFIG'" type="button" class="btn-mini" @click="addConditionGroup(finishedSkillForm)">+ 条件组</button>
-                </div>
-                <template v-if="finishedSkillForm.numericMode === 'CONFIG'">
-                  <div class="effect-block" v-for="(g, gi) in finishedSkillForm.conditionGroups" :key="'pfg'+gi">
-                    <div class="effect-block-head">
-                            <span>条件组 {{ gi + 1 }} <span class="tss-zone-hint">组内且</span></span>
-                            <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                          </div>
-                    <condition-group-panel
-                      :group="g"
-                      :read-types="meta.readTypes"
-                      :compare-ops="meta.compareOps"
-                      :skill-scope-cast="meta.skillScopeCast"
-                      :skill-scope-hit="meta.skillScopeHit"
-                      :finished-skill-options="finishedSkillSelectOptions"
-                      @add-item="addConditionItem(g)"
-                      @remove-item="removeConditionItem(g, $event)"
-                    />
-                  </div>
-                </template>
-                <p v-else class="muted condition-zone-hint">不限：触发条件区恒为 true</p>
+                      <div class="tss-zone-head">
+                        <strong class="tss-sub-title">触发条件区</strong>
+                        <span class="tss-zone-hint">全部满足（且）</span>
+                        <button type="button" class="btn-mini" @click="addFlatCondition(finishedSkillForm)">+ 条件</button>
+                      </div>
+                      <div class="effect-block" v-for="(it, ii) in flatConditionItems(finishedSkillForm)" :key="'pc'+ii">
+                        <div class="effect-block-head">
+                          <span>条件 {{ ii + 1 }}</span>
+                          <button type="button" class="btn-mini danger" @click="removeFlatCondition(finishedSkillForm, ii)">删</button>
+                        </div>
+                        <condition-item-editor
+                          :item="it"
+                          :read-types="meta.readTypes"
+                          :compare-ops="meta.compareOps"
+                          :skill-scope-cast="meta.skillScopeCast"
+                          :skill-scope-hit="meta.skillScopeHit"
+                          :finished-skill-options="finishedSkillSelectOptions"
+                          :hide-actions="true"
+                        />
+                      </div>
+                      <button v-if="!flatConditionItems(finishedSkillForm).length" type="button" class="btn-mini" @click="addFlatCondition(finishedSkillForm)">+ 条件</button>
                     </div>
               </section>
               <div class="tss-divider" role="separator" aria-label="扳机区与技能区分隔"></div>
@@ -1627,7 +1615,7 @@
           <div class="field full" v-if="passiveSkillForm.ownerRef"><label>归属</label><span class="field-value">{{ passiveSkillForm.ownerRef }}</span></div>
           <div class="field full">
             <div class="panel-toolbar" style="margin:0">
-              <span>生效条件组</span>
+              <span>生效条件</span>
               <button type="button" class="btn-mini" @click="addPassiveCondition">+ 条件</button>
             </div>
             <div class="effect-block" v-for="(c, idx) in passiveSkillForm.conditions" :key="'pc'+idx">
@@ -1978,7 +1966,7 @@
         <div class="drawer-section-title">扳机技能 · 公式组（按顺序执行）</div>
         <div class="effect-block" v-for="(fg, idx) in (skillDetailModal.data.formulas || [])" :key="idx">
           <div class="effect-block-head"><span>公式组 {{ idx + 1 }}</span><span>{{ formulaOutcomeLabel(fg.outcome) }}</span></div>
-          <div class="muted">目标槽 {{ fg.targetType || skillDetailModal.data.targetType || '—' }} · 频率槽 {{ fg.hitFrequency || 1 }} · 发动上限 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
+          <div class="muted">目标槽 {{ targetTypeLabel(fg.targetType || skillDetailModal.data.targetType) }} · 频率槽 {{ fg.hitFrequency || 1 }} · 发动上限 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
           <div class="muted">{{ formulaTokensText(fg.tokens) || '（空公式）' }}</div>
         </div>
         <div v-if="!(skillDetailModal.data.formulas || []).length" class="empty-hint">无公式组</div>
@@ -2158,7 +2146,7 @@
   <div class="skill-custom-panel">
     <div class="level-tree-compact">扳机技能 · {{ categoryText }} · 发动上限默认无限</div>
     <div class="form-grid">
-      <div class="field full"><label>名称</label><input v-model="draft.name" placeholder="装备 - 武器 - 大剑 - 普攻"></div>
+      <div class="field full"><label>名称</label><input v-model="draft.name" placeholder="[铁剑] - 大招"></div>
       <div class="field full"><label>备注</label><input v-model="draft.remark"></div>
     </div>
     <div class="field full">
@@ -2276,20 +2264,22 @@
       @cancel="cancelCustom" />
     <div v-else class="skill-picker-display" :class="{ empty: !skillId }">
       <div class="skill-picker-display-body">
-        <div class="skill-picker-display-top">
+        <div class="skill-picker-title-row">
           <span v-if="skillId && isCustomBound" class="skill-tag-custom">自定义</span>
           <span v-else-if="skillId" class="skill-tag-general">通用</span>
+          <div class="skill-picker-title">{{ displayTitle }}</div>
         </div>
-        <div class="skill-picker-title">{{ displayTitle }}</div>
         <div v-if="skillId && formulaAbbrev" class="skill-picker-formula" :title="formulaAbbrev">{{ formulaAbbrev }}</div>
       </div>
       <div class="skill-picker-actions">
-        <button type="button" class="btn-mini secondary" @click="browse">筛选</button>
-        <button type="button" class="btn-mini secondary" @click="startCustom">＋自定义</button>
         <template v-if="skillId">
           <button type="button" class="btn-mini" @click="detail">详情</button>
-          <button type="button" class="btn-mini" @click="edit">{{ isCustomBound ? '修改' : '编辑' }}</button>
-          <button v-if="isCustomBound" type="button" class="btn-mini danger" @click="remove">移除</button>
+          <button type="button" class="btn-mini" @click="edit">修改</button>
+          <button type="button" class="btn-mini danger" @click="remove">移除</button>
+        </template>
+        <template v-else>
+          <button type="button" class="btn-mini secondary" @click="browse">筛选</button>
+          <button type="button" class="btn-mini secondary" @click="startCustom">＋自定义</button>
         </template>
       </div>
     </div>
@@ -4153,8 +4143,9 @@ createApp({
       var self = this;
       return formulas.map(function (f, i) {
         var outcome = self.formulaOutcomeLabel(f && f.outcome);
+        var target = self.targetTypeLabel((f && f.targetType) || s.targetType);
         var expr = self.formulaTokensText((f && f.tokens) || []);
-        var piece = outcome + (expr ? ' ' + expr : '');
+        var piece = outcome + ' · ' + target + (expr ? ' · ' + expr : '');
         return formulas.length > 1 ? ((i + 1) + '.' + piece) : piece;
       }).join('；');
     },
@@ -4352,11 +4343,9 @@ createApp({
       return { catL1: 'EQUIP', catL2: catL2, catL3: entryName, catL4: catL4 };
     },
     buildCustomSkillName(cats) {
-      var l1 = this.catLabel('catL1', cats.catL1);
-      var l2 = this.catLabel('catL2', cats.catL2);
       var l3 = cats.catL3 || '通用';
       var l4 = this.catLabel('catL4', cats.catL4);
-      return l1 + ' - ' + l2 + ' - ' + l3 + ' - ' + l4;
+      return '[' + l3 + '] - ' + l4;
     },
     catLabel(level, code) {
       if (!code) return '通用';
@@ -4568,25 +4557,19 @@ createApp({
       target.prerequisites = (slot.prerequisites || []).map(function (p) {
         return Object.assign({}, self.emptyPrerequisite(), p || {});
       });
-      target.numericMode = slot.numericMode
-        || ((slot.conditionGroups && slot.conditionGroups.length) ? 'CONFIG' : 'NONE');
-      target.conditionGroups = this.normalizeConditionGroups(
-        target.numericMode === 'CONFIG' ? (slot.conditionGroups || []) : []
-      );
+      // 主动技能触发条件固定为配置：多组历史数据拍平为单组且条件
+      target.numericMode = 'CONFIG';
+      target.conditionGroups = [this.flattenConditionGroups(slot.conditionGroups || [])];
       if (target.prerequisiteMode === 'CONFIG' && !target.prerequisites.length) {
         target.prerequisites = [this.emptyPrerequisite()];
       }
-      if (target.numericMode === 'CONFIG' && !target.conditionGroups.length) {
-        target.conditionGroups = [this.emptyConditionGroup()];
-      }
       if (target.prerequisiteMode === 'NONE') target.prerequisites = [];
-      if (target.numericMode === 'NONE') target.conditionGroups = [];
       this.ensureConditionPickerData();
       return target;
     },
     serializeSlotConditions(form) {
       var prerequisiteMode = form.prerequisiteMode || 'NONE';
-      var numericMode = form.numericMode || 'NONE';
+      this.ensureFlatConditionGroup(form);
       return {
         prerequisiteMode: prerequisiteMode,
         prerequisites: prerequisiteMode === 'CONFIG'
@@ -4602,19 +4585,41 @@ createApp({
               };
             })
           : [],
-        numericMode: numericMode,
-        conditionGroups: numericMode === 'CONFIG' ? this.serializeConditionGroups(form.conditionGroups) : []
+        numericMode: 'CONFIG',
+        conditionGroups: this.serializeConditionGroups(form.conditionGroups)
       };
     },
-    addConditionGroup(form) {
-      if (!form.conditionGroups) form.conditionGroups = [];
-      form.conditionGroups.push(this.emptyConditionGroup());
+    flattenConditionGroups(groups) {
+      var self = this;
+      var items = [];
+      (groups || []).forEach(function (g) {
+        ((g && g.items) || []).forEach(function (it) {
+          items.push(self.normalizeConditionItem(it));
+        });
+      });
+      if (!items.length) items = [this.emptyConditionItem()];
+      return { items: items };
+    },
+    ensureFlatConditionGroup(form) {
+      if (!form) return;
       form.numericMode = 'CONFIG';
+      form.conditionGroups = [this.flattenConditionGroups(form.conditionGroups || [])];
+    },
+    flatConditionItems(form) {
+      this.ensureFlatConditionGroup(form);
+      return form.conditionGroups[0].items;
+    },
+    addFlatCondition(form) {
+      this.ensureFlatConditionGroup(form);
+      form.conditionGroups[0].items.push(this.emptyConditionItem());
       this.ensureConditionPickerData();
     },
-    removeConditionGroup(form, gi) {
-      if (!form.conditionGroups) return;
-      form.conditionGroups.splice(gi, 1);
+    removeFlatCondition(form, ii) {
+      this.ensureFlatConditionGroup(form);
+      form.conditionGroups[0].items.splice(ii, 1);
+      if (!form.conditionGroups[0].items.length) {
+        form.conditionGroups[0].items.push(this.emptyConditionItem());
+      }
     },
     addConditionItem(group) {
       if (!group.items) group.items = [];
@@ -4663,9 +4668,11 @@ createApp({
       var pre = (t.prerequisiteMode === 'CONFIG')
         ? ('前置要求' + ((t.prerequisites && t.prerequisites.length) || 0))
         : '前置要求不限';
+      var n = 0;
+      (t.conditionGroups || []).forEach(function (g) { n += ((g && g.items) || []).length; });
       var num = (t.numericMode === 'NONE')
         ? '触发条件不限'
-        : (((t.conditionGroups && t.conditionGroups.length) || 0) + ' 组触发条件');
+        : (n + ' 个条件');
       return pre + ' · ' + num;
     },
     actionValueFullConditionGroups() {
@@ -4726,7 +4733,7 @@ createApp({
       return formulas.map(function (f, i) {
         var cast = f.maxCastCount == null ? '无限' : (f.maxCastCount + '次');
         return (i + 1) + '.' + self.formulaOutcomeLabel(f.outcome)
-          + ' · ' + (f.targetType || s.targetType || '—')
+          + ' · ' + self.targetTypeLabel(f.targetType || s.targetType)
           + ' · ×' + (f.hitFrequency || 1)
           + ' · ' + cast;
       }).join('；');
@@ -5320,9 +5327,9 @@ createApp({
           return AdminApi.finishedSkillDetail(row.id).then(function (res) {
             var d = res.data || {};
             if (d.triggerSlotId) {
-              row.triggerText = ((d.conditionGroups && d.conditionGroups.length)
-                ? (d.conditionGroups.length + ' 组条件')
-                : '已配置')
+              var cn = 0;
+              (d.conditionGroups || []).forEach(function (g) { cn += ((g && g.items) || []).length; });
+              row.triggerText = (cn ? (cn + ' 个条件') : '已配置')
                 + (d.skillItemId ? ' · 已绑物品' : '');
             } else {
               row.triggerText = '未配置';

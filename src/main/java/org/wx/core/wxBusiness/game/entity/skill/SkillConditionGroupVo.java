@@ -6,7 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 数值条件组：组内条目且，组间或。
+ * 数值条件列表容器：组内条目且。
+ * 管理端已取消多组/组间或；旧多组数据加载时会拍平为单组。
  * （前置条件已提升到槽位级 {@link SkillSlotConditionsVo}，不再嵌套在组内）
  */
 @Data

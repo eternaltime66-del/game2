@@ -21,6 +21,6 @@ public class SkillSlotConditionsVo {
     /** NONE / CONFIG — 数值判定区 */
     private String numericMode;
 
-    /** 数值条件组（组内且，组间或） */
+    /** 数值条件（全部且；存储仍为一组 items，兼容旧多组数据拍平） */
     private List<SkillConditionGroupVo> conditionGroups = new ArrayList<>();
 }

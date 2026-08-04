@@ -417,7 +417,7 @@
                 <td>{{ m.actionValue }}</td>
                 <td class="col-actions"><button type="button" class="btn-mini" @click="openDrawer('monster', m)">编辑</button></td>
               </tr>
-              <tr v-if="!monsters.length"><td colspan="8" class="empty-hint">暂无怪物</td></tr>
+              <tr v-if="!monsters.length"><td colspan="7" class="empty-hint">暂无怪物</td></tr>
             </tbody>
           </table>
         </div>
@@ -439,7 +439,7 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>难度</th><th>占地</th><th>生命</th><th>攻击</th><th>行动值</th><th>排序</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>难度</th><th>占地</th><th>生命</th><th>攻击</th><th>行动值</th><th>排序</th><th class="col-actions">操作</th></tr></thead>
           <tbody>
             <tr v-for="m in monsters" :key="m.id">
               <td class="col-id">{{ m.id }}</td>
@@ -451,13 +451,12 @@
               <td>{{ m.attack }}</td>
               <td>{{ m.actionValue }}</td>
               <td>{{ m.sort }}</td>
-              <td>{{ m.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button type="button" class="btn-mini" @click="openDrawer('monster', m)">编辑</button>
                 <button type="button" class="btn-mini danger" @click="removeMonster(m)">删除</button>
               </td>
             </tr>
-            <tr v-if="!monsters.length"><td colspan="11" class="empty-hint">暂无怪兽</td></tr>
+            <tr v-if="!monsters.length"><td colspan="10" class="empty-hint">暂无怪兽</td></tr>
           </tbody>
         </table>
       </div>
@@ -478,20 +477,19 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>物品ID</th><th>编码</th><th>名称</th><th>堆叠</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <thead><tr><th>物品ID</th><th>编码</th><th>名称</th><th>堆叠</th><th class="col-actions">操作</th></tr></thead>
           <tbody>
             <tr v-for="m in materials" :key="m.id">
               <td class="col-id">{{ m.id }}</td>
               <td>{{ m.code }}</td>
               <td>{{ m.name }}</td>
               <td>{{ m.maxStack }}</td>
-              <td>{{ m.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button type="button" class="btn-mini" @click="openDrawer('material', m)">编辑</button>
                 <button type="button" class="btn-mini danger" @click="removeMaterial(m)">删除</button>
               </td>
             </tr>
-            <tr v-if="!materials.length"><td colspan="6" class="empty-hint">暂无材料</td></tr>
+            <tr v-if="!materials.length"><td colspan="5" class="empty-hint">暂无材料</td></tr>
           </tbody>
         </table>
       </div>
@@ -512,19 +510,18 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>配方ID</th><th>产出物品</th><th>所需材料</th><th>启用</th><th class="col-actions">操作</th></tr></thead>
+          <thead><tr><th>配方ID</th><th>产出物品</th><th>所需材料</th><th class="col-actions">操作</th></tr></thead>
           <tbody>
             <tr v-for="r in recipes" :key="r.id">
               <td class="col-id">{{ r.id }}</td>
               <td>{{ r.outputItemName || r.outputItemId }}</td>
               <td>{{ r.materialSummary || '-' }}</td>
-              <td>{{ r.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button type="button" class="btn-mini" @click="openRecipeDrawer(r)">编辑</button>
                 <button type="button" class="btn-mini danger" @click="removeRecipe(r)">删除</button>
               </td>
             </tr>
-            <tr v-if="!recipes.length"><td colspan="5" class="empty-hint">暂无配方</td></tr>
+            <tr v-if="!recipes.length"><td colspan="4" class="empty-hint">暂无配方</td></tr>
           </tbody>
         </table>
       </div>
@@ -666,7 +663,7 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>装备类型</th><th>明细</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>装备类型</th><th>明细</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="r in customSkillRows" :key="r.rowKey">
               <td class="col-id">{{ r.id }}</td>
@@ -674,13 +671,12 @@
               <td>{{ r.name }}</td>
               <td>{{ r.equipTypeLabel }}</td>
               <td>{{ r.detailText }}</td>
-              <td>{{ r.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini" @click="editCustomEquipSkillRow(r)">编辑</button>
                 <button class="btn-mini danger" @click="removeCustomEquipSkillRow(r)">删除</button>
               </td>
             </tr>
-            <tr v-if="!customSkillRows.length"><td colspan="7" class="empty-hint">暂无自定义扳机技能</td></tr>
+            <tr v-if="!customSkillRows.length"><td colspan="6" class="empty-hint">暂无自定义扳机技能</td></tr>
           </tbody>
         </table>
       </div>
@@ -711,7 +707,7 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>装备类型</th><th>明细</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>装备类型</th><th>明细</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="r in customPassiveRows" :key="r.rowKey">
               <td class="col-id">{{ r.id }}</td>
@@ -719,13 +715,12 @@
               <td>{{ r.name }}</td>
               <td>{{ r.equipTypeLabel }}</td>
               <td>{{ r.detailText }}</td>
-              <td>{{ r.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini" @click="editCustomPassiveSkillRow(r)">编辑</button>
                 <button class="btn-mini danger" @click="removeCustomPassiveSkillRow(r)">删除</button>
               </td>
             </tr>
-            <tr v-if="!customPassiveRows.length"><td colspan="7" class="empty-hint">暂无自定义被动技能</td></tr>
+            <tr v-if="!customPassiveRows.length"><td colspan="6" class="empty-hint">暂无自定义被动技能</td></tr>
           </tbody>
         </table>
       </div>
@@ -789,7 +784,7 @@
 
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>技能类型</th><th>公式组</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>技能类型</th><th>公式组</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in finishedSkills" :key="s.id">
               <td class="col-id">{{ s.id }}</td>
@@ -798,7 +793,6 @@
               <td>{{ s.catL2Label || s.catL2 }}</td>
               <td>{{ finishedSkillTypeLabel(s) }}</td>
               <td>{{ finishedSkillFormulaSummary(s) }}</td>
-              <td>{{ s.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini" @click="editFinishedSkill(s)">编辑</button>
                 <button class="btn-mini danger" @click="removeFinishedSkill(s)">删除</button>
@@ -834,7 +828,7 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>条件</th><th>效果</th><th>数值</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>编码</th><th>名称</th><th>分类2</th><th>条件</th><th>效果</th><th>数值</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in passiveSkills" :key="s.id">
               <td class="col-id">{{ s.id }}</td>
@@ -844,7 +838,6 @@
               <td>{{ s.conditionTypeLabel || s.conditionType }}{{ s.conditionEquipItemName ? ' · ' + s.conditionEquipItemName : '' }}</td>
               <td>{{ s.effectTypeLabel || s.effectType }}</td>
               <td>{{ s.effectValue }}</td>
-              <td>{{ s.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini" @click="openDrawer('passiveSkill', s)">编辑</button>
                 <button class="btn-mini danger" @click="removePassiveSkill(s)">删除</button>
@@ -908,7 +901,7 @@
         </div>
         <div class="table-wrap">
           <table class="admin-table">
-            <thead><tr><th>类型</th><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>扳机</th><th>启用</th><th>操作</th></tr></thead>
+            <thead><tr><th>类型</th><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>扳机</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="r in filteredPersonSkillRows" :key="r.rowKey">
                 <td>{{ r.skillTypeLabel }}</td>
@@ -917,7 +910,6 @@
                 <td>{{ r.name }}</td>
                 <td>{{ r.categoryText }}</td>
                 <td>{{ r.triggerText || '-' }}</td>
-                <td>{{ r.enabled ? '是' : '否' }}</td>
                 <td class="col-actions">
                   <button class="btn-mini" @click="editPersonSkillRow(r)">编辑</button>
                   <button class="btn-mini danger" @click="removePersonSkillRow(r)">删除</button>
@@ -948,20 +940,19 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>编码</th><th>名称</th><th>技能数</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>编码</th><th>名称</th><th>技能数</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="p in professions" :key="p.id">
               <td>{{ p.code }}</td>
               <td>{{ p.name }}</td>
               <td>{{ p.skillCount != null ? p.skillCount : 0 }}</td>
-              <td>{{ p.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini secondary" @click="openProfessionSkills(p)">技能管理</button>
                 <button class="btn-mini" @click="openDrawer('profession', p)">编辑</button>
                 <button class="btn-mini danger" @click="removeProfession(p)">删除</button>
               </td>
             </tr>
-            <tr v-if="!professions.length"><td colspan="5" class="empty-hint">暂无职业</td></tr>
+            <tr v-if="!professions.length"><td colspan="4" class="empty-hint">暂无职业</td></tr>
           </tbody>
         </table>
       </div>
@@ -985,19 +976,18 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>物品ID</th><th>名称</th><th>排序</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>物品ID</th><th>名称</th><th>排序</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="s in professionSkills" :key="s.id">
               <td class="col-id">{{ s.itemId }}</td>
               <td>{{ s.itemName || s.itemCode || '—' }}</td>
               <td>{{ s.sort }}</td>
-              <td>{{ s.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini" @click="openDrawer('professionSkill', s)">编辑</button>
                 <button class="btn-mini danger" @click="removeProfessionSkill(s)">删除</button>
               </td>
             </tr>
-            <tr v-if="!professionSkills.length"><td colspan="5" class="empty-hint">暂无绑定技能</td></tr>
+            <tr v-if="!professionSkills.length"><td colspan="4" class="empty-hint">暂无绑定技能</td></tr>
           </tbody>
         </table>
       </div>
@@ -1020,7 +1010,7 @@
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>编码</th><th>名称</th><th>绑定职业</th><th>生命</th><th>攻击</th><th>防御</th><th>行动值</th><th>启用</th><th>操作</th></tr></thead>
+          <thead><tr><th>编码</th><th>名称</th><th>绑定职业</th><th>生命</th><th>攻击</th><th>防御</th><th>行动值</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="c in characterTemplates" :key="c.id">
               <td>{{ c.code }}</td>
@@ -1030,13 +1020,12 @@
               <td>{{ c.attack }}</td>
               <td>{{ c.defense }}</td>
               <td>{{ c.actionValue }}</td>
-              <td>{{ c.enabled ? '是' : '否' }}</td>
               <td class="col-actions">
                 <button class="btn-mini secondary" @click="openCharacterSkills(c)">角色技能</button>
                 <button class="btn-mini" @click="openDrawer('characterTemplate', c)">编辑</button>
               </td>
             </tr>
-            <tr v-if="!characterTemplates.length"><td colspan="9" class="empty-hint">暂无角色模板</td></tr>
+            <tr v-if="!characterTemplates.length"><td colspan="8" class="empty-hint">暂无角色模板</td></tr>
           </tbody>
         </table>
       </div>
@@ -1060,9 +1049,6 @@
           <div class="field"><label>图标</label><input v-model="materialForm.icon" placeholder="📦"></div>
           <div class="field"><label>最大堆叠</label><input v-model.number="materialForm.maxStack" type="number"></div>
           <div class="field"><label>排序</label><input v-model.number="materialForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="materialForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="materialForm.remark"></div>
         </div>
 
@@ -1090,9 +1076,6 @@
               </div>
               <div class="field" v-if="weaponForm.consumable === 1"><label>最大使用次数</label><input v-model.number="weaponForm.maxUses" type="number" min="1"></div>
               <div class="field"><label>排序</label><input v-model.number="weaponForm.sort" type="number"></div>
-              <div class="field"><label>启用</label>
-                <admin-select v-model="weaponForm.enabled" :options="yesNoOptions" />
-              </div>
               <div class="field full"><label>备注</label><input v-model="weaponForm.remark"></div>
             </div>
             <div v-else-if="drawerType === 'monster'" class="form-grid">
@@ -1109,9 +1092,6 @@
               <div class="field"><label>占地宽(列)</label><input v-model.number="monsterForm.footprintW" type="number" min="1" max="4"></div>
               <div class="field"><label>占地高(行)</label><input v-model.number="monsterForm.footprintH" type="number" min="1" max="3"></div>
               <div class="field"><label>排序</label><input v-model.number="monsterForm.sort" type="number"></div>
-              <div class="field"><label>启用</label>
-                <admin-select v-model="monsterForm.enabled" :options="yesNoOptions" />
-              </div>
               <div class="field full"><label>备注</label><input v-model="monsterForm.remark"></div>
             </div>
             <div v-else class="form-grid">
@@ -1123,9 +1103,6 @@
               <div class="field"><label>生命加成</label><input v-model.number="activeEquipForm.bonusHp" type="number"></div>
               <div class="field"><label>防御</label><input v-model.number="activeEquipForm.defense" type="number"></div>
               <div class="field"><label>排序</label><input v-model.number="activeEquipForm.sort" type="number"></div>
-              <div class="field"><label>启用</label>
-                <admin-select v-model="activeEquipForm.enabled" :options="yesNoOptions" />
-              </div>
               <div class="field full"><label>备注</label><input v-model="activeEquipForm.remark"></div>
             </div>
           </div>
@@ -1138,9 +1115,6 @@
                 <div class="field full"><label>扳机</label><span class="field-value">能量值满</span></div>
                 <div class="field full"><label>触发扳机技能</label>
                   <skill-picker-panel picker-key="basicAttack" :skill-id="weaponBasicAttackForm.finishedSkillId" :placeholder="drawerType === 'monster' ? '留空=全局默认普攻 · 可筛选或自定义' : '留空=角色默认普攻 · 可筛选或自定义'" allow-empty />
-                </div>
-                <div class="field"><label>启用</label>
-                  <admin-select v-model="weaponBasicAttackForm.enabled" :options="yesNoOptions" />
                 </div>
                 <div class="field full"><label>备注</label><input v-model="weaponBasicAttackForm.remark"></div>
                 <div class="field full" style="display:flex;gap:8px">
@@ -1163,7 +1137,7 @@
                     </div>
                     <div class="tss-subzone">
                       <div class="tss-zone-head">
-                        <strong class="tss-sub-title">前置区</strong>
+                        <strong class="tss-sub-title">前置要求区</strong>
                         <admin-select v-model="weaponUltimateForm.prerequisiteMode" :options="zoneModeOptions" value-key="value" label-key="label" />
                       </div>
                       <template v-if="weaponUltimateForm.prerequisiteMode === 'CONFIG'">
@@ -1200,12 +1174,12 @@
                         </div>
                         <button v-if="!(weaponUltimateForm.prerequisites || []).length" type="button" class="btn-mini" @click="addPrerequisite(weaponUltimateForm)">+ 前置条件</button>
                       </template>
-                      <p v-else class="muted condition-zone-hint">不限：前置区恒为 true</p>
+                      <p v-else class="muted condition-zone-hint">不限：前置要求区恒为 true</p>
                     </div>
                     <div class="tss-divider tss-divider-inner" role="separator"></div>
                     <div class="tss-subzone">
                       <div class="tss-zone-head">
-                        <strong class="tss-sub-title">数值区</strong>
+                        <strong class="tss-sub-title">触发条件区</strong>
                         <span class="tss-zone-hint">条件组（组内且，组间或）</span>
                         <admin-select v-model="weaponUltimateForm.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
                         <button v-if="weaponUltimateForm.numericMode === 'CONFIG'" type="button" class="btn-mini" @click="addConditionGroup(weaponUltimateForm)">+ 条件组</button>
@@ -1213,8 +1187,8 @@
                       <template v-if="weaponUltimateForm.numericMode === 'CONFIG'">
                         <div class="effect-block" v-for="(g, gi) in weaponUltimateForm.conditionGroups" :key="'ug'+gi">
                           <div class="effect-block-head">
-                            <span>条件组 {{ gi + 1 }}</span>
-                            <button type="button" class="btn-mini danger" @click="removeConditionGroup(weaponUltimateForm, gi)">删组</button>
+                            <span>条件组 {{ gi + 1 }} <span class="tss-zone-hint">组内且</span></span>
+                            <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
                           </div>
                           <condition-group-panel
                             :group="g"
@@ -1228,7 +1202,7 @@
                           />
                         </div>
                       </template>
-                      <p v-else class="muted condition-zone-hint">不限：数值区恒为 true</p>
+                      <p v-else class="muted condition-zone-hint">不限：触发条件区恒为 true</p>
                     </div>
                   </section>
                   <div class="tss-divider" role="separator" aria-label="扳机区与技能区分隔"></div>
@@ -1239,9 +1213,6 @@
                     </div>
                     <skill-picker-panel picker-key="ultimate" :skill-id="weaponUltimateForm.finishedSkillId" placeholder="请选择扳机技能" />
                   </section>
-                </div>
-                <div class="field"><label>启用</label>
-                  <admin-select v-model="weaponUltimateForm.enabled" :options="yesNoOptions" />
                 </div>
                 <div class="field full"><label>备注</label><input v-model="weaponUltimateForm.remark"></div>
                 <div class="field full" style="display:flex;gap:8px">
@@ -1273,7 +1244,7 @@
                     </div>
                     <div class="tss-subzone">
                       <div class="tss-zone-head">
-                        <strong class="tss-sub-title">前置区</strong>
+                        <strong class="tss-sub-title">前置要求区</strong>
                         <admin-select v-model="triggerInlineForm.prerequisiteMode" :options="zoneModeOptions" value-key="value" label-key="label" />
                       </div>
                       <template v-if="triggerInlineForm.prerequisiteMode === 'CONFIG'">
@@ -1310,12 +1281,12 @@
                         </div>
                         <button v-if="!(triggerInlineForm.prerequisites || []).length" type="button" class="btn-mini" @click="addPrerequisite(triggerInlineForm)">+ 前置条件</button>
                       </template>
-                      <p v-else class="muted condition-zone-hint">不限：前置区恒为 true</p>
+                      <p v-else class="muted condition-zone-hint">不限：前置要求区恒为 true</p>
                     </div>
                     <div class="tss-divider tss-divider-inner" role="separator"></div>
                     <div class="tss-subzone">
                       <div class="tss-zone-head">
-                        <strong class="tss-sub-title">数值区</strong>
+                        <strong class="tss-sub-title">触发条件区</strong>
                         <span class="tss-zone-hint">条件组（组内且，组间或）</span>
                         <admin-select v-model="triggerInlineForm.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
                         <button v-if="triggerInlineForm.numericMode === 'CONFIG'" type="button" class="btn-mini" @click="addConditionGroup(triggerInlineForm)">+ 条件组</button>
@@ -1323,8 +1294,8 @@
                       <template v-if="triggerInlineForm.numericMode === 'CONFIG'">
                         <div class="effect-block" v-for="(g, gi) in triggerInlineForm.conditionGroups" :key="'tg'+gi">
                           <div class="effect-block-head">
-                            <span>条件组 {{ gi + 1 }}</span>
-                            <button type="button" class="btn-mini danger" @click="removeConditionGroup(triggerInlineForm, gi)">删组</button>
+                            <span>条件组 {{ gi + 1 }} <span class="tss-zone-hint">组内且</span></span>
+                            <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
                           </div>
                           <condition-group-panel
                             :group="g"
@@ -1338,7 +1309,7 @@
                           />
                         </div>
                       </template>
-                      <p v-else class="muted condition-zone-hint">不限：数值区恒为 true</p>
+                      <p v-else class="muted condition-zone-hint">不限：触发条件区恒为 true</p>
                     </div>
                   </section>
                   <div class="tss-divider" role="separator" aria-label="扳机区与技能区分隔"></div>
@@ -1351,9 +1322,6 @@
                   </section>
                 </div>
                 <div class="field"><label>排序</label><input v-model.number="triggerInlineForm.sort" type="number"></div>
-                <div class="field"><label>启用</label>
-                  <admin-select v-model="triggerInlineForm.enabled" :options="yesNoOptions" />
-                </div>
                 <div class="field full" style="display:flex;gap:8px">
                   <button type="button" class="btn-primary btn-mini" @click="saveItemTrigger">保存特性主动</button>
                   <button type="button" class="btn-mini secondary" @click="cancelItemTrigger">取消</button>
@@ -1387,9 +1355,6 @@
                   </div>
                 </div>
                 <div class="field"><label>排序</label><input v-model.number="passiveInlineForm.sort" type="number"></div>
-                <div class="field"><label>启用</label>
-                  <admin-select v-model="passiveInlineForm.enabled" :options="yesNoOptions" />
-                </div>
                 <div class="field full"><label>备注</label><input v-model="passiveInlineForm.remark"></div>
                 <div class="field full" style="display:flex;gap:8px">
                   <button type="button" class="btn-primary btn-mini" @click="saveItemPassive">保存特性被动</button>
@@ -1407,7 +1372,6 @@
               <div class="trigger-inline-row" v-for="(r, idx) in equipItemRecipes" :key="r.id || idx">
                 <div class="field"><label>配方 ID</label><span class="field-value">{{ r.id }}</span></div>
                 <div class="field full"><label>所需材料</label><span class="field-value">{{ r.materialSummary || '—' }}</span></div>
-                <div class="field"><label>启用</label><span class="field-value">{{ r.enabled ? '是' : '否' }}</span></div>
                 <div class="field full" style="display:flex;gap:8px;justify-content:flex-end">
                   <button type="button" class="btn-mini" @click="editEquipRecipe(r)">编辑</button>
                   <button type="button" class="btn-mini danger" @click="removeEquipRecipe(r)">删除</button>
@@ -1419,9 +1383,6 @@
                   <div class="field full"><label>配方 ID</label><input v-model="recipeForm.id" placeholder="留空自动生成"></div>
                   <div class="field full"><label>产出物品</label><span class="field-value">{{ equipRecipeOutputLabel }}</span></div>
                   <div class="field"><label>排序</label><input v-model.number="recipeForm.sort" type="number"></div>
-                  <div class="field"><label>启用</label>
-                    <admin-select v-model="recipeForm.enabled" :options="yesNoOptions" />
-                  </div>
                   <div class="field full"><label>备注</label><input v-model="recipeForm.remark"></div>
                 </div>
                 <div class="drawer-section-title">所需材料</div>
@@ -1464,9 +1425,6 @@
           <div class="field" v-else><label>{{ finishedSkillForm.catL1 === 'PERSON' ? '分类2' : '装备类型' }}</label><span class="field-value">{{ finishedSkillCatL2Label }}</span></div>
           <div class="field"><label>分类3</label><span class="field-value">{{ finishedSkillForm.catL3 || '通用' }}</span></div>
           <div class="field"><label>技能类型</label><span class="field-value">{{ finishedSkillTypeLabel(finishedSkillForm) }}</span></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="finishedSkillForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="finishedSkillForm.remark"></div>
 
           <template v-if="finishedSkillForm.catL1 === 'PERSON' && finishedSkillForm.catL4 === 'ACTIVE'">
@@ -1478,7 +1436,7 @@
                 <p class="muted" style="margin:0 0 8px" v-if="finishedSkillForm.skillItemId">技能物品：{{ finishedSkillForm.skillItemId }}</p>
                 <div class="tss-subzone">
                 <div class="tss-zone-head">
-                  <strong class="tss-sub-title">前置区</strong>
+                  <strong class="tss-sub-title">前置要求区</strong>
                   <admin-select v-model="finishedSkillForm.prerequisiteMode" :options="zoneModeOptions" value-key="value" label-key="label" />
                 </div>
                 <template v-if="finishedSkillForm.prerequisiteMode === 'CONFIG'">
@@ -1515,12 +1473,12 @@
                   </div>
                   <button v-if="!(finishedSkillForm.prerequisites || []).length" type="button" class="btn-mini" @click="addPrerequisite(finishedSkillForm)">+ 前置条件</button>
                 </template>
-                <p v-else class="muted condition-zone-hint">不限：前置区恒为 true</p>
+                <p v-else class="muted condition-zone-hint">不限：前置要求区恒为 true</p>
                     </div>
                 <div class="tss-divider tss-divider-inner" role="separator"></div>
                 <div class="tss-subzone">
                 <div class="tss-zone-head">
-                  <strong class="tss-sub-title">数值区</strong>
+                  <strong class="tss-sub-title">触发条件区</strong>
                   <span class="tss-zone-hint">条件组（组内且，组间或）</span>
                   <admin-select v-model="finishedSkillForm.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
                   <button v-if="finishedSkillForm.numericMode === 'CONFIG'" type="button" class="btn-mini" @click="addConditionGroup(finishedSkillForm)">+ 条件组</button>
@@ -1528,9 +1486,9 @@
                 <template v-if="finishedSkillForm.numericMode === 'CONFIG'">
                   <div class="effect-block" v-for="(g, gi) in finishedSkillForm.conditionGroups" :key="'pfg'+gi">
                     <div class="effect-block-head">
-                      <span>条件组 {{ gi + 1 }}</span>
-                      <button type="button" class="btn-mini danger" @click="removeConditionGroup(finishedSkillForm, gi)">删组</button>
-                    </div>
+                            <span>条件组 {{ gi + 1 }} <span class="tss-zone-hint">组内且</span></span>
+                            <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
+                          </div>
                     <condition-group-panel
                       :group="g"
                       :read-types="meta.readTypes"
@@ -1543,7 +1501,7 @@
                     />
                   </div>
                 </template>
-                <p v-else class="muted condition-zone-hint">不限：数值区恒为 true</p>
+                <p v-else class="muted condition-zone-hint">不限：触发条件区恒为 true</p>
                     </div>
               </section>
               <div class="tss-divider" role="separator" aria-label="扳机区与技能区分隔"></div>
@@ -1736,9 +1694,6 @@
             </div>
           </div>
           <div class="field"><label>排序</label><input v-model.number="passiveSkillForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="passiveSkillForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="passiveSkillForm.remark"></div>
         </div>
 
@@ -1748,9 +1703,6 @@
           <div class="field"><label>编码</label><input v-model="professionForm.code"></div>
           <div class="field"><label>名称</label><input v-model="professionForm.name"></div>
           <div class="field"><label>排序</label><input v-model.number="professionForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="professionForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="professionForm.remark"></div>
         </div>
 
@@ -1760,9 +1712,6 @@
             <admin-select v-model="professionSkillForm.itemId" :options="skillItemSelectOptions" value-key="value" label-key="label" placeholder="选择技能物品" searchable />
           </div>
           <div class="field"><label>排序</label><input v-model.number="professionSkillForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="professionSkillForm.enabled" :options="yesNoOptions" />
-          </div>
         </div>
 
         <div v-if="drawerType === 'characterTemplate'" class="form-grid">
@@ -1773,9 +1722,6 @@
           <div class="field"><label>攻击</label><input v-model.number="characterTemplateForm.attack" type="number"></div>
           <div class="field"><label>防御</label><input v-model.number="characterTemplateForm.defense" type="number"></div>
           <div class="field"><label>行动值</label><input v-model.number="characterTemplateForm.actionValue" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="characterTemplateForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>绑定职业（可多选）</label>
             <div class="check-grid" v-if="professions.length">
               <label v-for="p in professions" :key="p.id" class="check-chip">
@@ -1793,9 +1739,6 @@
           <div class="field"><label>编码</label><input v-model="modeForm.code"></div>
           <div class="field"><label>名称</label><input v-model="modeForm.name"></div>
           <div class="field"><label>排序</label><input v-model.number="modeForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="modeForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="modeForm.remark"></div>
         </div>
 
@@ -1805,9 +1748,6 @@
           <div class="field"><label>编码</label><input v-model="chapterForm.code"></div>
           <div class="field"><label>名称</label><input v-model="chapterForm.name"></div>
           <div class="field"><label>排序</label><input v-model.number="chapterForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="chapterForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="chapterForm.remark"></div>
         </div>
 
@@ -1817,9 +1757,6 @@
           <div class="field"><label>组编号 groupNo</label><input v-model.number="stageGroupForm.groupNo" type="number"></div>
           <div class="field"><label>名称</label><input v-model="stageGroupForm.name"></div>
           <div class="field"><label>排序</label><input v-model.number="stageGroupForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="stageGroupForm.enabled" :options="yesNoOptions" />
-          </div>
           <div class="field full"><label>备注</label><input v-model="stageGroupForm.remark"></div>
         </div>
 
@@ -1828,9 +1765,6 @@
           <div class="field"><label>组内序号 stageNo</label><input v-model.number="stageForm.stageNo" type="number"></div>
           <div class="field"><label>排序 sort</label><input v-model.number="stageForm.sort" type="number"></div>
           <div class="field full"><label>名称</label><input v-model="stageForm.name"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="stageForm.enabled" :options="yesNoOptions" />
-          </div>
         </div>
 
         <div v-if="drawerType === 'wave'" class="form-grid">
@@ -1838,9 +1772,6 @@
           <div class="field"><label>waveNo</label><input v-model.number="waveForm.waveNo" type="number"></div>
           <div class="field"><label>名称</label><input v-model="waveForm.name"></div>
           <div class="field"><label>排序</label><input v-model.number="waveForm.sort" type="number"></div>
-          <div class="field"><label>启用</label>
-            <admin-select v-model="waveForm.enabled" :options="yesNoOptions" />
-          </div>
         </div>
 
         <div v-if="drawerType === 'recipe'">
@@ -1850,9 +1781,6 @@
               <admin-select v-model="recipeForm.outputItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择合成产物" searchable />
             </div>
             <div class="field"><label>排序</label><input v-model.number="recipeForm.sort" type="number"></div>
-            <div class="field"><label>启用</label>
-              <admin-select v-model="recipeForm.enabled" :options="yesNoOptions" />
-            </div>
             <div class="field full"><label>备注</label><input v-model="recipeForm.remark"></div>
           </div>
           <div class="drawer-section-title">所需材料</div>
@@ -1961,9 +1889,6 @@
             <admin-select v-model="skillBrowser.filter.effectType" :options="passiveMeta.effectTypes" value-key="code" label-key="label" placeholder="全部" clearable searchable />
           </div>
         </template>
-        <div class="field"><label>启用</label>
-          <admin-select v-model="skillBrowser.filter.enabled" :options="skillBrowserEnabledOptions" value-key="value" label-key="label" placeholder="全部" clearable />
-        </div>
         <div class="field field-grow"><label>关键词</label>
           <input v-model.trim="skillBrowser.filter.keyword" placeholder="ID / 编码 / 名称 模糊匹配" @keyup.enter="loadSkillBrowserList">
         </div>
@@ -1982,10 +1907,10 @@
         <table class="admin-table skill-browser-table">
           <thead>
             <tr v-if="skillBrowser.kind === 'finished'">
-              <th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>目标</th><th>启用</th>
+              <th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>目标</th>
             </tr>
             <tr v-else>
-              <th>ID</th><th>编码</th><th>名称</th><th>条件</th><th>效果</th><th>启用</th>
+              <th>ID</th><th>编码</th><th>名称</th><th>条件</th><th>效果</th>
             </tr>
           </thead>
           <tbody>
@@ -1999,7 +1924,6 @@
                 <td>{{ row.name }}</td>
                 <td>{{ formatSkillCategory(row) }}</td>
                 <td>{{ row.targetType }}</td>
-                <td>{{ row.enabled ? '是' : '否' }}</td>
               </tr>
             </template>
             <template v-else>
@@ -2012,7 +1936,6 @@
                 <td>{{ row.name }}</td>
                 <td>{{ row.conditionTypeLabel || row.conditionType || '—' }}</td>
                 <td>{{ (row.effectTypeLabel || row.effectType || '') + (row.effectValue != null ? ' ' + row.effectValue : '') }}</td>
-                <td>{{ row.enabled ? '是' : '否' }}</td>
               </tr>
             </template>
             <tr v-if="!skillBrowser.loading && !skillBrowserDisplayList.length">
@@ -2049,7 +1972,6 @@
           <div><span class="skill-detail-label">名称</span>{{ skillDetailModal.data.name }}</div>
           <div><span class="skill-detail-label">编码</span>{{ skillDetailModal.data.code }}</div>
           <div><span class="skill-detail-label">分类</span>{{ formatSkillCategory(skillDetailModal.data) }}</div>
-          <div><span class="skill-detail-label">启用</span>{{ skillDetailModal.data.enabled ? '是' : '否' }}</div>
           <div class="full"><span class="skill-detail-label">公式组</span>{{ finishedSkillFormulaSummary(skillDetailModal.data) }}</div>
           <div class="full"><span class="skill-detail-label">备注</span>{{ skillDetailModal.data.remark || '—' }}</div>
         </div>
@@ -2107,117 +2029,129 @@
       @add="$emit('add-item')"
       @remove="$emit('remove-item', ii)"
     />
-    <button v-if="!(group.items || []).length" type="button" class="btn-mini" @click="$emit('add-item')">+ 数值条件</button>
+    <button v-if="!(group.items || []).length" type="button" class="btn-mini" @click="$emit('add-item')">+ 触发条件</button>
   </div>
 </script>
 <script type="text/x-template" id="condition-item-editor-tpl">
-  <div class="condition-compare-row">
-    <div class="condition-formula-side">
-      <div class="formula-sub-label">左·公式</div>
-      <div class="formula-expr-box" @click.stop>
-        <template v-if="(left.tokens || []).length">
-          <button
-            v-for="(tk, ti) in left.tokens"
-            :key="'L'+ti"
-            type="button"
-            class="formula-token-chip"
-            :class="'kind-' + (tk.kind || '').toLowerCase()"
-            title="点击删除该项"
-            @click="removeToken(left, ti)"
-          >{{ tokenLabel(tk) }}</button>
-        </template>
-        <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
+  <div class="condition-compare-row" :class="{ collapsed: !expanded }">
+    <div v-if="!expanded" class="condition-summary">
+      <div class="condition-summary-body">
+        <div class="condition-summary-line" :class="{ empty: !summaryReady }" :title="summaryText">{{ summaryText }}</div>
+        <div v-if="!summaryReady" class="condition-summary-hint">尚未配置完整，点击修改继续编辑</div>
       </div>
-      <div class="formula-keypad">
-        <button type="button" class="formula-key" @click="pushParen(left,'LPAREN')">(</button>
-        <button type="button" class="formula-key" @click="pushParen(left,'RPAREN')">)</button>
-        <button type="button" class="formula-key op" @click="pushOp(left,'+')">+</button>
-        <button type="button" class="formula-key op" @click="pushOp(left,'-')">−</button>
-        <button type="button" class="formula-key op" @click="pushOp(left,'*')">×</button>
-        <button type="button" class="formula-key op" @click="pushOp(left,'/')">÷</button>
-        <button type="button" class="formula-key danger" @click="popToken(left)">⌫</button>
-      </div>
-      <div class="formula-param-row">
-        <span class="formula-sub-label">参数</span>
-        <div class="formula-param-mode">
-          <button type="button" class="formula-pill" :class="{ active: left._paramMode !== 'READ' }" @click="left._paramMode = 'CONST'">定值</button>
-          <button type="button" class="formula-pill" :class="{ active: left._paramMode === 'READ' }" @click="left._paramMode = 'READ'">读取</button>
-        </div>
-        <div class="formula-param-input" v-if="left._paramMode !== 'READ'">
-          <input v-model.number="left._constDraft" type="number" step="0.01" placeholder="输入数值">
-          <button type="button" class="btn-mini formula-add-btn" @click="pushConst(left)">加入</button>
-        </div>
-        <div class="formula-param-input formula-param-input-stack" v-else>
-          <div class="formula-param-select">
-            <read-type-cascade v-model="left._readDraft" :read-types="readTypes" @change="(v) => onReadDraft(left, v)" />
-          </div>
-          <div class="formula-param-select" v-if="needsFilter(left._readDraft)">
-            <admin-select v-model="left._filterDraft" :options="scopeOptions(left._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(left, v)" />
-          </div>
-          <div class="formula-param-select" v-if="needsSkillRef(left._filterDraft)">
-            <admin-select v-model="left._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
-          </div>
-          <button type="button" class="btn-mini formula-add-btn" @click="pushRead(left)">加入</button>
-        </div>
+      <div class="condition-summary-actions">
+        <button type="button" class="btn-mini" @click="expanded = true">修改</button>
+        <button v-if="!hideActions" type="button" class="btn-mini danger" @click="$emit('remove')">删条件</button>
       </div>
     </div>
-    <div class="condition-op-col">
-      <label>判定</label>
-      <admin-select v-model="item.op" :options="compareOps" value-key="code" label-key="label" />
-    </div>
-    <div class="condition-formula-side">
-      <div class="formula-sub-label">右·公式</div>
-      <div class="formula-expr-box" @click.stop>
-        <template v-if="(right.tokens || []).length">
-          <button
-            v-for="(tk, ti) in right.tokens"
-            :key="'R'+ti"
-            type="button"
-            class="formula-token-chip"
-            :class="'kind-' + (tk.kind || '').toLowerCase()"
-            title="点击删除该项"
-            @click="removeToken(right, ti)"
-          >{{ tokenLabel(tk) }}</button>
-        </template>
-        <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
-      </div>
-      <div class="formula-keypad">
-        <button type="button" class="formula-key" @click="pushParen(right,'LPAREN')">(</button>
-        <button type="button" class="formula-key" @click="pushParen(right,'RPAREN')">)</button>
-        <button type="button" class="formula-key op" @click="pushOp(right,'+')">+</button>
-        <button type="button" class="formula-key op" @click="pushOp(right,'-')">−</button>
-        <button type="button" class="formula-key op" @click="pushOp(right,'*')">×</button>
-        <button type="button" class="formula-key op" @click="pushOp(right,'/')">÷</button>
-        <button type="button" class="formula-key danger" @click="popToken(right)">⌫</button>
-      </div>
-      <div class="formula-param-row">
-        <span class="formula-sub-label">参数</span>
-        <div class="formula-param-mode">
-          <button type="button" class="formula-pill" :class="{ active: right._paramMode !== 'READ' }" @click="right._paramMode = 'CONST'">定值</button>
-          <button type="button" class="formula-pill" :class="{ active: right._paramMode === 'READ' }" @click="right._paramMode = 'READ'">读取</button>
+    <template v-else>
+      <div class="condition-formula-side">
+        <div class="formula-sub-label">左·公式</div>
+        <div class="formula-expr-box" @click.stop>
+          <template v-if="(left.tokens || []).length">
+            <button
+              v-for="(tk, ti) in left.tokens"
+              :key="'L'+ti"
+              type="button"
+              class="formula-token-chip"
+              :class="'kind-' + (tk.kind || '').toLowerCase()"
+              title="点击删除该项"
+              @click="removeToken(left, ti)"
+            >{{ tokenLabel(tk) }}</button>
+          </template>
+          <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
         </div>
-        <div class="formula-param-input" v-if="right._paramMode !== 'READ'">
-          <input v-model.number="right._constDraft" type="number" step="0.01" placeholder="输入数值">
-          <button type="button" class="btn-mini formula-add-btn" @click="pushConst(right)">加入</button>
+        <div class="formula-keypad">
+          <button type="button" class="formula-key" @click="pushParen(left,'LPAREN')">(</button>
+          <button type="button" class="formula-key" @click="pushParen(left,'RPAREN')">)</button>
+          <button type="button" class="formula-key op" @click="pushOp(left,'+')">+</button>
+          <button type="button" class="formula-key op" @click="pushOp(left,'-')">−</button>
+          <button type="button" class="formula-key op" @click="pushOp(left,'*')">×</button>
+          <button type="button" class="formula-key op" @click="pushOp(left,'/')">÷</button>
+          <button type="button" class="formula-key danger" @click="popToken(left)">⌫</button>
         </div>
-        <div class="formula-param-input formula-param-input-stack" v-else>
-          <div class="formula-param-select">
-            <read-type-cascade v-model="right._readDraft" :read-types="readTypes" @change="(v) => onReadDraft(right, v)" />
+        <div class="formula-param-row">
+          <span class="formula-sub-label">参数</span>
+          <div class="formula-param-mode">
+            <button type="button" class="formula-pill" :class="{ active: left._paramMode !== 'READ' }" @click="left._paramMode = 'CONST'">定值</button>
+            <button type="button" class="formula-pill" :class="{ active: left._paramMode === 'READ' }" @click="left._paramMode = 'READ'">读取</button>
           </div>
-          <div class="formula-param-select" v-if="needsFilter(right._readDraft)">
-            <admin-select v-model="right._filterDraft" :options="scopeOptions(right._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(right, v)" />
+          <div class="formula-param-input" v-if="left._paramMode !== 'READ'">
+            <input v-model.number="left._constDraft" type="number" step="0.01" placeholder="输入数值">
+            <button type="button" class="btn-mini formula-add-btn" @click="pushConst(left)">加入</button>
           </div>
-          <div class="formula-param-select" v-if="needsSkillRef(right._filterDraft)">
-            <admin-select v-model="right._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+          <div class="formula-param-input formula-param-input-stack" v-else>
+            <div class="formula-param-select">
+              <read-type-cascade v-model="left._readDraft" :read-types="readTypes" @change="(v) => onReadDraft(left, v)" />
+            </div>
+            <div class="formula-param-select" v-if="needsFilter(left._readDraft)">
+              <admin-select v-model="left._filterDraft" :options="scopeOptions(left._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(left, v)" />
+            </div>
+            <div class="formula-param-select" v-if="needsSkillRef(left._filterDraft)">
+              <admin-select v-model="left._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+            </div>
+            <button type="button" class="btn-mini formula-add-btn" @click="pushRead(left)">加入</button>
           </div>
-          <button type="button" class="btn-mini formula-add-btn" @click="pushRead(right)">加入</button>
         </div>
       </div>
-    </div>
-    <div class="condition-actions" v-if="!hideActions">
-      <button type="button" class="btn-mini" @click="$emit('add')">+ 条件</button>
-      <button type="button" class="btn-mini danger" @click="$emit('remove')">删条件</button>
-    </div>
+      <div class="condition-op-col">
+        <label>判定</label>
+        <admin-select v-model="item.op" :options="compareOps" value-key="code" label-key="label" />
+      </div>
+      <div class="condition-formula-side">
+        <div class="formula-sub-label">右·公式</div>
+        <div class="formula-expr-box" @click.stop>
+          <template v-if="(right.tokens || []).length">
+            <button
+              v-for="(tk, ti) in right.tokens"
+              :key="'R'+ti"
+              type="button"
+              class="formula-token-chip"
+              :class="'kind-' + (tk.kind || '').toLowerCase()"
+              title="点击删除该项"
+              @click="removeToken(right, ti)"
+            >{{ tokenLabel(tk) }}</button>
+          </template>
+          <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
+        </div>
+        <div class="formula-keypad">
+          <button type="button" class="formula-key" @click="pushParen(right,'LPAREN')">(</button>
+          <button type="button" class="formula-key" @click="pushParen(right,'RPAREN')">)</button>
+          <button type="button" class="formula-key op" @click="pushOp(right,'+')">+</button>
+          <button type="button" class="formula-key op" @click="pushOp(right,'-')">−</button>
+          <button type="button" class="formula-key op" @click="pushOp(right,'*')">×</button>
+          <button type="button" class="formula-key op" @click="pushOp(right,'/')">÷</button>
+          <button type="button" class="formula-key danger" @click="popToken(right)">⌫</button>
+        </div>
+        <div class="formula-param-row">
+          <span class="formula-sub-label">参数</span>
+          <div class="formula-param-mode">
+            <button type="button" class="formula-pill" :class="{ active: right._paramMode !== 'READ' }" @click="right._paramMode = 'CONST'">定值</button>
+            <button type="button" class="formula-pill" :class="{ active: right._paramMode === 'READ' }" @click="right._paramMode = 'READ'">读取</button>
+          </div>
+          <div class="formula-param-input" v-if="right._paramMode !== 'READ'">
+            <input v-model.number="right._constDraft" type="number" step="0.01" placeholder="输入数值">
+            <button type="button" class="btn-mini formula-add-btn" @click="pushConst(right)">加入</button>
+          </div>
+          <div class="formula-param-input formula-param-input-stack" v-else>
+            <div class="formula-param-select">
+              <read-type-cascade v-model="right._readDraft" :read-types="readTypes" @change="(v) => onReadDraft(right, v)" />
+            </div>
+            <div class="formula-param-select" v-if="needsFilter(right._readDraft)">
+              <admin-select v-model="right._filterDraft" :options="scopeOptions(right._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(right, v)" />
+            </div>
+            <div class="formula-param-select" v-if="needsSkillRef(right._filterDraft)">
+              <admin-select v-model="right._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+            </div>
+            <button type="button" class="btn-mini formula-add-btn" @click="pushRead(right)">加入</button>
+          </div>
+        </div>
+      </div>
+      <div class="condition-actions">
+        <button type="button" class="btn-primary btn-mini" @click="confirmEdit">确认</button>
+        <button v-if="!hideActions" type="button" class="btn-mini danger" @click="$emit('remove')">删条件</button>
+      </div>
+    </template>
   </div>
 </script>
 <script type="text/x-template" id="skill-custom-inline-tpl">
@@ -2225,9 +2159,6 @@
     <div class="level-tree-compact">扳机技能 · {{ categoryText }} · 发动上限默认无限</div>
     <div class="form-grid">
       <div class="field full"><label>名称</label><input v-model="draft.name" placeholder="装备 - 武器 - 大剑 - 普攻"></div>
-      <div class="field"><label>启用</label>
-        <admin-select v-model="draft.enabled" :options="yesNoOptions" />
-      </div>
       <div class="field full"><label>备注</label><input v-model="draft.remark"></div>
     </div>
     <div class="field full">
@@ -2350,8 +2281,7 @@
           <span v-else-if="skillId" class="skill-tag-general">通用</span>
         </div>
         <div class="skill-picker-title">{{ displayTitle }}</div>
-        <div v-if="skillId && displayCategory" class="skill-picker-category">{{ displayCategory }}</div>
-        <div v-if="skillId" class="skill-picker-id">{{ skillId }}</div>
+        <div v-if="skillId && formulaAbbrev" class="skill-picker-formula" :title="formulaAbbrev">{{ formulaAbbrev }}</div>
       </div>
       <div class="skill-picker-actions">
         <button type="button" class="btn-mini secondary" @click="browse">筛选</button>
@@ -2480,6 +2410,9 @@ const ConditionItemEditor = {
     hideActions: { type: Boolean, default: false }
   },
   emits: ['add', 'remove'],
+  data: function () {
+    return { expanded: true };
+  },
   computed: {
     left: function () {
       this.ensureSides();
@@ -2488,12 +2421,43 @@ const ConditionItemEditor = {
     right: function () {
       this.ensureSides();
       return this.item.rightFormula;
+    },
+    summaryReady: function () {
+      return this.isComplete();
+    },
+    summaryText: function () {
+      var leftText = this.sideSummary(this.left, true);
+      var rightText = this.sideSummary(this.right, true);
+      var op = this.opLabel(this.item && this.item.op);
+      if (!leftText && !rightText) return '未配置条件';
+      return leftText + '  ' + op + '  ' + rightText;
     }
   },
   created: function () {
     this.ensureSides();
+    if (this.isComplete()) this.expanded = false;
   },
   methods: {
+    isComplete: function () {
+      var leftOk = this.left && this.left.tokens && this.left.tokens.length;
+      var rightOk = this.right && this.right.tokens && this.right.tokens.length;
+      return !!(this.item && this.item.op && leftOk && rightOk);
+    },
+    confirmEdit: function () {
+      this.expanded = false;
+    },
+    opLabel: function (code) {
+      if (!code) return '?';
+      var hit = (this.compareOps || []).find(function (x) { return x.code === code || x.value === code; });
+      return hit ? (hit.label || code) : code;
+    },
+    sideSummary: function (side, shortRead) {
+      if (!side || !side.tokens || !side.tokens.length) return '…';
+      var self = this;
+      return side.tokens.map(function (tk) {
+        return self.tokenLabel(tk, shortRead);
+      }).join(' ');
+    },
     ensureSides: function () {
       var it = this.item;
       if (!it) return;
@@ -2533,17 +2497,35 @@ const ConditionItemEditor = {
       if (value !== undefined) side._filterDraft = value;
       if (!this.needsSkillRef(side._filterDraft)) side._filterRefDraft = '';
     },
-    tokenLabel: function (tk) {
+    tokenLabel: function (tk, shortRead) {
       if (!tk) return '';
       if (tk.kind === 'CONST') return tk.value != null ? String(tk.value) : '0';
-      if (tk.kind === 'OP') return tk.op || '';
+      if (tk.kind === 'OP') {
+        if (tk.op === '*') return '×';
+        if (tk.op === '/') return '÷';
+        if (tk.op === '-') return '−';
+        return tk.op || '';
+      }
       if (tk.kind === 'LPAREN') return '(';
       if (tk.kind === 'RPAREN') return ')';
       if (tk.kind === 'READ') {
         var hit = (this.readTypes || []).find(function (x) { return x.code === tk.read; });
         var label = hit ? hit.label : (tk.read || '?');
-        if (hit && hit.group) label = hit.group + '·' + label;
-        if (tk.filter) label += '[' + tk.filter + ']';
+        if (!shortRead && hit && hit.group) label = hit.group + '·' + label;
+        if (tk.filter) {
+          var filterText = tk.filter;
+          if (tk.filterRef) {
+            var sk = (this.finishedSkillOptions || []).find(function (x) {
+              return x.value === tk.filterRef || x.code === tk.filterRef || x.id === tk.filterRef;
+            });
+            filterText = sk ? (sk.label || sk.name || tk.filterRef) : tk.filterRef;
+          } else {
+            var fl = [].concat(this.skillScopeCast || [], this.skillScopeHit || [])
+              .find(function (x) { return x.code === tk.filter; });
+            if (fl && fl.label) filterText = fl.label;
+          }
+          label += '[' + filterText + ']';
+        }
         return label;
       }
       return tk.kind || '';
@@ -2803,8 +2785,8 @@ const SkillPickerPanel = {
     displayTitle: function () {
       return this.panel.getSkillPickerDisplayTitle(this.pickerKey, this.skillId, this.placeholder);
     },
-    displayCategory: function () {
-      return this.panel.getSkillPickerDisplayCategory(this.pickerKey, this.skillId);
+    formulaAbbrev: function () {
+      return this.panel.getSkillPickerFormulaAbbrev(this.pickerKey, this.skillId);
     },
     isCustomBound: function () {
       return this.panel.isSkillPickerCustomBound(this.pickerKey, this.skillId);
@@ -2852,7 +2834,6 @@ createApp({
         { value: 'HOLD_PERSON_SKILL', label: '持有指定人物技能' },
         { value: 'HOLD_BY_CATEGORY', label: '持有指定分类物品' }
       ],
-      skillBrowserEnabledOptions: [{ value: 1, label: '是' }, { value: 0, label: '否' }],
       castLimitOptions: [{ value: 'unlimited', label: '无限' }, { value: 'limited', label: '限定次数' }],
       loggedIn: !!AdminApi.getAdminToken(),
       loading: false,
@@ -3566,7 +3547,7 @@ createApp({
           stageNo: stage.stageNo,
           sort: stage.sort,
           name: stage.name,
-          enabled: stage.enabled != null ? stage.enabled : 1
+          enabled: 1
         };
         this.drawerTitle = '编辑小关卡';
       } else {
@@ -3713,9 +3694,13 @@ createApp({
       this.inlineWaveForm = { waveNo: n, name: '第' + n + '波', sort: n, enabled: 1 };
       this.addingWave = true;
     },
+    forceEnabled(obj) {
+      if (obj && typeof obj === 'object') obj.enabled = 1;
+      return obj;
+    },
     saveInlineWave() {
       if (!this.levelPick.stageId) return;
-      AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.inlineWaveForm))
+      AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.forceEnabled(this.inlineWaveForm)))
         .then(() => {
           this.showToast('波次已保存', 'success');
           this.addingWave = false;
@@ -4075,8 +4060,7 @@ createApp({
         if (f.conditionType) body.conditionType = f.conditionType;
         if (f.effectType) body.effectType = f.effectType;
       }
-      if (f.enabled !== '' && f.enabled != null) body.enabled = f.enabled;
-      return body;
+            return body;
     },
     loadSkillBrowserList() {
       var self = this;
@@ -4155,6 +4139,24 @@ createApp({
       var s = this.skillMetaCache[id] || this.getSkillOption(id);
       if (!s || (!s.catL1 && !s.catL3 && !s.catL4)) return '';
       return this.formatSkillCategory(s);
+    },
+    getSkillPickerFormulaAbbrev(pickerKey, skillId) {
+      var id = skillId || this.getSkillFormField(pickerKey);
+      if (!id) return '';
+      var s = this.skillMetaCache[id] || this.getSkillOption(id);
+      if (!s) return '';
+      var formulas = s.formulas || [];
+      if (!formulas.length && s.formulasJson) {
+        try { formulas = JSON.parse(s.formulasJson) || []; } catch (e) { formulas = []; }
+      }
+      if (!formulas.length) return '';
+      var self = this;
+      return formulas.map(function (f, i) {
+        var outcome = self.formulaOutcomeLabel(f && f.outcome);
+        var expr = self.formulaTokensText((f && f.tokens) || []);
+        var piece = outcome + (expr ? ' ' + expr : '');
+        return formulas.length > 1 ? ((i + 1) + '.' + piece) : piece;
+      }).join('；');
     },
     ensureSkillMetaCached(skillId) {
       var self = this;
@@ -4251,7 +4253,7 @@ createApp({
         numericMode: 'CONFIG',
         conditionGroups: this.actionValueFullConditionGroups(),
         finishedSkillId: form.finishedSkillId,
-        enabled: form.enabled != null ? form.enabled : 1,
+        enabled: 1,
         remark: form.remark || '',
         sort: 0
       });
@@ -4275,7 +4277,7 @@ createApp({
         triggerMode: 'PRECISE',
         quickPreset: null,
         finishedSkillId: form.finishedSkillId,
-        enabled: form.enabled != null ? form.enabled : 1,
+        enabled: 1,
         remark: form.remark || '',
         sort: 0
       });
@@ -4659,11 +4661,11 @@ createApp({
     formatTriggerSlotSummary(t) {
       if (!t) return '—';
       var pre = (t.prerequisiteMode === 'CONFIG')
-        ? ('前置' + ((t.prerequisites && t.prerequisites.length) || 0))
-        : '前置不限';
+        ? ('前置要求' + ((t.prerequisites && t.prerequisites.length) || 0))
+        : '前置要求不限';
       var num = (t.numericMode === 'NONE')
-        ? '数值不限'
-        : (((t.conditionGroups && t.conditionGroups.length) || 0) + ' 组数值');
+        ? '触发条件不限'
+        : (((t.conditionGroups && t.conditionGroups.length) || 0) + ' 组触发条件');
       return pre + ' · ' + num;
     },
     actionValueFullConditionGroups() {
@@ -4738,7 +4740,7 @@ createApp({
         quickPreset: null,
         finishedSkillId: row.finishedSkillId || '',
         sort: row.sort != null ? row.sort : 0,
-        enabled: row.enabled != null ? row.enabled : 1,
+        enabled: 1,
         remark: row.remark || ''
       } : {
         id: '', itemId: '', monsterId: '',
@@ -4760,7 +4762,7 @@ createApp({
         conditionGroups: slot.conditionGroups,
         finishedSkillId: form.finishedSkillId,
         sort: form.sort != null ? form.sort : 0,
-        enabled: form.enabled != null ? form.enabled : 1,
+        enabled: 1,
         remark: form.remark || ''
       };
     },
@@ -4812,7 +4814,7 @@ createApp({
               id: data.id || '',
               outputItemId: data.outputItemId || '',
               sort: data.sort != null ? data.sort : 0,
-              enabled: data.enabled != null ? data.enabled : 1,
+              enabled: 1,
               remark: data.remark || '',
               materials: (data.materials && data.materials.length)
                 ? data.materials.map(function (m) {
@@ -4966,6 +4968,7 @@ createApp({
         return;
       }
       var payload = Object.assign({}, this.passiveInlineForm);
+      payload.enabled = 1;
       var api = this.isMonsterDrawer
         ? AdminApi.saveMonsterPassive(Object.assign(payload, { monsterId: ownerId }))
         : AdminApi.saveItemPassive(Object.assign(payload, { itemId: ownerId }));
@@ -5065,7 +5068,7 @@ createApp({
               name: s.name,
               equipTypeLabel: s.catL2Label || s.catL2 || '—',
               detailText: self.finishedSkillFormulaSummary(s),
-              enabled: s.enabled,
+              enabled: 1,
               raw: s
             };
           });
@@ -5117,7 +5120,7 @@ createApp({
               name: s.name,
               equipTypeLabel: s.catL2Label || s.catL2 || '—',
               detailText: (cond ? cond + ' · ' : '') + effect,
-              enabled: s.enabled,
+              enabled: 1,
               raw: s
             };
           });
@@ -5288,7 +5291,7 @@ createApp({
             id: s.id,
             code: s.code,
             name: s.name,
-            enabled: s.enabled,
+            enabled: 1,
             categoryText: '人物 · ' + (s.catL2Label || scope.catL2) + ' · ' + (s.catL3 || '通用'),
             triggerText: '…',
             raw: s
@@ -5303,7 +5306,7 @@ createApp({
             id: s.id,
             code: s.code,
             name: s.name,
-            enabled: s.enabled,
+            enabled: 1,
             categoryText: '人物 · ' + (s.catL2Label || scope.catL2) + (s.ownerRef ? (' · ' + s.ownerRef) : ''),
             triggerText: '-',
             raw: s
@@ -5476,7 +5479,7 @@ createApp({
           id: row.id,
           itemId: row.itemId,
           finishedSkillId: row.finishedSkillId || '',
-          enabled: row.enabled != null ? row.enabled : 1,
+          enabled: 1,
           remark: row.remark || ''
         };
       }
@@ -5489,7 +5492,7 @@ createApp({
         triggerMode: 'PRECISE',
         quickPreset: null,
         finishedSkillId: row.finishedSkillId || '',
-        enabled: row.enabled != null ? row.enabled : 1,
+        enabled: 1,
         remark: row.remark || ''
       } : {
         id: '', itemId: '',
@@ -5665,7 +5668,7 @@ createApp({
             id: data.id || '',
             outputItemId: data.outputItemId || self.currentItemIdForTriggers,
             sort: data.sort != null ? data.sort : 0,
-            enabled: data.enabled != null ? data.enabled : 1,
+            enabled: 1,
             remark: data.remark || '',
             materials: (data.materials && data.materials.length)
               ? data.materials.map(function (m) {
@@ -5684,6 +5687,7 @@ createApp({
     saveEquipRecipe() {
       var self = this;
       var payload = Object.assign({}, this.recipeForm);
+      payload.enabled = 1;
       if (!payload.outputItemId) {
         payload.outputItemId = this.currentItemIdForTriggers;
       }
@@ -5987,6 +5991,7 @@ createApp({
     },
     normalizeFinishedSkillPayload(form) {
       var payload = Object.assign({}, form);
+      payload.enabled = 1;
       payload.formulas = (form.formulas || []).map(function (fg) {
         var maxCast = null;
         if (fg.maxCastLimited) {
@@ -6037,6 +6042,7 @@ createApp({
     normalizePassiveSkillPayload(form) {
       var self = this;
       var payload = Object.assign({}, form);
+      payload.enabled = 1;
       payload.conditions = (form.conditions || []).map(function (c) {
         if (!c || c.type !== 'COMPARE') return c;
         return Object.assign({ type: 'COMPARE' }, self.serializeConditionItem(c));
@@ -6087,13 +6093,13 @@ createApp({
       var p;
       var self = this;
       if (this.drawerType === 'material') {
-        p = AdminApi.saveMaterial(this.materialForm).then(() => { this.loadMaterials(); this.loadAllItems(); });
+        p = AdminApi.saveMaterial(this.forceEnabled(this.materialForm)).then(() => { this.loadMaterials(); this.loadAllItems(); });
       } else if (this.drawerType === 'weapon') {
         if (!this.weaponForm.code || !String(this.weaponForm.code).trim()) {
           this.showToast('请填写编码');
           return;
         }
-        p = AdminApi.saveWeapon(this.weaponForm).then((res) => {
+        p = AdminApi.saveWeapon(this.forceEnabled(this.weaponForm)).then((res) => {
           if (res.data) {
             self.weaponForm = Object.assign({}, self.weaponForm, res.data);
           }
@@ -6109,7 +6115,7 @@ createApp({
           this.showToast('请填写名称');
           return;
         }
-        p = AdminApi[meta.saveApi](form).then((res) => {
+        p = AdminApi[meta.saveApi](this.forceEnabled(form)).then((res) => {
           if (res.data) {
             if (self.drawerType === 'armor') {
               self.armorForm = Object.assign({}, self.armorForm, res.data);
@@ -6176,14 +6182,14 @@ createApp({
           this.showToast('请填写编码和名称');
           return;
         }
-        p = AdminApi.professionSave(this.professionForm).then(() => { this.loadProfessions(); });
+        p = AdminApi.professionSave(this.forceEnabled(this.professionForm)).then(() => { this.loadProfessions(); });
       } else if (this.drawerType === 'professionSkill') {
         if (!this.professionSkillForm.itemId) {
           this.showToast('请选择技能物品');
           return;
         }
         this.professionSkillForm.professionId = this.selectedProfession && this.selectedProfession.id;
-        p = AdminApi.professionSkillSave(this.professionSkillForm).then(() => {
+        p = AdminApi.professionSkillSave(this.forceEnabled(this.professionSkillForm)).then(() => {
           this.loadProfessionSkills();
           this.loadProfessions();
         });
@@ -6192,19 +6198,19 @@ createApp({
           this.showToast('请填写编码和名称');
           return;
         }
-        p = AdminApi.characterTemplateSave(this.characterTemplateForm).then(() => { this.loadCharacterTemplates(); });
+        p = AdminApi.characterTemplateSave(this.forceEnabled(this.characterTemplateForm)).then(() => { this.loadCharacterTemplates(); });
       } else if (this.drawerType === 'recipe') {
-        p = AdminApi.saveRecipe(this.recipeForm).then(() => { this.loadRecipes(); });
+        p = AdminApi.saveRecipe(this.forceEnabled(this.recipeForm)).then(() => { this.loadRecipes(); });
       } else if (this.drawerType === 'mode') {
-        p = AdminApi.saveMode(this.modeForm).then(() => { self.switchLevel(); });
+        p = AdminApi.saveMode(this.forceEnabled(this.modeForm)).then(() => { self.switchLevel(); });
       } else if (this.drawerType === 'chapter') {
         this.chapterForm.groupId = this.levelPick.modeId;
-        p = AdminApi.saveChapter(this.chapterForm).then(() => { self.switchLevel(); });
+        p = AdminApi.saveChapter(this.forceEnabled(this.chapterForm)).then(() => { self.switchLevel(); });
       } else if (this.drawerType === 'stageGroup') {
         this.stageGroupForm.chapterId = this.levelPick.chapterId;
-        p = AdminApi.saveStageGroup(this.stageGroupForm).then(() => { self.switchLevel(); });
+        p = AdminApi.saveStageGroup(this.forceEnabled(this.stageGroupForm)).then(() => { self.switchLevel(); });
       } else if (this.drawerType === 'stage') {
-        p = AdminApi.saveStage(this.stageForm).then(() => {
+        p = AdminApi.saveStage(this.forceEnabled(this.stageForm)).then(() => {
           self.switchLevel();
           if (self.stageForm.id) self.levelPick.stageId = self.stageForm.id;
         });
@@ -6217,12 +6223,12 @@ createApp({
           this.showToast('请填写名称');
           return;
         }
-        p = AdminApi.saveMonster(this.monsterForm).then(function () {
+        p = AdminApi.saveMonster(this.forceEnabled(this.monsterForm)).then(function () {
           self.loadMonsters();
           return self.syncWeaponCombatSlots(true);
         });
       } else if (this.drawerType === 'wave') {
-        p = AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.waveForm)).then(() => { this.loadStageBattleForPick(); });
+        p = AdminApi.saveWave(Object.assign({ stageId: this.levelPick.stageId }, this.forceEnabled(this.waveForm))).then(() => { this.loadStageBattleForPick(); });
       }
       if (!p) return;
       var keepOpen = this.drawerType === 'weapon' || this.isEquipPartDrawer || this.drawerType === 'monster';

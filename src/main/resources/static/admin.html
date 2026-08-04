@@ -853,7 +853,7 @@
       <div class="panel-toolbar">
         <div class="panel-toolbar-title">
           <h3>{{ personSkillPanelTitle }}</h3>
-          <p class="panel-page-remark">完整主动技能 = 扳机组（条件）+ 扳机技能（公式组按序执行）。被动仍为被动配置。</p>
+          <p class="panel-page-remark">完整主动技能 = 扳机组（条件）+ 扳机技能（公式组按序执行）。被动支持条件组 + 效果组（含公式·伤害/治疗，读取项与武器公式一致）。</p>
         </div>
         <div class="panel-toolbar-actions">
           <button class="btn-primary btn-mini" :disabled="!personOwnerReady" @click="openPersonSkillCreate('ACTIVE')">+ 主动</button>
@@ -1665,17 +1665,53 @@
                   <input v-model.number="e.value" type="number" step="0.01">
                 </div>
                 <div class="field full" v-if="e.kind === 'FORMULA_DAMAGE' || e.kind === 'FORMULA_HEAL'">
-                  <div class="muted" style="margin-bottom:6px">{{ formulaTokensText(e.tokens) || '（空）' }}</div>
-                  <div style="display:flex;flex-wrap:wrap;gap:6px">
-                    <read-type-cascade v-model="e._readDraft" :read-types="meta.readTypes" />
-                    <button type="button" class="btn-mini" @click="pushFormulaRead(e)">+读取</button>
-                    <input v-model.number="e._constDraft" type="number" step="0.01" placeholder="定值" style="width:90px">
-                    <button type="button" class="btn-mini" @click="pushFormulaConst(e)">+定值</button>
-                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'+')">+</button>
-                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'-')">-</button>
-                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'*')">*</button>
-                    <button type="button" class="btn-mini" @click="pushFormulaOp(e,'/')">/</button>
-                    <button type="button" class="btn-mini danger" @click="popFormulaToken(e)">删末尾</button>
+                  <div class="formula-expr-box">
+                    <div class="formula-expr-display" :class="{ empty: !(e.tokens && e.tokens.length) }">
+                      <template v-if="e.tokens && e.tokens.length">
+                        <button
+                          v-for="(tk, ti) in e.tokens"
+                          :key="'ptk'+ti"
+                          type="button"
+                          class="formula-token-chip"
+                          :class="'kind-' + (tk.kind || '').toLowerCase()"
+                          :title="'点击删除该项'"
+                          @click="removeFormulaTokenAt(e, ti)"
+                        >{{ formulaTokenLabel(tk) }}</button>
+                      </template>
+                      <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
+                    </div>
+                  </div>
+                  <div class="formula-keypad">
+                    <button type="button" class="formula-key" @click="pushFormulaParen(e,'LPAREN')">(</button>
+                    <button type="button" class="formula-key" @click="pushFormulaParen(e,'RPAREN')">)</button>
+                    <button type="button" class="formula-key op" @click="pushFormulaOp(e,'+')">+</button>
+                    <button type="button" class="formula-key op" @click="pushFormulaOp(e,'-')">−</button>
+                    <button type="button" class="formula-key op" @click="pushFormulaOp(e,'*')">×</button>
+                    <button type="button" class="formula-key op" @click="pushFormulaOp(e,'/')">÷</button>
+                    <button type="button" class="formula-key danger" @click="popFormulaToken(e)">⌫</button>
+                  </div>
+                  <div class="formula-param-row">
+                    <span class="formula-sub-label">参数</span>
+                    <div class="formula-param-mode">
+                      <button type="button" class="formula-pill" :class="{ active: e._paramMode !== 'READ' }" @click="e._paramMode = 'CONST'">定值</button>
+                      <button type="button" class="formula-pill" :class="{ active: e._paramMode === 'READ' }" @click="e._paramMode = 'READ'">读取</button>
+                    </div>
+                    <div class="formula-param-input" v-if="e._paramMode !== 'READ'">
+                      <input v-model.number="e._constDraft" type="number" step="0.01" placeholder="输入数值">
+                      <button type="button" class="btn-mini formula-add-btn" @click="pushFormulaConst(e)">加入</button>
+                    </div>
+                    <div class="formula-param-input formula-param-input-stack" v-else>
+                      <div class="formula-param-select">
+                        <read-type-cascade v-model="e._readDraft" :read-types="meta.readTypes" @change="(v) => onFormulaReadDraftChange(e, v)" />
+                      </div>
+                      <div class="formula-param-select" v-if="readNeedsSkillFilter(e._readDraft)">
+                        <admin-select v-model="e._filterDraft" :options="skillScopeOptionsForRead(e._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFormulaFilterDraftChange(e, v)" />
+                      </div>
+                      <div class="formula-param-select" v-if="scopeNeedsSkillRef(e._filterDraft)">
+                        <admin-select v-model="e._filterRefDraft" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+                      </div>
+                      <button type="button" class="btn-mini formula-add-btn" @click="pushFormulaRead(e)">加入</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5378,17 +5414,15 @@ createApp({
         this.ensureSkillMetaLoaded();
         return;
       }
-      this.passiveSkillForm = {
-        id: '', code: '', name: '',
-        passiveKind: 'NUMERIC',
-        catL1: 'PERSON', catL2: scope.catL2, ownerRef: scope.ownerRef || '',
-        conditionType: 'NONE', conditionEquipItemId: '', effectType: 'ATTACK_FLAT',
-        effectValue: 0, sort: 0, enabled: 1, remark: ''
-      };
+      this.passiveSkillForm = this.emptyPassiveSkillForm({
+        catL1: 'PERSON', catL2: scope.catL2, ownerRef: scope.ownerRef || ''
+      });
       this.drawerTitle = '新增人物被动';
       this.drawerType = 'passiveSkill';
       this.drawerOpen = true;
       this.loadPassiveMeta();
+      this.ensureSkillMetaLoaded();
+      if (!this.allItems.length) this.loadAllItems();
     },
     editPersonSkillRow(row) {
       if (row.kind === 'PASSIVE') this.openDrawer('passiveSkill', row.raw);
@@ -5803,32 +5837,18 @@ createApp({
       } else if (type === 'passiveSkill') {
         this.drawerTitle = row
           ? ('编辑' + ((row.catL1 === 'PERSON') ? '人物被动' : this.passiveSkillPanelTitle))
-          : ('新增' + this.passiveSkillPanelTitle);
-        this.passiveSkillForm = row
-          ? Object.assign({
-              passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '',
-              conditions: [{ type: 'NONE' }], effects: []
-            }, row)
-          : {
-              id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP',
-              catL2: 'GENERAL', ownerRef: '',
-              conditions: [{ type: 'NONE' }],
-              effects: [{ targetType: 'SELF', kind: 'OUT_STAT_FLAT', stat: 'ATTACK', sign: 1, value: 0, tokens: [] }],
-              sort: 0, enabled: 1, remark: ''
-            };
-        if (!this.passiveSkillForm.conditions || !this.passiveSkillForm.conditions.length) {
-          this.passiveSkillForm.conditions = [{ type: 'NONE' }];
-        } else {
-          var self = this;
-          this.passiveSkillForm.conditions = this.passiveSkillForm.conditions.map(function (c) {
-            if (!c || c.type !== 'COMPARE') return c;
-            return Object.assign({ type: 'COMPARE' }, self.normalizeConditionItem(c));
-          });
+          : ('新增' + (this.isPersonSkillTab ? '人物被动' : this.passiveSkillPanelTitle));
+        this.passiveSkillForm = this.preparePassiveSkillForm(row);
+        if (!row && this.isPersonSkillTab) {
+          var passiveScope = this.personScopeForTab();
+          this.passiveSkillForm.catL1 = 'PERSON';
+          this.passiveSkillForm.catL2 = passiveScope.catL2;
+          this.passiveSkillForm.ownerRef = passiveScope.ownerRef || '';
+        } else if (!row && this.tab === 'equipPassiveSkill') {
+          this.passiveSkillForm.catL2 = 'GENERAL';
         }
-        if (!this.passiveSkillForm.effects) this.passiveSkillForm.effects = [];
-        if (!row && this.tab === 'equipPassiveSkill') this.passiveSkillForm.catL2 = 'GENERAL';
         this.loadPassiveMeta();
-        if (!this.meta.readTypes.length) this.loadV2Meta();
+        this.ensureSkillMetaLoaded();
         if (!this.allItems.length) this.loadAllItems();
       } else if (type === 'profession') {
         this.drawerTitle = row ? '编辑职业' : '新增职业';
@@ -6069,7 +6089,67 @@ createApp({
         if (!c || c.type !== 'COMPARE') return c;
         return Object.assign({ type: 'COMPARE' }, self.serializeConditionItem(c));
       });
+      payload.effects = (form.effects || []).map(function (e) {
+        if (!e) return e;
+        return {
+          targetType: e.targetType,
+          kind: e.kind,
+          stat: e.stat,
+          sign: e.sign,
+          value: e.value,
+          tokens: (e.tokens || []).map(function (t) {
+            return {
+              kind: t.kind,
+              read: t.read,
+              filter: t.filter,
+              filterRef: t.filterRef,
+              value: t.value,
+              op: t.op
+            };
+          })
+        };
+      });
       return payload;
+    },
+    emptyPassiveEffect() {
+      return {
+        targetType: 'SELF', kind: 'OUT_STAT_FLAT', stat: 'ATTACK', sign: 1, value: 0,
+        tokens: [], _paramMode: 'CONST'
+      };
+    },
+    emptyPassiveSkillForm(overrides) {
+      return Object.assign({
+        id: '', code: '', name: '',
+        passiveKind: 'NUMERIC',
+        catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '',
+        conditions: [{ type: 'NONE' }],
+        effects: [this.emptyPassiveEffect()],
+        sort: 0, enabled: 1, remark: ''
+      }, overrides || {});
+    },
+    preparePassiveEffectDraft(effect) {
+      var copy = Object.assign({ tokens: [] }, effect || this.emptyPassiveEffect());
+      if (!copy.tokens) copy.tokens = [];
+      if (copy._paramMode === undefined) copy._paramMode = 'CONST';
+      return copy;
+    },
+    preparePassiveSkillForm(row) {
+      var self = this;
+      var form = row
+        ? Object.assign(this.emptyPassiveSkillForm(), row)
+        : this.emptyPassiveSkillForm();
+      if (!form.conditions || !form.conditions.length) {
+        form.conditions = [{ type: 'NONE' }];
+      } else {
+        form.conditions = form.conditions.map(function (c) {
+          if (!c || c.type !== 'COMPARE') return c;
+          return Object.assign({ type: 'COMPARE' }, self.normalizeConditionItem(c));
+        });
+      }
+      form.effects = (form.effects && form.effects.length)
+        ? form.effects.map(function (e) { return self.preparePassiveEffectDraft(e); })
+        : [this.emptyPassiveEffect()];
+      return form;
     },
     addPassiveCondition() {
       if (!this.passiveSkillForm.conditions) this.passiveSkillForm.conditions = [];
@@ -6088,9 +6168,7 @@ createApp({
     },
     addPassiveEffect() {
       if (!this.passiveSkillForm.effects) this.passiveSkillForm.effects = [];
-      this.passiveSkillForm.effects.push({
-        targetType: 'SELF', kind: 'OUT_STAT_FLAT', stat: 'ATTACK', sign: 1, value: 0, tokens: []
-      });
+      this.passiveSkillForm.effects.push(this.emptyPassiveEffect());
     },
     removePassiveEffect(idx) {
       this.passiveSkillForm.effects.splice(idx, 1);

@@ -265,7 +265,16 @@ public class GameItemService extends WxServiceImpl<GameItemMapper, GameItem> {
         vo.setMaxCastCount(skill.getMaxCastCount());
         vo.setCastLimitText(playerSkillDisplayHelper.formatCastLimit(null, skill.getMaxCastCount()));
         for (GameFinishedSkillEffect effect : finishedSkillEffectService.listByFinishedSkillId(finishedSkillId)) {
-            vo.getEffects().add(buildEffectDetail(effect));
+            ItemSkillEffectDetailVo effectVo = buildEffectDetail(effect);
+            int frequency = skill.getHitFrequency() != null && skill.getHitFrequency() > 0
+                    ? skill.getHitFrequency() : 1;
+            effectVo.setHitFrequency(frequency);
+            effectVo.setTargetType(skill.getTargetType());
+            effectVo.setTargetParam(skill.getTargetParam());
+            if (targetType != null) {
+                effectVo.setTargetLabel(formatTargetLabel(targetType, skill.getTargetParam()));
+            }
+            vo.getEffects().add(effectVo);
         }
         if (vo.getEffects().isEmpty()) {
             vo.getEffects().addAll(playerSkillDisplayHelper.buildEffectsFromFormulas(skill));

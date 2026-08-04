@@ -25,6 +25,8 @@ public class GameCraftService {
     private GameInventoryService inventoryService;
     @Resource
     private GameMaterialSourceService materialSourceService;
+    @Resource
+    private GameBattleBagService battleBagService;
 
     public List<CraftRecipeVo> listRecipes(String uid) {
         List<GameRecipe> recipes = recipeService.find()
@@ -100,7 +102,10 @@ public class GameCraftService {
             inventoryService.consumeWarehouseItem(uid, material.getMaterialItemId(), need,
                     GameItemLog.REASON_CRAFT_COST, recipeId, "合成消耗：" + recipeName);
         }
-        inventoryService.addWarehouseItem(uid, recipe.getOutputItemId(), 1,
+        GameItem outputItem = gameItemService.getById(recipe.getOutputItemId());
+        String outputName = outputItem != null ? outputItem.getName() : recipe.getOutputItemId();
+        int beforeQty = battleBagService.grantQuantity(uid, recipe.getOutputItemId(), 1);
+        inventoryService.saveItemLog(uid, recipe.getOutputItemId(), outputName, 1, beforeQty, beforeQty + 1,
                 GameItemLog.REASON_CRAFT, recipeId, "合成获得：" + recipeName);
         return buildRecipeVo(recipe, inventoryService.countWarehouseItems(uid));
     }

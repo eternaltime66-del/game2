@@ -596,6 +596,14 @@
   margin-bottom: 6px;
 }
 
+.gear-formula-segments {
+  margin: 6px 0 0;
+}
+
+.gear-formula-target {
+  margin: 0 0 4px;
+}
+
 .gear-effect-list {
   display: flex;
   flex-direction: column;

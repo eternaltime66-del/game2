@@ -856,7 +856,9 @@ body.admin-body .bg-glow {
 .drawer-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px 22px;
+  min-width: 0;
 }
 
 .drawer-footer {
@@ -876,6 +878,8 @@ body.admin-body .bg-glow {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .effect-block-head {
@@ -1027,6 +1031,15 @@ body.admin-body .bg-glow {
   border-radius: 10px;
   min-height: 56px;
   padding: 10px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.condition-formula-side .formula-expr-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
 .formula-expr-display {
@@ -1115,7 +1128,7 @@ body.admin-body .bg-glow {
 .formula-param-input {
   display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -1129,12 +1142,20 @@ body.admin-body .bg-glow {
 }
 
 .formula-param-input-stack {
+  flex-direction: column;
   align-items: stretch;
+  gap: 8px;
 }
 
 .formula-param-input-stack .formula-param-select {
-  flex: 1 1 0;
+  flex: none;
+  width: 100%;
   min-width: 0;
+}
+
+.formula-param-input-stack .formula-add-btn {
+  margin-left: 0;
+  align-self: flex-start;
   width: auto;
 }
 
@@ -1151,23 +1172,26 @@ body.admin-body .bg-glow {
   min-width: 64px;
   height: 40px;
   padding: 0 14px;
+  margin-left: 0;
+}
+
+.formula-param-input .formula-add-btn {
   margin-left: auto;
 }
 
 .read-type-cascade {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   width: 100%;
   min-width: 0;
 }
 
 .read-type-cascade > .admin-select {
-  flex: 1 1 0;
+  flex: none;
+  width: 100%;
   min-width: 0;
-  width: auto;
 }
 
 /* ========== 自定义下拉 AdminSelect ========== */
@@ -1399,21 +1423,90 @@ body.admin-body .bg-glow {
   padding-bottom: 0;
 }
 
-.condition-compare-row {
+.condition-compare-row:not(.collapsed) {
   display: grid;
-  grid-template-columns: 1fr minmax(120px, 140px) 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 12px;
   align-items: start;
+}
+
+.condition-compare-row {
   margin-bottom: 12px;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .condition-compare-row.collapsed {
   display: block;
   padding: 12px;
+}
+
+.condition-formula-side {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.condition-formula-side .formula-keypad {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.condition-formula-side .formula-key {
+  height: 32px;
+  font-size: 14px;
+  padding: 0;
+}
+
+.condition-formula-side .formula-sub-label {
+  margin-bottom: 6px;
+}
+
+.condition-formula-side .formula-param-row {
+  gap: 6px;
+}
+
+.condition-formula-side .formula-param-mode {
+  flex-wrap: wrap;
+}
+
+.condition-op-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding-top: 22px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.condition-op-col > label {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.condition-op-col .admin-select {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.condition-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 .condition-summary {
@@ -1453,37 +1546,6 @@ body.admin-body .bg-glow {
   flex-wrap: wrap;
   gap: 8px;
   flex: 0 0 auto;
-}
-
-.condition-formula-side .formula-sub-label {
-  margin-bottom: 6px;
-}
-
-.condition-op-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 22px;
-}
-
-.condition-op-col > label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.condition-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 8px;
-}
-
-@media (max-width: 1100px) {
-  .condition-compare-row:not(.collapsed) {
-    grid-template-columns: 1fr;
-  }
-  .condition-op-col {
-    padding-top: 0;
-  }
 }
 
 .skill-picker-formula {

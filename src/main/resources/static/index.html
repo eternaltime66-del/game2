@@ -788,9 +788,8 @@
         </div>
         <div class="hero-detail-section">
           <div class="section-title">技能效果</div>
-          <div class="gear-skill-target">目标 · {{ basicAttackSkill.targetLabel || basicAttackSkill.targetType }}</div>
+          <div v-if="shouldShowSkillLevelTarget(basicAttackSkill)" class="gear-skill-target">目标 · {{ basicAttackSkill.targetLabel || basicAttackSkill.targetType }}</div>
           <div v-if="basicAttackSkill.castLimitText" class="gear-skill-meta">次数 · {{ basicAttackSkill.castLimitText }}</div>
-          <div v-if="basicAttackSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ basicAttackSkill.hitFrequency }}</div>
           <div v-if="basicAttackEffectRows.length" class="gear-effect-list">
             <div
               v-for="(row, eidx) in basicAttackEffectRows"
@@ -799,6 +798,7 @@
             >
               <template v-if="row.detail">
                 <div class="gear-formula-breakdown">
+                  <div v-if="effectTargetLabel(row.effect, basicAttackSkill)" class="gear-skill-target gear-formula-target">目标 · {{ effectTargetLabel(row.effect, basicAttackSkill) }}</div>
                   <div class="gear-formula-factors">
                     <template v-for="(part, pi) in row.detail.parts" :key="pi">
                       <span v-if="pi > 0" class="gear-formula-op">×</span>
@@ -808,10 +808,11 @@
                       </div>
                     </template>
                   </div>
+                  <div v-if="row.detail.hitFrequency > 1" class="gear-skill-meta gear-formula-segments">伤害段数 · {{ row.detail.hitFrequency }}</div>
                   <div v-if="row.detail.result != null" class="gear-formula-result-row">
                     <span class="gear-formula-eq">=</span>
                     <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
-                    <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                    <strong class="gear-formula-result-value">{{ formulaResultDisplay(row.detail) }}</strong>
                   </div>
                 </div>
               </template>
@@ -855,9 +856,8 @@
         </div>
         <div class="hero-detail-section">
           <div class="section-title">技能效果</div>
-          <div class="gear-skill-target">目标 · {{ weaponSkill.finishedSkill.targetLabel || weaponSkill.finishedSkill.targetType }}</div>
+          <div v-if="shouldShowSkillLevelTarget(weaponSkill.finishedSkill)" class="gear-skill-target">目标 · {{ weaponSkill.finishedSkill.targetLabel || weaponSkill.finishedSkill.targetType }}</div>
           <div v-if="weaponSkill.finishedSkill.castLimitText" class="gear-skill-meta">次数 · {{ weaponSkill.finishedSkill.castLimitText }}</div>
-          <div v-if="weaponSkill.finishedSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ weaponSkill.finishedSkill.hitFrequency }}</div>
           <div v-if="weaponSkillEffectRows.length" class="gear-effect-list">
             <div
               v-for="(row, eidx) in weaponSkillEffectRows"
@@ -866,6 +866,7 @@
             >
               <template v-if="row.detail">
                 <div class="gear-formula-breakdown">
+                  <div v-if="effectTargetLabel(row.effect, weaponSkill.finishedSkill)" class="gear-skill-target gear-formula-target">目标 · {{ effectTargetLabel(row.effect, weaponSkill.finishedSkill) }}</div>
                   <div class="gear-formula-factors">
                     <template v-for="(part, pi) in row.detail.parts" :key="pi">
                       <span v-if="pi > 0" class="gear-formula-op">×</span>
@@ -875,10 +876,11 @@
                       </div>
                     </template>
                   </div>
+                  <div v-if="row.detail.hitFrequency > 1" class="gear-skill-meta gear-formula-segments">伤害段数 · {{ row.detail.hitFrequency }}</div>
                   <div v-if="row.detail.result != null" class="gear-formula-result-row">
                     <span class="gear-formula-eq">=</span>
                     <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
-                    <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                    <strong class="gear-formula-result-value">{{ formulaResultDisplay(row.detail) }}</strong>
                   </div>
                 </div>
               </template>
@@ -974,9 +976,8 @@
                 <template v-if="ts.finishedSkill">
                   <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
                   <div v-if="ts.finishedSkill.categoryLabel" class="gear-skill-category">{{ ts.finishedSkill.categoryLabel }}</div>
-                  <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
+                  <div v-if="shouldShowSkillLevelTarget(ts.finishedSkill)" class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
                   <div v-if="ts.finishedSkill.castLimitText" class="gear-skill-meta">次数 · {{ ts.finishedSkill.castLimitText }}</div>
-                  <div v-if="ts.finishedSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ ts.finishedSkill.hitFrequency }}</div>
                   <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
                     <div
                       v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
@@ -985,6 +986,7 @@
                     >
                       <template v-if="row.detail">
                         <div class="gear-formula-breakdown">
+                          <div v-if="effectTargetLabel(row.effect, ts.finishedSkill)" class="gear-skill-target gear-formula-target">目标 · {{ effectTargetLabel(row.effect, ts.finishedSkill) }}</div>
                           <div class="gear-formula-factors">
                             <template v-for="(part, pi) in row.detail.parts" :key="pi">
                               <span v-if="pi > 0" class="gear-formula-op">×</span>
@@ -994,10 +996,11 @@
                               </div>
                             </template>
                           </div>
-                          <div class="gear-formula-result-row">
+                          <div v-if="row.detail.hitFrequency > 1" class="gear-skill-meta gear-formula-segments">伤害段数 · {{ row.detail.hitFrequency }}</div>
+                          <div v-if="row.detail.result != null" class="gear-formula-result-row">
                             <span class="gear-formula-eq">=</span>
                             <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
-                            <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                            <strong class="gear-formula-result-value">{{ formulaResultDisplay(row.detail) }}</strong>
                           </div>
                         </div>
                       </template>
@@ -1122,9 +1125,8 @@
                 <template v-if="ts.finishedSkill">
                   <div class="gear-skill-name">{{ ts.finishedSkill.name }}</div>
                   <div v-if="ts.finishedSkill.categoryLabel" class="gear-skill-category">{{ ts.finishedSkill.categoryLabel }}</div>
-                  <div class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
+                  <div v-if="shouldShowSkillLevelTarget(ts.finishedSkill)" class="gear-skill-target">目标 · {{ ts.finishedSkill.targetLabel || ts.finishedSkill.targetType }}</div>
                   <div v-if="ts.finishedSkill.castLimitText" class="gear-skill-meta">次数 · {{ ts.finishedSkill.castLimitText }}</div>
-                  <div v-if="ts.finishedSkill.hitFrequency > 1" class="gear-skill-meta">频率 · ×{{ ts.finishedSkill.hitFrequency }}</div>
                   <div v-if="ts.finishedSkill.effects && ts.finishedSkill.effects.length" class="gear-effect-list">
                     <div
                       v-for="(row, eidx) in gearEffectFormulaRows(ts.finishedSkill.effects)"
@@ -1133,6 +1135,7 @@
                     >
                       <template v-if="row.detail">
                         <div class="gear-formula-breakdown">
+                          <div v-if="effectTargetLabel(row.effect, ts.finishedSkill)" class="gear-skill-target gear-formula-target">目标 · {{ effectTargetLabel(row.effect, ts.finishedSkill) }}</div>
                           <div class="gear-formula-factors">
                             <template v-for="(part, pi) in row.detail.parts" :key="pi">
                               <span v-if="pi > 0" class="gear-formula-op">×</span>
@@ -1142,10 +1145,11 @@
                               </div>
                             </template>
                           </div>
-                          <div class="gear-formula-result-row">
+                          <div v-if="row.detail.hitFrequency > 1" class="gear-skill-meta gear-formula-segments">伤害段数 · {{ row.detail.hitFrequency }}</div>
+                          <div v-if="row.detail.result != null" class="gear-formula-result-row">
                             <span class="gear-formula-eq">=</span>
                             <span class="gear-formula-result-label">预估{{ row.detail.outcomeLabel }}</span>
-                            <strong class="gear-formula-result-value">{{ row.detail.result }}</strong>
+                            <strong class="gear-formula-result-value">{{ formulaResultDisplay(row.detail) }}</strong>
                           </div>
                         </div>
                       </template>
@@ -1822,6 +1826,7 @@ createApp({
       if (!effect) return null;
       if (effect.effectKind === 'ACTION_VALUE') return null;
 
+      var hitFrequency = (effect.hitFrequency != null && effect.hitFrequency > 0) ? effect.hitFrequency : 1;
       var outcomeLabel = effect.outcomeLabel || (effect.outcomeType === 'HEAL' ? '治疗' : '伤害');
       var statLabels = {
         ATTACK: '角色攻击力',
@@ -1853,7 +1858,8 @@ createApp({
         return {
           outcomeLabel: outcomeLabel,
           parts: [{ label: '固定数值', valueText: String(fixedVal) }],
-          result: fixedVal
+          result: fixedVal,
+          hitFrequency: hitFrequency
         };
       }
 
@@ -1892,8 +1898,26 @@ createApp({
       return {
         outcomeLabel: outcomeLabel,
         parts: parts,
-        result: this.calcEffectDamage(base, ratioY, weaponRatio)
+        result: this.calcEffectDamage(base, ratioY, weaponRatio),
+        hitFrequency: hitFrequency
       };
+    },
+    formulaResultDisplay: function (detail) {
+      if (!detail || detail.result == null) return '';
+      var freq = detail.hitFrequency > 1 ? detail.hitFrequency : 1;
+      if (freq > 1) return detail.result + ' × ' + freq;
+      return String(detail.result);
+    },
+    effectTargetLabel: function (effect, finishedSkill) {
+      if (effect && effect.targetLabel) return effect.targetLabel;
+      if (finishedSkill) return finishedSkill.targetLabel || finishedSkill.targetType || '';
+      return '';
+    },
+    shouldShowSkillLevelTarget: function (finishedSkill) {
+      if (!finishedSkill) return false;
+      var effects = finishedSkill.effects;
+      if (effects && effects.length) return false;
+      return !!(finishedSkill.targetLabel || finishedSkill.targetType);
     },
     fmtPassiveEffect: function (passive) {
       if (!passive) return '';

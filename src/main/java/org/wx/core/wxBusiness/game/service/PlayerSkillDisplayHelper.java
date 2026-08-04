@@ -10,6 +10,7 @@ import org.wx.core.wxBusiness.game.entity.enums.SkillCompareOp;
 import org.wx.core.wxBusiness.game.entity.enums.SkillFormulaOutcome;
 import org.wx.core.wxBusiness.game.entity.enums.SkillReadType;
 import org.wx.core.wxBusiness.game.entity.enums.SkillScopeFilter;
+import org.wx.core.wxBusiness.game.entity.enums.SkillTargetType;
 import org.wx.core.wxBusiness.game.entity.enums.StatRefType;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionItemVo;
@@ -58,6 +59,10 @@ public class PlayerSkillDisplayHelper {
             }
             vo.setFormulaText(buildFormulaText(formula));
             applySimpleFormulaMeta(formula, vo);
+            int frequency = formula.getHitFrequency() != null && formula.getHitFrequency() > 0
+                    ? formula.getHitFrequency() : 1;
+            vo.setHitFrequency(frequency);
+            applyFormulaTarget(formula, skill, vo);
             vo.setSort(sort++);
             effects.add(vo);
         }
@@ -234,21 +239,55 @@ public class PlayerSkillDisplayHelper {
         if (val.getValue() != null) {
             vo.setRatioY(val.getValue());
         }
-        if (StatRefType.ATTACK == stat) {
+        if (StatRefType.ATTACK == stat || "WEAPON_ATTACK".equalsIgnoreCase(read.getRead())) {
             vo.setUseWeaponRatio(1);
         }
     }
 
     private StatRefType mapReadToStat(String read) {
-        if (read == null) {
+        if (read == null || read.isBlank()) {
             return null;
         }
-        return switch (read) {
-            case "CHAR_ATTACK" -> StatRefType.ATTACK;
-            case "CHAR_DEFENSE" -> StatRefType.DEFENSE;
-            case "CHAR_MAX_HP" -> StatRefType.MAX_HP;
-            default -> StatRefType.parse(read);
+        return switch (read.trim().toUpperCase()) {
+            case "CHAR_ATTACK", "ATTACK" -> StatRefType.ATTACK;
+            case "CHAR_DEFENSE", "DEFENSE" -> StatRefType.DEFENSE;
+            case "CHAR_MAX_HP", "MAX_HP" -> StatRefType.MAX_HP;
+            default -> null;
         };
+    }
+
+    private void applyFormulaTarget(SkillFormulaGroupVo formula, GameFinishedSkill skill, ItemSkillEffectDetailVo vo) {
+        String targetTypeCode = formula.getTargetType();
+        Integer targetParam = formula.getTargetParam();
+        if (targetTypeCode == null || targetTypeCode.isBlank()) {
+            if (skill == null) {
+                return;
+            }
+            targetTypeCode = skill.getTargetType();
+            targetParam = skill.getTargetParam();
+        }
+        if (targetTypeCode == null || targetTypeCode.isBlank()) {
+            return;
+        }
+        vo.setTargetType(targetTypeCode);
+        vo.setTargetParam(targetParam);
+        SkillTargetType targetType = SkillTargetType.parse(targetTypeCode);
+        if (targetType != null) {
+            vo.setTargetLabel(formatTargetLabel(targetType, targetParam));
+        } else {
+            vo.setTargetLabel(targetTypeCode);
+        }
+    }
+
+    private String formatTargetLabel(SkillTargetType targetType, Integer targetParam) {
+        if (targetType == null) {
+            return "";
+        }
+        String label = targetType.getLabel();
+        if (label.contains("x") && targetParam != null) {
+            return label.replace("x", String.valueOf(targetParam));
+        }
+        return label;
     }
 
     private String formatNumber(BigDecimal value) {

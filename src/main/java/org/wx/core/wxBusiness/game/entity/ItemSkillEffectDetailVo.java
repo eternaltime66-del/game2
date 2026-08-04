@@ -30,5 +30,14 @@ public class ItemSkillEffectDetailVo {
 
     private Integer actionDelta;
 
+    /** 伤害/治疗段数（公式组频率槽） */
+    private Integer hitFrequency;
+
+    private String targetType;
+
+    private Integer targetParam;
+
+    private String targetLabel;
+
     private Integer sort;
 }

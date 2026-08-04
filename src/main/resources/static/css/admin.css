@@ -1113,25 +1113,29 @@ body.admin-body .bg-glow {
 }
 
 .formula-param-input {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
+  gap: 8px;
   width: 100%;
+  min-width: 0;
+}
+
+.formula-param-input > input[type="number"] {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
 }
 
 .formula-param-input-stack {
-  grid-template-columns: 1fr;
   align-items: stretch;
 }
 
-.formula-param-input-stack .formula-add-btn {
-  justify-self: start;
-}
-
-.formula-param-select {
+.formula-param-input-stack .formula-param-select {
+  flex: 1 1 0;
   min-width: 0;
-  width: 100%;
+  width: auto;
 }
 
 .formula-param-input .admin-select,
@@ -1140,17 +1144,30 @@ body.admin-body .bg-glow {
   min-width: 0;
 }
 
-.formula-param-input input[type="number"] {
-  width: 100% !important;
-  min-width: 0;
-}
-
 .formula-add-btn {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  align-self: center;
   white-space: nowrap;
   min-width: 64px;
   height: 40px;
   padding: 0 14px;
+  margin-left: auto;
+}
+
+.read-type-cascade {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.read-type-cascade > .admin-select {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
 }
 
 /* ========== 自定义下拉 AdminSelect ========== */
@@ -2265,14 +2282,6 @@ body.admin-body .bg-glow {
   margin-top: -4px;
 }
 
-.read-type-cascade {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-
 .tss-subzone {
   padding: 4px 0 8px;
 }
@@ -2287,4 +2296,30 @@ body.admin-body .bg-glow {
 .tss-divider-inner {
   margin: 10px 0 12px;
   border-top-color: rgba(196, 181, 253, 0.22);
+}
+
+.panel-filter-input {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f7ff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 160px;
+}
+
+.field-full {
+  grid-column: 1 / -1;
+}
+
+.field-full textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f7ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: vertical;
 }

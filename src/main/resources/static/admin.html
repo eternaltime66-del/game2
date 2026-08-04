@@ -170,6 +170,190 @@
       <div class="panel-body" v-if="pager"><p class="muted">共 {{ pager.totalRows }} 条</p></div>
     </div>
 
+    <div v-if="tab === 'kyc'" class="admin-panel">
+      <div class="panel-toolbar"><h3>KYC 审核</h3></div>
+      <div class="panel-filter-bar">
+        <div class="panel-filter-actions">
+          <button type="button" class="btn-mini secondary" @click="loadKycList">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>用户</th><th>姓名</th><th>证件号</th><th>状态</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="item in kycRows" :key="item.id">
+              <td>{{ item.id }}</td>
+              <td>{{ item.email || item.uid }}</td>
+              <td>{{ item.userName }}</td>
+              <td>{{ item.passPort }}</td>
+              <td>{{ item.state }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" :disabled="item.state !== 'KycPadding'" @click="approveKyc(item)">通过</button>
+                <button type="button" class="btn-mini danger" :disabled="item.state !== 'KycPadding'" @click="rejectKyc(item)">拒绝</button>
+              </td>
+            </tr>
+            <tr v-if="!kycRows.length"><td colspan="6" class="empty-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'withdraw'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>提现管理</h3>
+        <span class="muted" v-if="withdrawWaitingTotal">待审核总额：{{ withdrawWaitingTotal }}</span>
+      </div>
+      <div class="panel-filter-bar">
+        <div class="panel-filter-actions">
+          <button type="button" class="btn-mini secondary" @click="loadWithdrawList">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>用户</th><th>金额</th><th>币种</th><th>状态</th><th>目标地址</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="item in withdrawRows" :key="item.id">
+              <td>{{ item.id }}</td>
+              <td>{{ item.uid }}</td>
+              <td>{{ item.amount }}</td>
+              <td>{{ item.coin }}</td>
+              <td>{{ item.state }}</td>
+              <td class="col-id">{{ item.toAddress || '-' }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" :disabled="item.state !== '待审核'" @click="openWithdrawAction(item, 'success')">通过</button>
+                <button type="button" class="btn-mini danger" :disabled="item.state !== '待审核'" @click="openWithdrawAction(item, 'fail')">拒绝</button>
+              </td>
+            </tr>
+            <tr v-if="!withdrawRows.length"><td colspan="7" class="empty-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'moneyRecord'" class="admin-panel">
+      <div class="panel-toolbar"><h3>资金流水</h3></div>
+      <div class="panel-filter-bar">
+        <div class="panel-filter-actions">
+          <input v-model.trim="moneyRecordFilter.uid" placeholder="用户ID" class="panel-filter-input">
+          <button type="button" class="btn-mini secondary" @click="loadMoneyRecords">查询</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>用户</th><th>类型</th><th>币种</th><th>方向</th><th>金额</th><th>时间</th></tr></thead>
+          <tbody>
+            <tr v-for="item in moneyRecordRows" :key="item.id">
+              <td class="col-id">{{ item.id }}</td>
+              <td>{{ item.uid }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.coin }}</td>
+              <td>{{ item.direction }}</td>
+              <td>{{ item.amount }}</td>
+              <td>{{ fmtAdminTime(item.createTime) }}</td>
+            </tr>
+            <tr v-if="!moneyRecordRows.length"><td colspan="7" class="empty-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'sysParam'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>系统参数</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary btn-mini" @click="openSysParamForm()">+ 新增</button>
+        </div>
+      </div>
+      <div class="panel-filter-bar">
+        <div class="panel-filter-actions">
+          <button type="button" class="btn-mini secondary" @click="loadSysParams">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>值</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="item in sysParamRows" :key="item.id">
+              <td class="col-id">{{ item.id }}</td>
+              <td>{{ item.paramName }}</td>
+              <td>{{ item.paramType }}</td>
+              <td>{{ item.paramValue }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openSysParamForm(item)">编辑</button>
+              </td>
+            </tr>
+            <tr v-if="!sysParamRows.length"><td colspan="5" class="empty-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'article'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>公告管理</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary btn-mini" @click="openArticleForm()">+ 新增</button>
+        </div>
+      </div>
+      <div class="panel-filter-bar">
+        <div class="panel-filter-actions">
+          <button type="button" class="btn-mini secondary" @click="loadArticles">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>标题</th><th>类型</th><th>排序</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="item in articleRows" :key="item.id">
+              <td>{{ item.id }}</td>
+              <td>{{ item.title }}</td>
+              <td>{{ item.type || '-' }}</td>
+              <td>{{ item.sort }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openArticleForm(item)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeArticleRow(item)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!articleRows.length"><td colspan="5" class="empty-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'completeSkill'" class="admin-panel">
+      <div class="panel-toolbar">
+        <h3>完整技能</h3>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="btn-primary btn-mini" @click="openCompleteSkillForm()">+ 新增</button>
+        </div>
+      </div>
+      <div class="level-tree-compact">组合扳机槽与成品技能，绑定到角色/装备/怪物</div>
+      <div class="panel-filter-bar">
+        <div class="panel-filter-actions">
+          <button type="button" class="btn-mini secondary" @click="loadCompleteSkills">刷新</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>名称</th><th>扳机类型</th><th>成品技能</th><th>绑定</th><th class="col-actions">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="item in completeSkillRows" :key="item.id">
+              <td class="col-id">{{ item.id }}</td>
+              <td>{{ item.name }}</td>
+              <td>{{ item.triggerSlotTypeLabel || item.triggerSlotType }}</td>
+              <td>{{ item.finishedSkillName || item.finishedSkillId }}</td>
+              <td>{{ item.bindTypeLabel || item.bindType }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-mini" @click="openCompleteSkillForm(item)">编辑</button>
+                <button type="button" class="btn-mini danger" @click="removeCompleteSkillRow(item)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!completeSkillRows.length"><td colspan="6" class="empty-hint">暂无数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div v-if="tab === 'level'" class="admin-panel">
       <div class="panel-toolbar">
         <h3>关卡与战斗</h3>
@@ -746,7 +930,7 @@
             <tr><th>公式组</th><td>
               <div v-for="(f, i) in (basicAttackDetail.formulas || [])" :key="i" style="margin-bottom:6px">
                 <div><strong>公式组 {{ i + 1 }}</strong> · {{ formulaOutcomeLabel(f.outcome) }}</div>
-                <div class="muted">目标槽 {{ targetTypeLabel(f.targetType || basicAttackDetail.targetType) }} · 频率槽 {{ f.hitFrequency || 1 }} · 发动上限 {{ f.maxCastCount == null ? '无限' : f.maxCastCount }}</div>
+                <div class="muted">目标槽 {{ targetTypeLabel(f.targetType || basicAttackDetail.targetType) }} · 触发 {{ f.hitFrequency || 1 }} 次 · 发动上限 {{ f.maxCastCount == null ? '无限' : f.maxCastCount }}</div>
                 <div class="muted">公式 {{ formulaTokensText(f.tokens) || '—' }}</div>
               </div>
               <span v-if="!(basicAttackDetail.formulas || []).length">—</span>
@@ -1842,6 +2026,85 @@
     </div>
   </div>
 
+  <div v-if="withdrawAction.open" class="admin-drawer-mask" @click.self="closeWithdrawAction">
+    <div class="admin-drawer" @click.stop style="max-width:420px">
+      <div class="drawer-header">
+        <h3>{{ withdrawAction.mode === 'success' ? '通过提现' : '拒绝提现' }}</h3>
+        <button type="button" class="drawer-close" @click="closeWithdrawAction">&times;</button>
+      </div>
+      <div class="drawer-body">
+        <div class="field"><label>交易 Hash（可选）</label><input v-model.trim="withdrawAction.hash" placeholder="链上 hash"></div>
+      </div>
+      <div class="drawer-footer">
+        <button type="button" class="btn-primary" @click="submitWithdrawAction">确认</button>
+        <button type="button" class="btn-mini secondary" @click="closeWithdrawAction">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="sysParamForm.open" class="admin-drawer-mask" @click.self="closeSysParamForm">
+    <div class="admin-drawer" @click.stop style="max-width:420px">
+      <div class="drawer-header">
+        <h3>{{ sysParamForm.id ? '编辑参数' : '新增参数' }}</h3>
+        <button type="button" class="drawer-close" @click="closeSysParamForm">&times;</button>
+      </div>
+      <div class="drawer-body form-grid">
+        <div class="field"><label>名称</label><input v-model.trim="sysParamForm.paramName"></div>
+        <div class="field"><label>类型</label><input v-model.trim="sysParamForm.paramType"></div>
+        <div class="field"><label>值</label><input v-model.trim="sysParamForm.paramValue"></div>
+      </div>
+      <div class="drawer-footer">
+        <button type="button" class="btn-primary" @click="submitSysParamForm">保存</button>
+        <button type="button" class="btn-mini secondary" @click="closeSysParamForm">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="articleForm.open" class="admin-drawer-mask" @click.self="closeArticleForm">
+    <div class="admin-drawer" @click.stop style="max-width:520px">
+      <div class="drawer-header">
+        <h3>{{ articleForm.id ? '编辑公告' : '新增公告' }}</h3>
+        <button type="button" class="drawer-close" @click="closeArticleForm">&times;</button>
+      </div>
+      <div class="drawer-body form-grid">
+        <div class="field"><label>标题</label><input v-model.trim="articleForm.title"></div>
+        <div class="field"><label>类型</label><input v-model.trim="articleForm.type" placeholder="notice"></div>
+        <div class="field"><label>排序</label><input v-model.number="articleForm.sort" type="number"></div>
+        <div class="field field-full"><label>内容</label><textarea v-model="articleForm.content" rows="8"></textarea></div>
+      </div>
+      <div class="drawer-footer">
+        <button type="button" class="btn-primary" @click="submitArticleForm">保存</button>
+        <button type="button" class="btn-mini secondary" @click="closeArticleForm">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="completeSkillForm.open" class="admin-drawer-mask" @click.self="closeCompleteSkillForm">
+    <div class="admin-drawer" @click.stop style="max-width:560px">
+      <div class="drawer-header">
+        <h3>{{ completeSkillForm.id ? '编辑完整技能' : '新增完整技能' }}</h3>
+        <button type="button" class="drawer-close" @click="closeCompleteSkillForm">&times;</button>
+      </div>
+      <div class="drawer-body form-grid">
+        <div class="field"><label>编码</label><input v-model.trim="completeSkillForm.code"></div>
+        <div class="field"><label>名称</label><input v-model.trim="completeSkillForm.name"></div>
+        <div class="field"><label>扳机类型</label><input v-model.trim="completeSkillForm.triggerSlotType"></div>
+        <div class="field"><label>扳机引用ID</label><input v-model.trim="completeSkillForm.triggerRefId"></div>
+        <div class="field"><label>成品技能</label>
+          <admin-select v-model="completeSkillForm.finishedSkillId" :options="finishedSkillSelectOptions" value-key="value" label-key="label" placeholder="选择成品技能" searchable clearable />
+        </div>
+        <div class="field"><label>绑定类型</label><input v-model.trim="completeSkillForm.bindType"></div>
+        <div class="field"><label>绑定引用ID</label><input v-model.trim="completeSkillForm.bindRefId"></div>
+        <div class="field"><label>排序</label><input v-model.number="completeSkillForm.sort" type="number"></div>
+        <div class="field field-full"><label>备注</label><input v-model.trim="completeSkillForm.remark"></div>
+      </div>
+      <div class="drawer-footer">
+        <button type="button" class="btn-primary" @click="submitCompleteSkillForm">保存</button>
+        <button type="button" class="btn-mini secondary" @click="closeCompleteSkillForm">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div v-if="skillBrowser.open" class="skill-browser-mask" @click.self="closeSkillBrowser">
     <div class="skill-browser-modal" @click.stop>
       <div class="skill-browser-header">
@@ -1966,7 +2229,7 @@
         <div class="drawer-section-title">扳机技能 · 公式组（按顺序执行）</div>
         <div class="effect-block" v-for="(fg, idx) in (skillDetailModal.data.formulas || [])" :key="idx">
           <div class="effect-block-head"><span>公式组 {{ idx + 1 }}</span><span>{{ formulaOutcomeLabel(fg.outcome) }}</span></div>
-          <div class="muted">目标槽 {{ targetTypeLabel(fg.targetType || skillDetailModal.data.targetType) }} · 频率槽 {{ fg.hitFrequency || 1 }} · 发动上限 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
+          <div class="muted">目标槽 {{ targetTypeLabel(fg.targetType || skillDetailModal.data.targetType) }} · 触发 {{ fg.hitFrequency || 1 }} 次 · 发动上限 {{ fg.maxCastCount == null ? '无限' : fg.maxCastCount }}</div>
           <div class="muted">{{ formulaTokensText(fg.tokens) || '（空公式）' }}</div>
         </div>
         <div v-if="!(skillDetailModal.data.formulas || []).length" class="empty-hint">无公式组</div>
@@ -2833,6 +3096,11 @@ createApp({
       characterMenuOpen: false,
       navTabs: [
         { key: 'member', label: '用户管理' },
+        { key: 'kyc', label: 'KYC审核' },
+        { key: 'withdraw', label: '提现管理' },
+        { key: 'moneyRecord', label: '资金流水' },
+        { key: 'sysParam', label: '系统参数' },
+        { key: 'article', label: '公告管理' },
         { key: 'level', label: '关卡管理' },
         { key: 'material', label: '材料管理' },
         { key: 'recipe', label: '配方管理' }
@@ -2850,7 +3118,8 @@ createApp({
       personSkillTabs: [
         { key: 'personCharacterSkill', label: '角色技能' },
         { key: 'personGeneralSkill', label: '通用技能' },
-        { key: 'personProfessionSkill', label: '职业技能' }
+        { key: 'personProfessionSkill', label: '职业技能' },
+        { key: 'completeSkill', label: '完整技能' }
       ],
       passiveSkillTabs: [],
       skillExtraTabs: [],
@@ -3008,6 +3277,18 @@ createApp({
       professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
       professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
       characterTemplateForm: { id: '', code: '', name: '', maxHp: 100, attack: 10, defense: 0, actionValue: 100, enabled: 1, remark: '', professionIds: [] },
+      kycRows: [],
+      withdrawRows: [],
+      withdrawWaitingTotal: '',
+      withdrawAction: { open: false, mode: 'success', id: null, hash: '' },
+      moneyRecordRows: [],
+      moneyRecordFilter: { uid: '' },
+      sysParamRows: [],
+      sysParamForm: { open: false, id: '', paramName: '', paramType: '', paramValue: '' },
+      articleRows: [],
+      articleForm: { open: false, id: null, title: '', content: '', type: 'notice', lang: 'zh', sort: 0 },
+      completeSkillRows: [],
+      completeSkillForm: { open: false, id: '', code: '', name: '', triggerSlotType: '', triggerParam: null, triggerRefId: '', finishedSkillId: '', bindType: '', bindRefId: '', sort: 0, enabled: 1, remark: '' },
       toast: { show: false, text: '', type: 'error' }
     };
   },
@@ -3291,7 +3572,7 @@ createApp({
     },
     isSkillTabKey(key) {
       return ['personBasicAttack', 'equipCustomSkill', 'equipGeneralSkill', 'equipPassiveSkill', 'equipCustomPassiveSkill',
-        'personCharacterSkill', 'personGeneralSkill', 'personProfessionSkill'].indexOf(key) >= 0;
+        'personCharacterSkill', 'personGeneralSkill', 'personProfessionSkill', 'completeSkill'].indexOf(key) >= 0;
     },
     isCharacterTabKey(key) {
       return ['monster', 'playerCharacter', 'profession', 'professionSkill'].indexOf(key) >= 0;
@@ -3359,6 +3640,12 @@ createApp({
       if (this.isCharacterTabKey(key)) this.characterMenuOpen = true;
       this.tab = key;
       if (key === 'member') this.loadMembers();
+      else if (key === 'kyc') this.loadKycList();
+      else if (key === 'withdraw') this.loadWithdrawList();
+      else if (key === 'moneyRecord') this.loadMoneyRecords();
+      else if (key === 'sysParam') this.loadSysParams();
+      else if (key === 'article') this.loadArticles();
+      else if (key === 'completeSkill') this.loadCompleteSkills();
       else if (key === 'level') this.switchLevel();
       else if (key === 'monster') this.switchMonster();
       else if (key === 'material') this.switchMaterial();
@@ -3375,6 +3662,7 @@ createApp({
       else if (key === 'equipPassiveSkill') this.switchPassiveSkill();
       else if (key === 'equipCustomPassiveSkill') this.switchCustomPassiveSkill();
       else if (key === 'personCharacterSkill' || key === 'personGeneralSkill' || key === 'personProfessionSkill') this.switchPersonSkill();
+      else if (key === 'completeSkill') this.loadCompleteSkills();
       else if (key === 'playerCharacter') this.switchPlayerCharacter();
       else if (key === 'profession') this.switchProfession();
       else if (key === 'professionSkill') this.switchProfessionSkill();
@@ -3385,6 +3673,188 @@ createApp({
           this.members = res.data || [];
           this.pager = res.pager;
         })
+        .catch((err) => this.showToast(err.message));
+    },
+    fmtAdminTime(v) {
+      if (!v) return '-';
+      return String(v).replace('T', ' ').slice(0, 19);
+    },
+    loadKycList() {
+      AdminApi.kycList({ current: 1, size: 50 })
+        .then((res) => { this.kycRows = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    approveKyc(row) {
+      AdminApi.kycAction({ id: row.id, state: 'KycSuccess' })
+        .then(() => { this.showToast('已通过', 'success'); this.loadKycList(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    rejectKyc(row) {
+      AdminApi.kycAction({ id: row.id, state: 'KycFail' })
+        .then(() => { this.showToast('已拒绝', 'success'); this.loadKycList(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadWithdrawList() {
+      var self = this;
+      AdminApi.withdrawList({ current: 1, size: 50 })
+        .then((res) => { self.withdrawRows = res.data || []; })
+        .catch((err) => self.showToast(err.message));
+      AdminApi.withdrawTotalWaiting()
+        .then((res) => { self.withdrawWaitingTotal = res.data || ''; })
+        .catch(() => { self.withdrawWaitingTotal = ''; });
+    },
+    openWithdrawAction(row, mode) {
+      this.withdrawAction = { open: true, mode: mode, id: row.id, hash: '' };
+    },
+    closeWithdrawAction() {
+      this.withdrawAction.open = false;
+    },
+    submitWithdrawAction() {
+      var a = this.withdrawAction;
+      var req = a.mode === 'success'
+        ? AdminApi.withdrawSuccess(a.id, a.hash)
+        : AdminApi.withdrawFail(a.id, a.hash);
+      req.then(() => {
+        this.showToast(a.mode === 'success' ? '已通过' : '已拒绝', 'success');
+        this.closeWithdrawAction();
+        this.loadWithdrawList();
+      }).catch((err) => this.showToast(err.message));
+    },
+    loadMoneyRecords() {
+      var filter = {};
+      if (this.moneyRecordFilter.uid) filter.uid = this.moneyRecordFilter.uid;
+      AdminApi.moneyRecordList({ current: 1, size: 50 }, filter)
+        .then((res) => { this.moneyRecordRows = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadSysParams() {
+      AdminApi.sysParamList({ current: 1, size: 100 })
+        .then((res) => { this.sysParamRows = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    openSysParamForm(row) {
+      row = row || {};
+      this.sysParamForm = {
+        open: true,
+        id: row.id || '',
+        paramName: row.paramName || '',
+        paramType: row.paramType || '',
+        paramValue: row.paramValue || ''
+      };
+    },
+    closeSysParamForm() {
+      this.sysParamForm.open = false;
+    },
+    submitSysParamForm() {
+      var f = this.sysParamForm;
+      if (!f.paramName) {
+        this.showToast('请填写参数名称');
+        return;
+      }
+      AdminApi.sysParamUpdate({
+        id: f.id || undefined,
+        paramName: f.paramName,
+        paramType: f.paramType,
+        paramValue: f.paramValue
+      }).then(() => {
+        this.showToast('已保存', 'success');
+        this.closeSysParamForm();
+        this.loadSysParams();
+      }).catch((err) => this.showToast(err.message));
+    },
+    loadArticles() {
+      AdminApi.articleList({ current: 1, size: 50 })
+        .then((res) => { this.articleRows = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    openArticleForm(row) {
+      row = row || {};
+      this.articleForm = {
+        open: true,
+        id: row.id || null,
+        title: row.title || '',
+        content: row.content || '',
+        type: row.type || 'notice',
+        lang: row.lang || 'zh',
+        sort: row.sort != null ? row.sort : 0
+      };
+    },
+    closeArticleForm() {
+      this.articleForm.open = false;
+    },
+    submitArticleForm() {
+      var f = this.articleForm;
+      if (!f.title) {
+        this.showToast('请填写标题');
+        return;
+      }
+      var body = {
+        title: f.title,
+        content: f.content,
+        type: f.type,
+        lang: f.lang,
+        sort: f.sort
+      };
+      if (f.id) body.id = f.id;
+      AdminApi.saveArticle(body)
+        .then(() => {
+          this.showToast('已保存', 'success');
+          this.closeArticleForm();
+          this.loadArticles();
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeArticleRow(row) {
+      if (!confirm('删除公告「' + row.title + '」？')) return;
+      AdminApi.removeArticle(row.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadArticles(); })
+        .catch((err) => this.showToast(err.message));
+    },
+    loadCompleteSkills() {
+      if (!this.meta.finishedSkillOptions.length) this.loadV2Meta();
+      AdminApi.completeSkillList({ current: 1, size: 100 })
+        .then((res) => { this.completeSkillRows = res.data || []; })
+        .catch((err) => this.showToast(err.message));
+    },
+    openCompleteSkillForm(row) {
+      row = row || {};
+      this.completeSkillForm = {
+        open: true,
+        id: row.id || '',
+        code: row.code || '',
+        name: row.name || '',
+        triggerSlotType: row.triggerSlotType || '',
+        triggerParam: row.triggerParam,
+        triggerRefId: row.triggerRefId || '',
+        finishedSkillId: row.finishedSkillId || '',
+        bindType: row.bindType || '',
+        bindRefId: row.bindRefId || '',
+        sort: row.sort != null ? row.sort : 0,
+        enabled: row.enabled != null ? row.enabled : 1,
+        remark: row.remark || ''
+      };
+    },
+    closeCompleteSkillForm() {
+      this.completeSkillForm.open = false;
+    },
+    submitCompleteSkillForm() {
+      var f = this.completeSkillForm;
+      if (!f.name || !f.finishedSkillId) {
+        this.showToast('请填写名称并选择成品技能');
+        return;
+      }
+      AdminApi.saveCompleteSkill(f)
+        .then(() => {
+          this.showToast('已保存', 'success');
+          this.closeCompleteSkillForm();
+          this.loadCompleteSkills();
+        })
+        .catch((err) => this.showToast(err.message));
+    },
+    removeCompleteSkillRow(row) {
+      if (!confirm('删除完整技能「' + (row.name || row.id) + '」？')) return;
+      AdminApi.removeCompleteSkill(row.id)
+        .then(() => { this.showToast('已删除', 'success'); this.loadCompleteSkills(); })
         .catch((err) => this.showToast(err.message));
     },
     loginAs(member) {
@@ -4145,7 +4615,8 @@ createApp({
         var outcome = self.formulaOutcomeLabel(f && f.outcome);
         var target = self.targetTypeLabel((f && f.targetType) || s.targetType);
         var expr = self.formulaTokensText((f && f.tokens) || []);
-        var piece = outcome + ' · ' + target + (expr ? ' · ' + expr : '');
+        var freq = '触发 ' + ((f && f.hitFrequency) || 1) + ' 次';
+        var piece = outcome + ' · ' + target + (expr ? ' · ' + expr : '') + ' · ' + freq;
         return formulas.length > 1 ? ((i + 1) + '.' + piece) : piece;
       }).join('；');
     },
@@ -4602,12 +5073,28 @@ createApp({
     },
     ensureFlatConditionGroup(form) {
       if (!form) return;
-      form.numericMode = 'CONFIG';
-      form.conditionGroups = [this.flattenConditionGroups(form.conditionGroups || [])];
+      if (form.numericMode !== 'CONFIG') form.numericMode = 'CONFIG';
+      var groups = form.conditionGroups;
+      // 已是单组：勿在渲染期重写引用，否则会触发无限重渲染卡死
+      if (groups && groups.length === 1 && groups[0] && Array.isArray(groups[0].items)) {
+        if (!groups[0].items.length) {
+          groups[0].items.push(this.emptyConditionItem());
+        }
+        return;
+      }
+      form.conditionGroups = [this.flattenConditionGroups(groups || [])];
     },
+    /** 只读取条件列表，禁止在此改写响应式数据（模板 v-for 会反复调用） */
     flatConditionItems(form) {
-      this.ensureFlatConditionGroup(form);
-      return form.conditionGroups[0].items;
+      if (!form) return [];
+      var groups = form.conditionGroups;
+      if (!groups || !groups.length) return [];
+      if (groups.length === 1) return groups[0].items || [];
+      var items = [];
+      groups.forEach(function (g) {
+        ((g && g.items) || []).forEach(function (it) { items.push(it); });
+      });
+      return items;
     },
     addFlatCondition(form) {
       this.ensureFlatConditionGroup(form);
@@ -4732,10 +5219,12 @@ createApp({
       var self = this;
       return formulas.map(function (f, i) {
         var cast = f.maxCastCount == null ? '无限' : (f.maxCastCount + '次');
+        var expr = self.formulaTokensText((f && f.tokens) || []);
         return (i + 1) + '.' + self.formulaOutcomeLabel(f.outcome)
           + ' · ' + self.targetTypeLabel(f.targetType || s.targetType)
-          + ' · ×' + (f.hitFrequency || 1)
-          + ' · ' + cast;
+          + (expr ? ' · ' + expr : '')
+          + ' · 触发 ' + (f.hitFrequency || 1) + ' 次'
+          + ' · 发动上限 ' + cast;
       }).join('；');
     },
     applyTriggerInlineForm(row) {

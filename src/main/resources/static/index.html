@@ -19,6 +19,7 @@
   <div class="home-header">
     <h1>PVE</h1>
     <div class="home-header-actions">
+      <button type="button" @click="goProfile">我的</button>
       <button @click="logout">退出</button>
     </div>
   </div>
@@ -26,6 +27,18 @@
   <div class="home-main">
     <!-- 主页 -->
     <div class="tab-panel" :class="{ hidden: activeTab !== 'home' }">
+      <div v-if="banners.length" class="home-banner-strip">
+        <a v-for="b in banners" :key="b.id" class="home-banner-item" :href="b.jumpUrl || '#'" :target="b.jumpUrl ? '_blank' : null" @click.prevent="openBanner(b)">
+          <img v-if="b.imageUrl" :src="b.imageUrl" :alt="'banner-' + b.id">
+        </a>
+      </div>
+      <div v-if="articles.length" class="home-announce-panel">
+        <div class="home-announce-head">公告</div>
+        <button v-for="a in articles" :key="a.id" type="button" class="home-announce-item" @click="openArticle(a)">
+          <span class="home-announce-title">{{ a.title }}</span>
+          <span class="home-announce-arrow">›</span>
+        </button>
+      </div>
       <div class="home-scene">
         <div v-if="loading" class="loading-text">加载中...</div>
         <div v-else class="hero-actor" @click="openHeroDetail">
@@ -59,6 +72,7 @@
             <button v-if="!warehouseOpen" @click="openWarehouse">打开仓库</button>
             <button v-else @click="closeWarehouse">关闭仓库</button>
             <template v-if="warehouseOpen">
+              <button type="button" class="btn-mini-link" @click="openItemLog">变更记录</button>
               <button
                 class="btn-discard-sm"
                 :class="{ confirm: discardMode }"
@@ -509,6 +523,16 @@
           <h2>选关</h2>
           <span class="muted" v-if="selectedStage">已选 {{ selectedStage.displayCode }}</span>
         </div>
+        <div v-if="chapters.length > 1" class="chapter-tabs">
+          <button
+            v-for="ch in chapters"
+            :key="ch.id"
+            type="button"
+            class="chapter-tab"
+            :class="{ active: selectedChapterId === ch.id }"
+            @click="selectChapter(ch.id)"
+          >{{ ch.name }}</button>
+        </div>
         <div class="stage-grid">
           <button
             v-for="stage in stages"
@@ -527,6 +551,33 @@
           :disabled="!selectedStageId"
           @click="startBattle"
         >开始战斗</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showArticleDetail" class="item-detail-mask" @click.self="showArticleDetail = false">
+    <div class="item-detail-panel home-article-panel">
+      <div class="item-detail-head">
+        <h3>{{ articleDetail.title }}</h3>
+        <button class="item-detail-close" @click="showArticleDetail = false">关闭</button>
+      </div>
+      <div class="home-article-body">{{ articleDetail.content }}</div>
+    </div>
+  </div>
+
+  <div v-if="showItemLog" class="item-detail-mask" @click.self="showItemLog = false">
+    <div class="item-detail-panel home-log-panel">
+      <div class="item-detail-head">
+        <h3>仓库变更记录</h3>
+        <button class="item-detail-close" @click="showItemLog = false">关闭</button>
+      </div>
+      <div v-if="itemLogLoading" class="item-detail-loading">加载中...</div>
+      <div v-else-if="!itemLogs.length" class="prep-empty-tip">暂无记录</div>
+      <div v-else class="home-log-list">
+        <div v-for="log in itemLogs" :key="log.id" class="home-log-row">
+          <div class="home-log-main">{{ log.itemName }} {{ log.changeQty > 0 ? '+' : '' }}{{ log.changeQty }}</div>
+          <div class="home-log-meta">{{ logReasonLabel(log.reason) }} · {{ fmtLogTime(log.createTime) }}</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1204,6 +1255,15 @@ createApp({
       gearDetailContext: null,
       hero: null,
       stages: [],
+      chapters: [],
+      selectedChapterId: localStorage.getItem('selectedChapterId') || '',
+      banners: [],
+      articles: [],
+      showArticleDetail: false,
+      articleDetail: { title: '', content: '' },
+      showItemLog: false,
+      itemLogLoading: false,
+      itemLogs: [],
       selectedStageId: localStorage.getItem(APP_CONFIG.selectedStageKey) || '',
       toast: { show: false, text: '', type: 'error' },
       warehouseOpen: false,
@@ -1624,6 +1684,8 @@ createApp({
     if (params.get('craft')) this.pendingCraftId = params.get('craft');
     if (params.get('warehouse') === '1') this.warehouseOpen = true;
     this.loadHero();
+    this.loadHomeMedia();
+    this.loadLevelChapters();
     this.loadStages();
     if (this.activeTab === 'prep') {
       this.loadPrep();
@@ -1650,6 +1712,9 @@ createApp({
       }
       if (tab === 'formation') {
         this.loadFormation();
+      }
+      if (tab === 'sortie' && !this.stages.length) {
+        this.loadStages();
       }
     }
   },
@@ -1912,7 +1977,8 @@ createApp({
     },
     loadStages: function () {
       var self = this;
-      GameApi.getStageSelectList('chapter_main')
+      var chapterId = self.selectedChapterId || 'chapter_main';
+      GameApi.getStageSelectList(chapterId)
         .then(function (res) {
           self.stages = res.data || [];
           if (!self.selectedStageId && self.stages.length) {
@@ -1920,6 +1986,84 @@ createApp({
           }
         })
         .catch(function (err) { self.showToast(err.message); });
+    },
+    loadLevelChapters: function () {
+      var self = this;
+      GameApi.getLevelTree()
+        .then(function (res) {
+          var tree = res.data || {};
+          var chapters = [];
+          (tree.modeGroups || []).forEach(function (mode) {
+            (mode.chapters || []).forEach(function (node) {
+              if (node.chapter && node.chapter.enabled !== 0) {
+                chapters.push({
+                  id: node.chapter.id,
+                  name: node.chapter.name || node.chapter.code,
+                  code: node.chapter.code
+                });
+              }
+            });
+          });
+          self.chapters = chapters;
+          if (!self.selectedChapterId && chapters.length) {
+            self.selectedChapterId = chapters[0].id;
+            localStorage.setItem('selectedChapterId', self.selectedChapterId);
+          }
+        })
+        .catch(function () { self.chapters = []; });
+    },
+    selectChapter: function (chapterId) {
+      this.selectedChapterId = chapterId;
+      localStorage.setItem('selectedChapterId', chapterId);
+      this.selectedStageId = '';
+      localStorage.removeItem(APP_CONFIG.selectedStageKey);
+      this.loadStages();
+    },
+    loadHomeMedia: function () {
+      var self = this;
+      GameApi.getBannerList()
+        .then(function (res) { self.banners = res.data || []; })
+        .catch(function () { self.banners = []; });
+      GameApi.getArticleList(1, 5)
+        .then(function (res) { self.articles = res.data || []; })
+        .catch(function () { self.articles = []; });
+    },
+    openBanner: function (banner) {
+      if (banner.jumpUrl) window.open(banner.jumpUrl, '_blank');
+    },
+    openArticle: function (article) {
+      this.articleDetail = { title: article.title, content: article.content || '' };
+      this.showArticleDetail = true;
+    },
+    goProfile: function () {
+      location.href = '/profile.html';
+    },
+    openItemLog: function () {
+      var self = this;
+      self.showItemLog = true;
+      self.itemLogLoading = true;
+      GameApi.getItemLogList()
+        .then(function (res) { self.itemLogs = res.data || []; })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.itemLogLoading = false; });
+    },
+    logReasonLabel: function (reason) {
+      var map = {
+        BATTLE_WIN: '战斗获得',
+        DISCARD: '丢弃',
+        TO_BAG: '移入背包',
+        TO_WAREHOUSE: '移入仓库',
+        EQUIP: '装备',
+        UNEQUIP: '卸下',
+        CRAFT: '合成获得',
+        CRAFT_COST: '合成消耗',
+        ADMIN_GRANT: '系统赠送'
+      };
+      return map[reason] || reason || '-';
+    },
+    fmtLogTime: function (v) {
+      if (!v) return '-';
+      return String(v).replace('T', ' ').slice(0, 16);
     },
     loadPrep: function () {
       var self = this;

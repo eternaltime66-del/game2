@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>用户中心</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/profile.css">
+  <script src="/js/dev-live.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+<div id="app" class="page profile-page">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="profile-header">
+    <h1>用户中心</h1>
+    <div class="profile-header-actions">
+      <button type="button" @click="goHome">返回游戏</button>
+      <button type="button" @click="logout">退出</button>
+    </div>
+  </div>
+
+  <div v-if="loading" class="profile-empty">加载中...</div>
+
+  <template v-else>
+    <div class="profile-section">
+      <h3>账户信息</h3>
+      <div class="profile-info-row"><span class="label">用户 ID</span><span class="value">{{ user.id || '-' }}</span></div>
+      <div class="profile-info-row"><span class="label">邮箱</span><span class="value">{{ user.email || '-' }}</span></div>
+      <div class="profile-info-row"><span class="label">昵称</span><span class="value">{{ user.name || '未设置' }}</span></div>
+      <div class="profile-info-row"><span class="label">邀请码</span><span class="value">{{ user.inviteCode || '-' }}</span></div>
+      <div class="profile-info-row"><span class="label">实名状态</span><span class="value"><span class="kyc-status" :class="kycStatusClass">{{ kycStatusText }}</span></span></div>
+    </div>
+
+    <div class="profile-section" v-if="!user.sourceInviteIdL1">
+      <h3>绑定邀请人</h3>
+      <p class="profile-empty" style="padding:0 0 8px;text-align:left">输入上级邀请码，绑定后不可更改</p>
+      <div class="profile-form-row">
+        <input v-model.trim="inviteCode" placeholder="邀请码">
+        <button type="button" :disabled="acting" @click="bindInvite">绑定</button>
+      </div>
+    </div>
+
+    <div class="profile-section" v-if="canSubmitKyc">
+      <h3>实名认证</h3>
+      <div class="profile-form-row" style="flex-direction:column">
+        <input v-model.trim="kycForm.userName" placeholder="真实姓名">
+        <input v-model.trim="kycForm.passPort" placeholder="证件号码">
+        <button type="button" class="btn-block" :disabled="acting" @click="submitKyc">提交认证</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <h3>钱包余额</h3>
+      <div v-if="!wallets.length" class="profile-empty">暂无钱包数据</div>
+      <div v-else class="wallet-grid">
+        <div v-for="w in wallets" :key="w.id" class="wallet-card">
+          <div class="coin">{{ w.coin }}</div>
+          <div class="balance">{{ fmtAmount(w.balance) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <h3>申请提现</h3>
+      <div class="profile-form-row">
+        <input v-model="withdrawAmount" type="number" min="0" step="0.01" placeholder="提现金额">
+        <button type="button" :disabled="acting" @click="doWithdraw">提交</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <h3>资金流水</h3>
+      <div v-if="!moneyRecords.length" class="profile-empty">暂无流水</div>
+      <div v-else class="record-list">
+        <div v-for="r in moneyRecords" :key="r.id" class="record-item">
+          <div>{{ r.type }} · {{ r.coin || r.walletType || '-' }}</div>
+          <div class="record-meta">
+            <span :class="['record-amount', r.direction === 'ADD' ? 'plus' : 'minus']">
+              {{ r.direction === 'ADD' ? '+' : '-' }}{{ fmtAmount(r.amount) }}
+            </span>
+            <span>{{ fmtTime(r.createTime) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <h3>直推团队</h3>
+      <div v-if="!teamList.length" class="profile-empty">暂无下级</div>
+      <div v-else class="team-list">
+        <div v-for="m in teamList" :key="m.id" class="team-item">
+          <div>{{ m.email || m.id }}</div>
+          <div class="record-meta"><span>邀请码 {{ m.inviteCode || '-' }}</span><span>{{ fmtTime(m.createTime) }}</span></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+const { createApp } = Vue;
+
+createApp({
+  data() {
+    return {
+      loading: true,
+      acting: false,
+      user: {},
+      kycState: '',
+      wallets: [],
+      moneyRecords: [],
+      teamList: [],
+      inviteCode: '',
+      withdrawAmount: '',
+      kycForm: { userName: '', passPort: '' },
+      toast: { show: false, text: '', type: 'error' }
+    };
+  },
+  computed: {
+    canSubmitKyc() {
+      return !this.kycState || this.kycState === 'NotKyc' || this.kycState === 'KycFail';
+    },
+    kycStatusText() {
+      var map = {
+        NotKyc: '未认证',
+        KycPadding: '审核中',
+        KycSuccess: '已通过',
+        KycFail: '未通过'
+      };
+      return map[this.kycState] || '未认证';
+    },
+    kycStatusClass() {
+      if (this.kycState === 'KycSuccess') return 'success';
+      if (this.kycState === 'KycPadding') return 'pending';
+      if (this.kycState === 'KycFail') return 'fail';
+      return '';
+    }
+  },
+  mounted() {
+    if (!GameApi.getToken()) {
+      location.href = APP_CONFIG.loginPage;
+      return;
+    }
+    this.loadAll();
+  },
+  methods: {
+    showToast(text, type) {
+      this.toast = { show: true, text: text, type: type || 'error' };
+      setTimeout(function () { this.toast.show = false; }.bind(this), 2200);
+    },
+    fmtAmount(v) {
+      if (v == null) return '0';
+      return Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 });
+    },
+    fmtTime(v) {
+      if (!v) return '-';
+      return String(v).replace('T', ' ').slice(0, 19);
+    },
+    goHome() {
+      location.href = APP_CONFIG.homePage || '/index.html';
+    },
+    logout() {
+      GameApi.clearToken();
+      location.href = APP_CONFIG.loginPage;
+    },
+    loadAll() {
+      var self = this;
+      self.loading = true;
+      Promise.all([
+        GameApi.getUserInfo(),
+        GameApi.getWalletBalance(),
+        GameApi.getMoneyRecords(1, 30),
+        GameApi.getDownlineList()
+      ]).then(function (results) {
+        self.user = (results[0].data) || {};
+        self.wallets = (results[1].data) || [];
+        self.moneyRecords = (results[2].data) || [];
+        self.teamList = (results[3].data) || [];
+      }).catch(function (err) {
+        self.showToast(err.message);
+      }).finally(function () {
+        self.loading = false;
+      });
+    },
+    bindInvite() {
+      if (!this.inviteCode) {
+        this.showToast('请输入邀请码');
+        return;
+      }
+      var self = this;
+      self.acting = true;
+      GameApi.bindInviteCode(this.inviteCode)
+        .then(function () {
+          self.showToast('绑定成功', 'success');
+          return GameApi.getUserInfo();
+        })
+        .then(function (res) { self.user = res.data || {}; })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.acting = false; });
+    },
+    submitKyc() {
+      if (!this.kycForm.userName || !this.kycForm.passPort) {
+        this.showToast('请填写姓名和证件号');
+        return;
+      }
+      var self = this;
+      self.acting = true;
+      GameApi.submitKyc(this.kycForm.passPort, this.kycForm.userName)
+        .then(function () {
+          self.kycState = 'KycPadding';
+          self.showToast('已提交，等待审核', 'success');
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.acting = false; });
+    },
+    doWithdraw() {
+      var amount = parseFloat(this.withdrawAmount);
+      if (!amount || amount <= 0) {
+        this.showToast('请输入有效金额');
+        return;
+      }
+      var self = this;
+      self.acting = true;
+      GameApi.submitWithdraw(amount)
+        .then(function () {
+          self.showToast('提现申请已提交', 'success');
+          self.withdrawAmount = '';
+          return Promise.all([GameApi.getWalletBalance(), GameApi.getMoneyRecords(1, 30)]);
+        })
+        .then(function (results) {
+          self.wallets = (results[0].data) || [];
+          self.moneyRecords = (results[1].data) || [];
+        })
+        .catch(function (err) { self.showToast(err.message); })
+        .finally(function () { self.acting = false; });
+    }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

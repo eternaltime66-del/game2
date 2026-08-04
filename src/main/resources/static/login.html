@@ -57,8 +57,6 @@
       <a href="/register.html">注册账号</a>
       <a href="/forgot.html">忘记密码？</a>
     </div>
-
-    <div class="tip">测试账号：<strong>test@game.com</strong> / <strong>123456</strong>，开发模式验证码 <strong>123456</strong></div>
   </div>
 
   <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.text }}</div>
@@ -78,8 +76,8 @@ createApp({
       countdown: 0,
       timer: null,
       form: {
-        email: 'test@game.com',
-        password: '123456',
+        email: '',
+        password: '',
         emsCode: ''
       },
       toast: {

@@ -3,6 +3,7 @@ package org.wx.core.wxBusiness.game.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
+import org.wx.core.wxBusiness.game.entity.enums.ConditionZoneMode;
 import org.wx.core.wxBusiness.game.entity.enums.SkillCompareOp;
 import org.wx.core.wxBusiness.game.entity.enums.SkillOperandKind;
 import org.wx.core.wxBusiness.game.entity.enums.SkillReadType;
@@ -96,7 +97,10 @@ public class SkillJsonHelper {
             item.setRightConst(BigDecimal.ONE);
         }
         SkillConditionGroupVo group = new SkillConditionGroupVo();
+        group.setNumericMode(ConditionZoneMode.CONFIG.name());
+        group.setPrerequisiteMode(ConditionZoneMode.NONE.name());
         group.setItems(List.of(item));
+        group.setPrerequisites(new ArrayList<>());
         return List.of(group);
     }
 
@@ -111,7 +115,10 @@ public class SkillJsonHelper {
 
     public List<SkillConditionGroupVo> defaultConditionGroups() {
         SkillConditionGroupVo group = new SkillConditionGroupVo();
+        group.setNumericMode(ConditionZoneMode.NONE.name());
+        group.setPrerequisiteMode(ConditionZoneMode.NONE.name());
         group.setItems(new ArrayList<>());
+        group.setPrerequisites(new ArrayList<>());
         return List.of(group);
     }
 

@@ -1,13 +1,17 @@
-/* 桌面后台 — 侧栏 + 主内容区 */
+/* 桌面后台 — 侧栏 + 主内容区（禁止整页滚动，分区各自滚动） */
 body.admin-body {
   display: block;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 body.admin-body .page.admin-page {
   max-width: none;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 body.admin-body .bg-glow {
@@ -15,11 +19,12 @@ body.admin-body .bg-glow {
 }
 
 .admin-login-wrap {
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
+  overflow: auto;
 }
 
 .admin-login-wrap .login-panel {
@@ -30,32 +35,75 @@ body.admin-body .bg-glow {
 
 .admin-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg);
 }
 
 .admin-sidebar {
   width: 220px;
   flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
   background: rgba(0, 0, 0, 0.35);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   padding: 20px 0;
+  overflow: hidden;
 }
 
 .sidebar-brand {
   padding: 0 20px 24px;
   font-size: 18px;
   font-weight: 800;
+  flex-shrink: 0;
 }
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 12px;
+  padding: 0 8px 0 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167, 139, 250, 0.5) transparent;
+}
+
+/* 窄条符号风滚动条（WebKit） */
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(196, 181, 253, 0.55),
+    rgba(124, 92, 255, 0.35)
+  );
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.12);
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(216, 180, 254, 0.8),
+    rgba(139, 92, 246, 0.55)
+  );
+}
+
+.sidebar-nav::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .sidebar-nav-item {
@@ -218,19 +266,23 @@ body.admin-body .bg-glow {
   padding: 16px 20px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   margin-top: 12px;
+  flex-shrink: 0;
 }
 
 .admin-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .admin-topbar {
   padding: 18px 28px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
 .admin-topbar h2 {
@@ -241,8 +293,29 @@ body.admin-body .bg-glow {
 
 .admin-content {
   flex: 1;
+  min-height: 0;
   padding: 24px 28px 40px;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.admin-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-content::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+}
+
+.admin-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
 }
 
 .admin-panel {
@@ -748,7 +821,7 @@ body.admin-body .bg-glow {
 }
 
 .admin-drawer {
-  width: 560px;
+  width: 840px;
   max-width: 100%;
   height: 100%;
   background: #1a1d2e;
@@ -1263,6 +1336,50 @@ body.admin-body .bg-glow {
   padding: 6px;
   flex: 1;
   min-height: 0;
+}
+
+.condition-group-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.condition-zone {
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.condition-zone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.condition-zone-head > .admin-select,
+.condition-zone-head > div {
+  min-width: 120px;
+  max-width: 180px;
+}
+
+.condition-zone-hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+.prereq-row {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.prereq-row:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .condition-compare-row {
@@ -2022,7 +2139,7 @@ body.admin-body .bg-glow {
 }
 
 .admin-drawer.wide {
-  width: 680px;
+  width: 1020px;
 }
 
 .trigger-inline-row {
@@ -2038,4 +2155,12 @@ body.admin-body .bg-glow {
 
 .trigger-inline-row .field.full {
   grid-column: 1 / -1;
+}
+
+
+.read-type-cascade {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }

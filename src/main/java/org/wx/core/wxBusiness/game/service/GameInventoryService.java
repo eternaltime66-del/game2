@@ -401,6 +401,14 @@ public class GameInventoryService extends WxServiceImpl<GameInventoryMapper, Gam
                 .list();
     }
 
+    /** 用户全部背包/仓库格子（含数量） */
+    public List<GameInventory> listOwnedRows(String uid) {
+        if (uid == null || uid.isBlank()) {
+            return List.of();
+        }
+        return listByUid(uid);
+    }
+
     private Map<String, GameItem> loadItemMap(List<GameInventory> rows) {
         Set<String> itemIds = rows.stream().map(GameInventory::getItemId).collect(Collectors.toSet());
         if (itemIds.isEmpty()) {

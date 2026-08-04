@@ -4,6 +4,7 @@ import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.wx.core.wxBusiness.game.entity.*;
+import org.wx.core.wxBusiness.game.entity.enums.ConditionZoneMode;
 import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL1;
 import org.wx.core.wxBusiness.game.entity.enums.FinishedSkillCatL4;
 import org.wx.core.wxBusiness.game.entity.enums.SkillOperandKind;
@@ -39,6 +40,8 @@ public class GameTriggerSlotEngineService {
     private SkillExpressionService skillExpressionService;
     @Resource
     private GameFinishedSkillService finishedSkillService;
+    @Resource
+    private SkillPrerequisiteService skillPrerequisiteService;
 
     public List<BattleLog> onActionValueFull(BattleState state, BattleUnit unit) {
         TriggerEventContext ctx = new TriggerEventContext();
@@ -230,7 +233,8 @@ public class GameTriggerSlotEngineService {
                 continue;
             }
             SkillExpressionService.SkillValueReader reader = battleReader(state, unit, eventValues);
-            if (skillExpressionService.anyGroupMatch(groups, reader)) {
+            if (skillExpressionService.anyGroupMatch(groups, reader, p ->
+                    skillPrerequisiteService.match(state, unit, p))) {
                 logs.addAll(tryCastFromBinding(state, unit, binding, ctx != null ? ctx : new TriggerEventContext()));
             }
         }
@@ -246,16 +250,27 @@ public class GameTriggerSlotEngineService {
             return true;
         }
         for (SkillConditionGroupVo group : groups) {
-            if (group == null || group.getItems() == null) {
+            if (group == null) {
                 continue;
             }
-            for (SkillConditionItemVo item : group.getItems()) {
-                if (item == null) {
-                    continue;
+            if (group.getItems() != null) {
+                for (SkillConditionItemVo item : group.getItems()) {
+                    if (item != null && hasConditionContent(item)) {
+                        return false;
+                    }
                 }
-                if (hasConditionContent(item)) {
-                    return false;
-                }
+            }
+            if (group.getPrerequisites() != null && !group.getPrerequisites().isEmpty()) {
+                return false;
+            }
+            if (group.getNumericMode() != null && ConditionZoneMode.CONFIG.name().equalsIgnoreCase(group.getNumericMode())
+                    && group.getItems() != null && !group.getItems().isEmpty()) {
+                return false;
+            }
+            if (group.getPrerequisiteMode() != null
+                    && ConditionZoneMode.CONFIG.name().equalsIgnoreCase(group.getPrerequisiteMode())
+                    && group.getPrerequisites() != null && !group.getPrerequisites().isEmpty()) {
+                return false;
             }
         }
         return true;
@@ -292,8 +307,15 @@ public class GameTriggerSlotEngineService {
         }
         boolean hasRead = false;
         boolean readRelevant = false;
+        boolean hasPrerequisite = false;
         for (SkillConditionGroupVo group : groups) {
-            if (group == null || group.getItems() == null) {
+            if (group == null) {
+                continue;
+            }
+            if (isPrerequisiteConfigured(group)) {
+                hasPrerequisite = true;
+            }
+            if (group.getItems() == null) {
                 continue;
             }
             for (SkillConditionItemVo item : group.getItems()) {
@@ -310,9 +332,18 @@ public class GameTriggerSlotEngineService {
             }
         }
         if (!hasRead) {
-            return hook == ConditionHook.CAST;
+            // 仅前置条件：任意事件钩子都可评估
+            return hasPrerequisite || hook == ConditionHook.CAST;
         }
         return readRelevant;
+    }
+
+    private boolean isPrerequisiteConfigured(SkillConditionGroupVo group) {
+        if (group.getPrerequisiteMode() != null
+                && ConditionZoneMode.NONE.name().equalsIgnoreCase(group.getPrerequisiteMode())) {
+            return false;
+        }
+        return group.getPrerequisites() != null && !group.getPrerequisites().isEmpty();
     }
 
     private record SideScan(boolean hasRead, boolean relevant) {}
@@ -366,8 +397,8 @@ public class GameTriggerSlotEngineService {
                     hook == ConditionHook.HEAL;
             case ON_DEAL_DAMAGE, ACCUM_DEAL_DAMAGE, ACCUM_DEAL_DAMAGE_COUNT ->
                     hook == ConditionHook.DEAL;
-            case CHAR_ATTACK, CHAR_MAX_HP, CHAR_DEFENSE, EQUIP_USES_LEFT, WEAPON_DAMAGE_RATIO ->
-                    hook == ConditionHook.CAST || hook == ConditionHook.ACTION_FULL;
+            case CHAR_ATTACK, CHAR_MAX_HP, CHAR_CUR_HP, CHAR_DEFENSE,
+                    EQUIP_USES_LEFT, WEAPON_DAMAGE_RATIO, WEAPON_ATTACK -> true;
         };
     }
 
@@ -407,6 +438,15 @@ public class GameTriggerSlotEngineService {
             }
             if (type == SkillReadType.ACCUM_HP_DECREASE_COUNT) {
                 return BigDecimal.valueOf(counters.getAccumHpDecreaseCount().getOrDefault(uid, 0));
+            }
+            if (type == SkillReadType.EQUIP_USES_LEFT) {
+                if (state.getWeaponUsesLeft() != null) {
+                    return BigDecimal.valueOf(state.getWeaponUsesLeft());
+                }
+                return BigDecimal.valueOf(9999);
+            }
+            if (type == SkillReadType.WEAPON_ATTACK) {
+                return BigDecimal.valueOf(unit.getWeaponAttack() != null ? unit.getWeaponAttack() : 0);
             }
             return base.read(type, filter, filterRef);
         };

@@ -427,14 +427,20 @@ public class PveBattleService {
 
     private void applyHeroWeaponRatio(BattleState state, BattleUnit unit) {
         unit.setWeaponDamageRatio(null);
+        unit.setWeaponAttack(null);
         List<String> itemIds = state.getHeroEquippedItemIds();
         if (itemIds == null || itemIds.isEmpty()) {
             return;
         }
         for (String itemId : itemIds) {
             GameWeapon weapon = gameWeaponService.getByItemId(itemId);
-            if (weapon != null && weapon.getDamageRatio() != null) {
-                unit.setWeaponDamageRatio(weapon.getDamageRatio());
+            if (weapon != null) {
+                if (weapon.getDamageRatio() != null) {
+                    unit.setWeaponDamageRatio(weapon.getDamageRatio());
+                }
+                if (weapon.getAttack() != null) {
+                    unit.setWeaponAttack(weapon.getAttack());
+                }
                 return;
             }
         }

@@ -1135,7 +1135,7 @@
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置普攻</p>
             <template v-else>
               <div class="trigger-inline-row">
-                <div class="field full"><label>扳机</label><span class="field-value">快捷 · 能量值满</span></div>
+                <div class="field full"><label>扳机</label><span class="field-value">能量值满</span></div>
                 <div class="field full"><label>触发扳机技能</label>
                   <skill-picker-panel picker-key="basicAttack" :skill-id="weaponBasicAttackForm.finishedSkillId" :placeholder="drawerType === 'monster' ? '留空=全局默认普攻 · 可筛选或自定义' : '留空=角色默认普攻 · 可筛选或自定义'" allow-empty />
                 </div>
@@ -1156,13 +1156,7 @@
             <p v-if="!currentItemIdForTriggers" class="empty-hint">请先保存基础属性，再配置大招</p>
             <template v-else>
               <div class="trigger-inline-row">
-                <div class="field"><label>扳机模式</label>
-                  <admin-select v-model="weaponUltimateForm.triggerMode" :options="meta.triggerModes" value-key="code" label-key="label" />
-                </div>
-                <div class="field" v-if="weaponUltimateForm.triggerMode === 'QUICK'"><label>快捷预设</label>
-                  <admin-select v-model="weaponUltimateForm.quickPreset" :options="meta.quickPresets" value-key="code" label-key="label" />
-                </div>
-                <div class="field full" v-if="weaponUltimateForm.triggerMode !== 'QUICK'">
+                <div class="field full">
                   <div class="panel-toolbar" style="margin:0">
                     <span>条件组（组内且，组间或）</span>
                     <button type="button" class="btn-mini" @click="addConditionGroup(weaponUltimateForm)">+ 条件组</button>
@@ -1172,7 +1166,23 @@
                       <span>条件组 {{ gi + 1 }}</span>
                       <button type="button" class="btn-mini danger" @click="removeConditionGroup(weaponUltimateForm, gi)">删组</button>
                     </div>
-                    <condition-item-editor v-for="(it, ii) in g.items" :key="'ui'+ii" :item="it" :read-types="meta.readTypes" :compare-ops="meta.compareOps" :skill-scope-cast="meta.skillScopeCast" :skill-scope-hit="meta.skillScopeHit" :finished-skill-options="finishedSkillSelectOptions" @add="addConditionItem(g)" @remove="removeConditionItem(g, ii)" />
+                    <condition-group-panel
+                      :group="g"
+                      :read-types="meta.readTypes"
+                      :compare-ops="meta.compareOps"
+                      :skill-scope-cast="meta.skillScopeCast"
+                      :skill-scope-hit="meta.skillScopeHit"
+                      :finished-skill-options="finishedSkillSelectOptions"
+                      :item-options="itemSelectOptions"
+                      :person-skill-options="personSkillGrantSelectOptions"
+                      :cat-l1-options="categoryMeta.catL1"
+                      :cat-l2-options="categoryMeta.catL2"
+                      :cat-l4-options="categoryMeta.catL4"
+                      @add-item="addConditionItem(g)"
+                      @remove-item="removeConditionItem(g, $event)"
+                      @add-prereq="addPrerequisite(g)"
+                      @remove-prereq="removePrerequisite(g, $event)"
+                    />
                   </div>
                 </div>
                 <div class="field full"><label>触发扳机技能</label>
@@ -1204,13 +1214,7 @@
               </div>
               <div v-if="!itemTriggers.length && !showTriggerInlineForm" class="empty-hint">暂无特性主动，点击下方添加</div>
               <div v-if="showTriggerInlineForm" class="trigger-inline-row">
-                <div class="field"><label>扳机模式</label>
-                  <admin-select v-model="triggerInlineForm.triggerMode" :options="meta.triggerModes" value-key="code" label-key="label" />
-                </div>
-                <div class="field" v-if="triggerInlineForm.triggerMode === 'QUICK'"><label>快捷预设</label>
-                  <admin-select v-model="triggerInlineForm.quickPreset" :options="meta.quickPresets" value-key="code" label-key="label" />
-                </div>
-                <div class="field full" v-if="triggerInlineForm.triggerMode !== 'QUICK'">
+                <div class="field full">
                   <div class="panel-toolbar" style="margin:0">
                     <span>条件组（组内且，组间或）</span>
                     <button type="button" class="btn-mini" @click="addConditionGroup(triggerInlineForm)">+ 条件组</button>
@@ -1220,7 +1224,23 @@
                       <span>条件组 {{ gi + 1 }}</span>
                       <button type="button" class="btn-mini danger" @click="removeConditionGroup(triggerInlineForm, gi)">删组</button>
                     </div>
-                    <condition-item-editor v-for="(it, ii) in g.items" :key="'ti'+ii" :item="it" :read-types="meta.readTypes" :compare-ops="meta.compareOps" :skill-scope-cast="meta.skillScopeCast" :skill-scope-hit="meta.skillScopeHit" :finished-skill-options="finishedSkillSelectOptions" @add="addConditionItem(g)" @remove="removeConditionItem(g, ii)" />
+                    <condition-group-panel
+                      :group="g"
+                      :read-types="meta.readTypes"
+                      :compare-ops="meta.compareOps"
+                      :skill-scope-cast="meta.skillScopeCast"
+                      :skill-scope-hit="meta.skillScopeHit"
+                      :finished-skill-options="finishedSkillSelectOptions"
+                      :item-options="itemSelectOptions"
+                      :person-skill-options="personSkillGrantSelectOptions"
+                      :cat-l1-options="categoryMeta.catL1"
+                      :cat-l2-options="categoryMeta.catL2"
+                      :cat-l4-options="categoryMeta.catL4"
+                      @add-item="addConditionItem(g)"
+                      @remove-item="removeConditionItem(g, $event)"
+                      @add-prereq="addPrerequisite(g)"
+                      @remove-prereq="removePrerequisite(g, $event)"
+                    />
                   </div>
                 </div>
                 <div class="field full"><label>触发扳机技能</label>
@@ -1352,13 +1372,7 @@
               </div>
               <p class="muted" style="margin:6px 0 0" v-if="finishedSkillForm.skillItemId">技能物品：{{ finishedSkillForm.skillItemId }}</p>
             </div>
-            <div class="field"><label>扳机模式</label>
-              <admin-select v-model="finishedSkillForm.triggerMode" :options="meta.triggerModes" value-key="code" label-key="label" />
-            </div>
-            <div class="field" v-if="finishedSkillForm.triggerMode === 'QUICK'"><label>快捷预设</label>
-              <admin-select v-model="finishedSkillForm.quickPreset" :options="meta.quickPresets" value-key="code" label-key="label" />
-            </div>
-            <div class="field full" v-if="finishedSkillForm.triggerMode !== 'QUICK'">
+            <div class="field full">
               <div class="panel-toolbar" style="margin:0">
                 <span>条件组</span>
                 <button type="button" class="btn-mini" @click="addConditionGroup(finishedSkillForm)">+ 条件组</button>
@@ -1368,7 +1382,23 @@
                   <span>条件组 {{ gi + 1 }}</span>
                   <button type="button" class="btn-mini danger" @click="removeConditionGroup(finishedSkillForm, gi)">删组</button>
                 </div>
-                <condition-item-editor v-for="(it, ii) in g.items" :key="'pfi'+ii" :item="it" :read-types="meta.readTypes" :compare-ops="meta.compareOps" :skill-scope-cast="meta.skillScopeCast" :skill-scope-hit="meta.skillScopeHit" :finished-skill-options="finishedSkillSelectOptions" @add="addConditionItem(g)" @remove="removeConditionItem(g, ii)" />
+                <condition-group-panel
+                  :group="g"
+                  :read-types="meta.readTypes"
+                  :compare-ops="meta.compareOps"
+                  :skill-scope-cast="meta.skillScopeCast"
+                  :skill-scope-hit="meta.skillScopeHit"
+                  :finished-skill-options="finishedSkillSelectOptions"
+                  :item-options="itemSelectOptions"
+                  :person-skill-options="personSkillGrantSelectOptions"
+                  :cat-l1-options="categoryMeta.catL1"
+                  :cat-l2-options="categoryMeta.catL2"
+                  :cat-l4-options="categoryMeta.catL4"
+                  @add-item="addConditionItem(g)"
+                  @remove-item="removeConditionItem(g, $event)"
+                  @add-prereq="addPrerequisite(g)"
+                  @remove-prereq="removePrerequisite(g, $event)"
+                />
               </div>
             </div>
           </template>
@@ -1433,7 +1463,7 @@
                 </div>
                 <div class="formula-param-input formula-param-input-stack" v-else>
                   <div class="formula-param-select">
-                    <admin-select v-model="fg._readDraft" :options="meta.readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onFormulaReadDraftChange(fg, v)" />
+                    <read-type-cascade v-model="fg._readDraft" :read-types="meta.readTypes" @change="(v) => onFormulaReadDraftChange(fg, v)" />
                   </div>
                   <div class="formula-param-select" v-if="readNeedsSkillFilter(fg._readDraft)">
                     <admin-select v-model="fg._filterDraft" :options="skillScopeOptionsForRead(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFormulaFilterDraftChange(fg, v)" />
@@ -1537,7 +1567,7 @@
                 <div class="field full" v-if="e.kind === 'FORMULA_DAMAGE' || e.kind === 'FORMULA_HEAL'">
                   <div class="muted" style="margin-bottom:6px">{{ formulaTokensText(e.tokens) || '（空）' }}</div>
                   <div style="display:flex;flex-wrap:wrap;gap:6px">
-                    <admin-select v-model="e._readDraft" :options="meta.readTypes" value-key="code" label-key="label" placeholder="读取" />
+                    <read-type-cascade v-model="e._readDraft" :read-types="meta.readTypes" />
                     <button type="button" class="btn-mini" @click="pushFormulaRead(e)">+读取</button>
                     <input v-model.number="e._constDraft" type="number" step="0.01" placeholder="定值" style="width:90px">
                     <button type="button" class="btn-mini" @click="pushFormulaConst(e)">+定值</button>
@@ -1887,6 +1917,96 @@
   <script src="/js/admin-select.js"></script>
   <script src="/js/config.js"></script>
 <script src="/js/admin-api.js"></script>
+<script type="text/x-template" id="read-type-cascade-tpl">
+  <div class="read-type-cascade">
+    <admin-select
+      :model-value="groupValue"
+      :options="groupOptions"
+      value-key="value"
+      label-key="label"
+      placeholder="选择分组"
+      @update:modelValue="onGroupChange"
+    />
+    <admin-select
+      v-if="groupValue"
+      :model-value="modelValue"
+      :options="typeOptions"
+      value-key="code"
+      label-key="label"
+      placeholder="选择具体项"
+      searchable
+      @update:modelValue="onTypeChange"
+    />
+  </div>
+</script>
+<script type="text/x-template" id="condition-group-panel-tpl">
+  <div class="condition-group-panel">
+    <div class="condition-zone">
+      <div class="condition-zone-head">
+        <strong>数值判定区</strong>
+        <admin-select v-model="group.numericMode" :options="zoneModeOptions" value-key="value" label-key="label" />
+      </div>
+      <template v-if="group.numericMode === 'CONFIG'">
+        <condition-item-editor
+          v-for="(it, ii) in (group.items || [])"
+          :key="'num'+ii"
+          :item="it"
+          :read-types="readTypes"
+          :compare-ops="compareOps"
+          :skill-scope-cast="skillScopeCast"
+          :skill-scope-hit="skillScopeHit"
+          :finished-skill-options="finishedSkillOptions"
+          @add="$emit('add-item')"
+          @remove="$emit('remove-item', ii)"
+        />
+        <button v-if="!(group.items || []).length" type="button" class="btn-mini" @click="$emit('add-item')">+ 数值条件</button>
+      </template>
+      <p v-else class="muted condition-zone-hint">不限：本区恒为 true</p>
+    </div>
+    <div class="condition-zone">
+      <div class="condition-zone-head">
+        <strong>前置条件区</strong>
+        <admin-select v-model="group.prerequisiteMode" :options="zoneModeOptions" value-key="value" label-key="label" />
+      </div>
+      <template v-if="group.prerequisiteMode === 'CONFIG'">
+        <div class="prereq-row" v-for="(p, pi) in (group.prerequisites || [])" :key="'pr'+pi">
+          <div class="form-grid">
+            <div class="field"><label>类型</label>
+              <admin-select v-model="p.type" :options="prereqTypeOptions" value-key="value" label-key="label" />
+            </div>
+            <div class="field full" v-if="p.type === 'HOLD_ITEM'"><label>物品</label>
+              <admin-select v-model="p.itemId" :options="itemOptions" value-key="value" label-key="label" searchable clearable placeholder="选择物品" />
+            </div>
+            <div class="field full" v-if="p.type === 'HOLD_PERSON_SKILL'"><label>人物技能</label>
+              <admin-select v-model="p.finishedSkillId" :options="personSkillOptions" value-key="value" label-key="label" searchable clearable placeholder="选择人物主动技能" />
+            </div>
+            <template v-if="p.type === 'HOLD_BY_CATEGORY'">
+              <div class="field"><label>分类1</label>
+                <admin-select v-model="p.catL1" :options="catL1Options" value-key="code" label-key="label" clearable placeholder="不限" />
+              </div>
+              <div class="field"><label>分类2</label>
+                <admin-select v-model="p.catL2" :options="catL2Options" value-key="code" label-key="label" clearable placeholder="不限" />
+              </div>
+              <div class="field"><label>分类3</label>
+                <input v-model="p.catL3" placeholder="不限（入口名）">
+              </div>
+              <div class="field"><label>分类4</label>
+                <admin-select v-model="p.catL4" :options="catL4Options" value-key="code" label-key="label" clearable placeholder="不限" />
+              </div>
+            </template>
+            <div class="field full" style="display:flex;gap:8px">
+              <button type="button" class="btn-mini" @click="$emit('add-prereq')">+ 前置</button>
+              <button type="button" class="btn-mini danger" @click="$emit('remove-prereq', pi)">删前置</button>
+            </div>
+          </div>
+        </div>
+        <button v-if="!(group.prerequisites || []).length" type="button" class="btn-mini" @click="$emit('add-prereq')">+ 前置条件</button>
+      </template>
+      <p v-else class="muted condition-zone-hint">不限：本区恒为 true</p>
+    </div>
+    <p class="muted condition-zone-hint">两区均为 true 时，本条件组才成立（组间为或）</p>
+  </div>
+</script>
 <script type="text/x-template" id="condition-item-editor-tpl">
   <div class="condition-compare-row">
     <div class="condition-formula-side">
@@ -1926,7 +2046,7 @@
         </div>
         <div class="formula-param-input formula-param-input-stack" v-else>
           <div class="formula-param-select">
-            <admin-select v-model="left._readDraft" :options="readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraft(left, v)" />
+            <read-type-cascade v-model="left._readDraft" :read-types="readTypes" @change="(v) => onReadDraft(left, v)" />
           </div>
           <div class="formula-param-select" v-if="needsFilter(left._readDraft)">
             <admin-select v-model="left._filterDraft" :options="scopeOptions(left._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(left, v)" />
@@ -1979,7 +2099,7 @@
         </div>
         <div class="formula-param-input formula-param-input-stack" v-else>
           <div class="formula-param-select">
-            <admin-select v-model="right._readDraft" :options="readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraft(right, v)" />
+            <read-type-cascade v-model="right._readDraft" :read-types="readTypes" @change="(v) => onReadDraft(right, v)" />
           </div>
           <div class="formula-param-select" v-if="needsFilter(right._readDraft)">
             <admin-select v-model="right._filterDraft" :options="scopeOptions(right._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(right, v)" />
@@ -2067,7 +2187,7 @@
                 </div>
                 <div class="formula-param-input formula-param-input-stack" v-else>
                   <div class="formula-param-select">
-                    <admin-select v-model="fg._readDraft" :options="meta.readTypes || []" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraftChange(fg, v)" />
+                    <read-type-cascade v-model="fg._readDraft" :read-types="meta.readTypes || []" @change="(v) => onReadDraftChange(fg, v)" />
                   </div>
                   <div class="formula-param-select" v-if="readNeedsFilter(fg._readDraft)">
                     <admin-select v-model="fg._filterDraft" :options="scopeOptions(fg._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraftChange(fg, v)" />
@@ -2143,10 +2263,139 @@
   </div>
 </script>
 <script>
+const ReadTypeCascade = {
+  name: 'ReadTypeCascade',
+  template: '#read-type-cascade-tpl',
+  components: { AdminSelect: window.AdminSelectComponent },
+  props: {
+    modelValue: { type: String, default: '' },
+    readTypes: { type: Array, default: function () { return []; } }
+  },
+  emits: ['update:modelValue', 'change'],
+  data: function () {
+    return { groupValue: '' };
+  },
+  computed: {
+    groupOptions: function () {
+      var seen = {};
+      var out = [];
+      (this.readTypes || []).forEach(function (rt) {
+        var g = (rt && rt.group) ? String(rt.group) : '其他';
+        if (seen[g]) return;
+        seen[g] = true;
+        out.push({ value: g, label: g });
+      });
+      return out;
+    },
+    typeOptions: function () {
+      var group = this.groupValue;
+      if (!group) return [];
+      var self = this;
+      return (this.readTypes || []).filter(function (rt) {
+        return ((rt && rt.group) ? String(rt.group) : '其他') === group;
+      }).map(function (rt) {
+        return {
+          code: rt.code,
+          label: self.shortLabel(rt.label || rt.code, group),
+          group: rt.group,
+          raw: rt
+        };
+      });
+    }
+  },
+  watch: {
+    modelValue: {
+      immediate: true,
+      handler: function (code) { this.syncGroupFromCode(code); }
+    },
+    readTypes: function () { this.syncGroupFromCode(this.modelValue); }
+  },
+  methods: {
+    shortLabel: function (label, group) {
+      if (!label) return '';
+      if (group === '角色属性' && label.indexOf('角色') === 0) {
+        return label.slice(2);
+      }
+      if (group === '武器' && label.indexOf('武器') === 0) {
+        return label.slice(2);
+      }
+      if (group && label.indexOf(group) === 0) {
+        var rest = label.slice(group.length).replace(/^[·\s]+/, '');
+        if (rest) return rest;
+      }
+      return label;
+    },
+    syncGroupFromCode: function (code) {
+      if (!code) return;
+      var hit = (this.readTypes || []).find(function (x) { return x.code === code; });
+      if (hit && hit.group) this.groupValue = hit.group;
+    },
+    onGroupChange: function (g) {
+      this.groupValue = g || '';
+      this.$emit('update:modelValue', '');
+      this.$emit('change', '');
+    },
+    onTypeChange: function (code) {
+      this.$emit('update:modelValue', code || '');
+      this.$emit('change', code || '');
+    }
+  }
+};
+
+const ConditionGroupPanel = {
+  name: 'ConditionGroupPanel',
+  template: '#condition-group-panel-tpl',
+  components: {
+    AdminSelect: window.AdminSelectComponent,
+    ConditionItemEditor: null
+  },
+  props: {
+    group: { type: Object, required: true },
+    readTypes: { type: Array, default: function () { return []; } },
+    compareOps: { type: Array, default: function () { return []; } },
+    skillScopeCast: { type: Array, default: function () { return []; } },
+    skillScopeHit: { type: Array, default: function () { return []; } },
+    finishedSkillOptions: { type: Array, default: function () { return []; } },
+    itemOptions: { type: Array, default: function () { return []; } },
+    personSkillOptions: { type: Array, default: function () { return []; } },
+    catL1Options: { type: Array, default: function () { return []; } },
+    catL2Options: { type: Array, default: function () { return []; } },
+    catL4Options: { type: Array, default: function () { return []; } }
+  },
+  emits: ['add-item', 'remove-item', 'add-prereq', 'remove-prereq'],
+  data: function () {
+    return {
+      zoneModeOptions: [
+        { value: 'NONE', label: '不限' },
+        { value: 'CONFIG', label: '配置' }
+      ],
+      prereqTypeOptions: [
+        { value: 'HOLD_ITEM', label: '持有指定物品' },
+        { value: 'HOLD_PERSON_SKILL', label: '持有指定人物技能' },
+        { value: 'HOLD_BY_CATEGORY', label: '持有指定分类物品' }
+      ]
+    };
+  },
+  created: function () {
+    if (!this.group.numericMode) this.group.numericMode = 'NONE';
+    if (!this.group.prerequisiteMode) this.group.prerequisiteMode = 'NONE';
+    if (!this.group.items) this.group.items = [];
+    if (!this.group.prerequisites) this.group.prerequisites = [];
+  },
+  watch: {
+    'group.numericMode': function (v) {
+      if (v === 'CONFIG' && !(this.group.items || []).length) this.$emit('add-item');
+    },
+    'group.prerequisiteMode': function (v) {
+      if (v === 'CONFIG' && !(this.group.prerequisites || []).length) this.$emit('add-prereq');
+    }
+  }
+};
+
 const ConditionItemEditor = {
   name: 'ConditionItemEditor',
   template: '#condition-item-editor-tpl',
-  components: { AdminSelect: window.AdminSelectComponent },
+  components: { AdminSelect: window.AdminSelectComponent, ReadTypeCascade: ReadTypeCascade },
   props: {
     item: { type: Object, required: true },
     readTypes: { type: Array, default: function () { return []; } },
@@ -2294,11 +2543,12 @@ ConditionItemEditor.legacyToTokens = function (side, it) {
   }
   return [];
 };
+ConditionGroupPanel.components.ConditionItemEditor = ConditionItemEditor;
 
 const SkillCustomInline = {
   name: 'SkillCustomInline',
   template: '#skill-custom-inline-tpl',
-  components: { AdminSelect: window.AdminSelectComponent },
+  components: { AdminSelect: window.AdminSelectComponent, ReadTypeCascade: ReadTypeCascade },
   props: {
     draft: { type: Object, required: true },
     categoryText: { type: String, default: '' },
@@ -2515,7 +2765,9 @@ createApp({
     AdminSelect: window.AdminSelectComponent,
     SkillCustomInline: SkillCustomInline,
     SkillPickerPanel: SkillPickerPanel,
-    ConditionItemEditor: ConditionItemEditor
+    ConditionItemEditor: ConditionItemEditor,
+    ConditionGroupPanel: ConditionGroupPanel,
+    ReadTypeCascade: ReadTypeCascade
   },
   data() {
     return {
@@ -2669,7 +2921,7 @@ createApp({
       showRecipeInlineForm: false,
       showTriggerInlineForm: false,
       showPassiveInlineForm: false,
-      triggerInlineForm: { id: '', itemId: '', triggerMode: 'PRECISE', quickPreset: 'ON_HIT_BY_SKILL', conditionGroups: [], finishedSkillId: '', sort: 0, enabled: 1, remark: '' },
+      triggerInlineForm: { id: '', itemId: '', triggerMode: 'PRECISE', quickPreset: null, conditionGroups: [], finishedSkillId: '', sort: 0, enabled: 1, remark: '' },
       passiveInlineForm: { id: '', itemId: '', passiveSkillId: '', sort: 0, enabled: 1, remark: '' },
       meta: {
         triggerTypes: [], targetTypes: [], effectKinds: [], statRefs: [], outcomeTypes: [], bindTypes: [],
@@ -2697,10 +2949,10 @@ createApp({
       materialForm: { id: '', code: '', name: '', icon: '📦', maxStack: 99, sort: 0, enabled: 1, remark: '' },
       weaponForm: { id: '', itemId: '', code: '', name: '', attack: 10, baseActionValue: 100, damageRatio: 1, consumable: 0, maxUses: null, sort: 0, enabled: 1, remark: '' },
       weaponBasicAttackForm: { id: '', itemId: '', finishedSkillId: '', enabled: 1, remark: '' },
-      weaponUltimateForm: { id: '', itemId: '', triggerMode: 'PRECISE', quickPreset: 'ON_HIT_BY_SKILL', conditionGroups: [], finishedSkillId: '', enabled: 1, remark: '' },
+      weaponUltimateForm: { id: '', itemId: '', triggerMode: 'PRECISE', quickPreset: null, conditionGroups: [], finishedSkillId: '', enabled: 1, remark: '' },
       armorForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
       equipPartForm: { id: '', itemId: '', code: '', name: '', bonusHp: 0, bonusAttack: 0, defense: 0, sort: 0, enabled: 1, remark: '' },
-      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: null, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [], skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL', conditionGroups: [] },
+      finishedSkillForm: { id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null, hitFrequency: 1, maxCastCount: null, maxCastLimited: false, formulas: [], catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL', enabled: 1, remark: '', effects: [], skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: null, conditionGroups: [] },
       passiveSkillForm: { id: '', code: '', name: '', passiveKind: 'NUMERIC', catL1: 'EQUIP', catL2: 'GENERAL', ownerRef: '', conditions: [{ type: 'NONE' }], effects: [], sort: 0, enabled: 1, remark: '' },
       professionForm: { id: '', code: '', name: '', sort: 0, enabled: 1, remark: '' },
       professionSkillForm: { id: '', professionId: '', itemId: '', sort: 0, enabled: 1 },
@@ -3912,8 +4164,9 @@ createApp({
       var payload = this.slotOwnerPayload({
         id: form.id || '',
         slotKind: 'BASIC_ATTACK',
-        triggerMode: 'QUICK',
-        quickPreset: 'ACTION_VALUE_FULL',
+        triggerMode: 'PRECISE',
+        quickPreset: null,
+        conditionGroups: this.actionValueFullConditionGroups(),
         finishedSkillId: form.finishedSkillId,
         enabled: form.enabled != null ? form.enabled : 1,
         remark: form.remark || '',
@@ -3933,15 +4186,12 @@ createApp({
       var options = opts || {};
       var form = this.weaponUltimateForm;
       form.finishedSkillId = skillId || form.finishedSkillId;
-      if (form.triggerMode === 'QUICK' && !form.quickPreset) {
-        return Promise.reject(new Error('请选择快捷预设'));
-      }
       var payload = this.slotOwnerPayload({
         id: form.id || '',
         slotKind: 'ULTIMATE',
-        triggerMode: form.triggerMode || 'PRECISE',
-        quickPreset: form.triggerMode === 'QUICK' ? form.quickPreset : null,
-        conditionGroups: form.triggerMode === 'QUICK' ? null : self.serializeConditionGroups(form.conditionGroups),
+        triggerMode: 'PRECISE',
+        quickPreset: null,
+        conditionGroups: self.serializeConditionGroups(form.conditionGroups),
         finishedSkillId: form.finishedSkillId,
         enabled: form.enabled != null ? form.enabled : 1,
         remark: form.remark || '',
@@ -4211,12 +4461,21 @@ createApp({
       if (value !== undefined) fg._filterDraft = value;
       if (!this.scopeNeedsSkillRef(fg._filterDraft)) fg._filterRefDraft = '';
     },
+    emptyPrerequisite() {
+      return { type: 'HOLD_ITEM', itemId: null, finishedSkillId: null, catL1: null, catL2: null, catL3: null, catL4: null };
+    },
     emptyConditionGroup() {
-      return { items: [this.emptyConditionItem()] };
+      return {
+        numericMode: 'CONFIG',
+        items: [this.emptyConditionItem()],
+        prerequisiteMode: 'NONE',
+        prerequisites: []
+      };
     },
     addConditionGroup(form) {
       if (!form.conditionGroups) form.conditionGroups = [];
       form.conditionGroups.push(this.emptyConditionGroup());
+      this.ensureConditionPickerData();
     },
     removeConditionGroup(form, gi) {
       if (!form.conditionGroups) return;
@@ -4229,15 +4488,48 @@ createApp({
     removeConditionItem(group, ii) {
       if (!group.items) return;
       group.items.splice(ii, 1);
-      if (!group.items.length) group.items.push(this.emptyConditionItem());
+      if (!group.items.length && group.numericMode === 'CONFIG') group.items.push(this.emptyConditionItem());
+    },
+    addPrerequisite(group) {
+      if (!group.prerequisites) group.prerequisites = [];
+      group.prerequisites.push(this.emptyPrerequisite());
+      this.ensureConditionPickerData();
+    },
+    removePrerequisite(group, pi) {
+      if (!group.prerequisites) return;
+      group.prerequisites.splice(pi, 1);
+      if (!group.prerequisites.length && group.prerequisiteMode === 'CONFIG') {
+        group.prerequisites.push(this.emptyPrerequisite());
+      }
+    },
+    ensureConditionPickerData() {
+      if (!this.allItems || !this.allItems.length) this.loadAllItems();
+      if (!this.personSkillGrantOptions || !this.personSkillGrantOptions.length) this.loadPersonSkillGrantOptions();
+      if (!this.categoryMeta || !this.categoryMeta.catL1 || !this.categoryMeta.catL1.length) this.loadV2Meta();
     },
     normalizeConditionGroups(groups) {
       var self = this;
       if (!groups || !groups.length) return [this.emptyConditionGroup()];
       return groups.map(function (g) {
-        var items = (g && g.items && g.items.length) ? g.items : [self.emptyConditionItem()];
+        var rawItems = (g && g.items) || [];
+        var rawPrereqs = (g && g.prerequisites) || [];
+        var numericMode = g.numericMode || (rawItems.length ? 'CONFIG' : 'NONE');
+        var prerequisiteMode = g.prerequisiteMode || (rawPrereqs.length ? 'CONFIG' : 'NONE');
+        var items = [];
+        if (numericMode === 'CONFIG') {
+          items = (rawItems.length ? rawItems : [self.emptyConditionItem()])
+            .map(function (it) { return self.normalizeConditionItem(it); });
+        }
+        var prerequisites = [];
+        if (prerequisiteMode === 'CONFIG') {
+          prerequisites = (rawPrereqs.length ? rawPrereqs : [self.emptyPrerequisite()])
+            .map(function (p) { return Object.assign({}, self.emptyPrerequisite(), p || {}); });
+        }
         return {
-          items: items.map(function (it) { return self.normalizeConditionItem(it); })
+          numericMode: numericMode,
+          items: items,
+          prerequisiteMode: prerequisiteMode,
+          prerequisites: prerequisites
         };
       });
     },
@@ -4245,19 +4537,46 @@ createApp({
       var self = this;
       if (!groups || !groups.length) return [];
       return groups.map(function (g) {
+        var numericMode = g.numericMode || 'NONE';
+        var prerequisiteMode = g.prerequisiteMode || 'NONE';
         return {
-          items: ((g && g.items) || []).map(function (it) { return self.serializeConditionItem(it); })
+          numericMode: numericMode,
+          items: numericMode === 'CONFIG'
+            ? ((g && g.items) || []).map(function (it) { return self.serializeConditionItem(it); })
+            : [],
+          prerequisiteMode: prerequisiteMode,
+          prerequisites: prerequisiteMode === 'CONFIG'
+            ? ((g && g.prerequisites) || []).map(function (p) {
+                return {
+                  type: (p && p.type) || 'HOLD_ITEM',
+                  itemId: (p && p.itemId) || null,
+                  finishedSkillId: (p && p.finishedSkillId) || null,
+                  catL1: (p && p.catL1) || null,
+                  catL2: (p && p.catL2) || null,
+                  catL3: (p && p.catL3) || null,
+                  catL4: (p && p.catL4) || null
+                };
+              })
+            : []
         };
       });
     },
     formatTriggerSlotSummary(t) {
       if (!t) return '—';
-      if (t.triggerMode === 'QUICK' || (!t.triggerMode && t.quickPreset)) {
-        return '快捷 · ' + (t.quickPresetLabel || t.quickPreset || '—');
-      }
-      var mode = t.triggerModeLabel || t.triggerMode || '精准';
       var n = (t.conditionGroups && t.conditionGroups.length) || 0;
-      return mode + ' · ' + n + ' 组条件';
+      return n + ' 组条件';
+    },
+    actionValueFullConditionGroups() {
+      return [{
+        numericMode: 'CONFIG',
+        items: [{
+          op: 'GTE',
+          leftTokens: [{ kind: 'READ', read: 'CHAR_CUR_ACTION' }],
+          rightTokens: [{ kind: 'READ', read: 'CHAR_MAX_ACTION' }]
+        }],
+        prerequisiteMode: 'NONE',
+        prerequisites: []
+      }];
     },
     prepareFinishedSkillDraft(raw) {
       var data = Object.assign({}, raw || {});
@@ -4319,8 +4638,8 @@ createApp({
           id: row.id || '',
           itemId: row.itemId || '',
           monsterId: row.monsterId || '',
-          triggerMode: row.triggerMode || 'PRECISE',
-          quickPreset: row.quickPreset || 'ON_HIT_BY_SKILL',
+          triggerMode: 'PRECISE',
+          quickPreset: null,
           conditionGroups: this.normalizeConditionGroups(row.conditionGroups),
           finishedSkillId: row.finishedSkillId || '',
           sort: row.sort != null ? row.sort : 0,
@@ -4330,24 +4649,23 @@ createApp({
       }
       return {
         id: '', itemId: '', monsterId: '',
-        triggerMode: 'PRECISE', quickPreset: 'ON_HIT_BY_SKILL',
+        triggerMode: 'PRECISE', quickPreset: null,
         conditionGroups: [this.emptyConditionGroup()],
         finishedSkillId: '', sort: 0, enabled: 1, remark: ''
       };
     },
     buildTriggerPayload() {
       var form = this.triggerInlineForm;
-      var payload = {
+      return {
         id: form.id || '',
-        triggerMode: form.triggerMode || 'PRECISE',
-        quickPreset: form.triggerMode === 'QUICK' ? (form.quickPreset || null) : null,
-        conditionGroups: form.triggerMode === 'QUICK' ? null : this.serializeConditionGroups(form.conditionGroups),
+        triggerMode: 'PRECISE',
+        quickPreset: null,
+        conditionGroups: this.serializeConditionGroups(form.conditionGroups),
         finishedSkillId: form.finishedSkillId,
         sort: form.sort != null ? form.sort : 0,
         enabled: form.enabled != null ? form.enabled : 1,
         remark: form.remark || ''
       };
-      return payload;
     },
     loadPassiveMeta() {
       AdminApi.passiveSkillMeta()
@@ -4763,7 +5081,7 @@ createApp({
           this.finishedSkillForm = Object.assign({
             catL1: 'EQUIP', catL2: 'GENERAL', catL3: '通用', catL4: 'CUSTOM',
             formulas: [], effects: [],
-            skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+            skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: null,
             conditionGroups: []
           }, data);
           if (this.finishedSkillForm.catL1 === 'PERSON' && this.finishedSkillForm.catL4 === 'ACTIVE') {
@@ -4902,7 +5220,9 @@ createApp({
           return AdminApi.finishedSkillDetail(row.id).then(function (res) {
             var d = res.data || {};
             if (d.triggerSlotId) {
-              row.triggerText = (d.triggerMode === 'QUICK' ? '快捷' : '精准')
+              row.triggerText = ((d.conditionGroups && d.conditionGroups.length)
+                ? (d.conditionGroups.length + ' 组条件')
+                : '已配置')
                 + (d.skillItemId ? ' · 已绑物品' : '');
             } else {
               row.triggerText = '未配置';
@@ -4931,7 +5251,7 @@ createApp({
           catL1: 'PERSON', catL2: scope.catL2, catL3: scope.ownerRef || '通用', catL4: 'ACTIVE',
           enabled: 1, remark: '', effects: [],
           skillItemId: '', triggerSlotId: '',
-          triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+          triggerMode: 'PRECISE', quickPreset: null,
           conditionGroups: [this.emptyConditionGroup()]
         };
         this.drawerTitle = '新增完整主动技能（扳机组 + 扳机技能）';
@@ -5070,8 +5390,8 @@ createApp({
         return {
           id: row.id,
           itemId: row.itemId,
-          triggerMode: row.triggerMode || 'PRECISE',
-          quickPreset: row.quickPreset || 'ON_HIT_BY_SKILL',
+          triggerMode: 'PRECISE',
+          quickPreset: null,
           conditionGroups: this.normalizeConditionGroups(row.conditionGroups),
           finishedSkillId: row.finishedSkillId || '',
           enabled: row.enabled != null ? row.enabled : 1,
@@ -5080,7 +5400,7 @@ createApp({
       }
       return {
         id: '', itemId: '',
-        triggerMode: 'PRECISE', quickPreset: 'ON_HIT_BY_SKILL',
+        triggerMode: 'PRECISE', quickPreset: null,
         conditionGroups: [this.emptyConditionGroup()],
         finishedSkillId: '', enabled: 1, remark: ''
       };
@@ -5175,11 +5495,13 @@ createApp({
       this.triggerInlineForm.itemId = itemId;
       this.triggerInlineForm.sort = (this.itemTriggers.length + 1);
       this.showTriggerInlineForm = true;
+      this.ensureConditionPickerData();
     },
     editItemTrigger(t) {
       this.resetSkillPickers();
       this.triggerInlineForm = this.applyTriggerInlineForm(t);
       this.showTriggerInlineForm = true;
+      this.ensureConditionPickerData();
     },
     cancelItemTrigger() {
       this.showTriggerInlineForm = false;
@@ -5200,10 +5522,6 @@ createApp({
           payload.slotKind = 'TRAIT_ACTIVE';
           if (!payload.finishedSkillId) {
             self.showToast('请选择扳机技能');
-            return;
-          }
-          if (payload.triggerMode === 'QUICK' && !payload.quickPreset) {
-            self.showToast('请选择快捷预设');
             return;
           }
           return AdminApi.saveTriggerSlot(payload);
@@ -5349,7 +5667,7 @@ createApp({
             id: '', code: '', name: '', targetType: 'FIRST_TARGET', targetParam: null,
             hitFrequency: 1, maxCastCount: null, maxCastLimited: false,
             enabled: 1, remark: '', formulas: [this.emptyFormulaGroup()], effects: [],
-            skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+            skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: null,
             conditionGroups: []
           }, d);
         }
@@ -5459,7 +5777,7 @@ createApp({
         formulas: [], effects: [],
         catL1: 'GENERAL', catL2: 'GENERAL', catL3: '通用', catL4: 'GENERAL',
         enabled: 1, remark: '',
-        skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: 'ON_CAST_SKILL',
+        skillItemId: '', triggerSlotId: '', triggerMode: 'PRECISE', quickPreset: null,
         conditionGroups: []
       };
       this.recipeForm = { id: '', outputItemId: '', sort: 0, enabled: 1, remark: '', materials: [] };
@@ -5608,11 +5926,9 @@ createApp({
         payload.maxCastUnlimited = first.maxCastCount == null;
       }
       if (form.catL1 === 'PERSON' && form.catL4 === 'ACTIVE') {
-        payload.triggerMode = form.triggerMode || 'PRECISE';
-        payload.quickPreset = form.quickPreset || 'ON_CAST_SKILL';
-        payload.conditionGroups = form.triggerMode === 'QUICK'
-          ? null
-          : this.serializeConditionGroups(form.conditionGroups || []);
+        payload.triggerMode = 'PRECISE';
+        payload.quickPreset = null;
+        payload.conditionGroups = this.serializeConditionGroups(form.conditionGroups || []);
         payload.skillItemId = form.skillItemId || '';
         payload.triggerSlotId = form.triggerSlotId || '';
       } else {
@@ -5732,13 +6048,8 @@ createApp({
           }
         }
         if (this.finishedSkillForm.catL1 === 'PERSON' && this.finishedSkillForm.catL4 === 'ACTIVE') {
-          if (!this.finishedSkillForm.triggerMode) {
-            this.showToast('请选择扳机模式');
-            return;
-          }
-          if (this.finishedSkillForm.triggerMode === 'QUICK' && !this.finishedSkillForm.quickPreset) {
-            this.showToast('请选择快捷预设');
-            return;
+          if (!(this.finishedSkillForm.conditionGroups || []).length) {
+            this.finishedSkillForm.conditionGroups = [this.emptyConditionGroup()];
           }
         }
         p = AdminApi.saveFinishedSkill(this.normalizeFinishedSkillPayload(this.finishedSkillForm)).then((res) => {

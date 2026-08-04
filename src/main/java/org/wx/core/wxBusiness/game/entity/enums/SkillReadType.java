@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 
 /**
  * 读取/输出值（扳机条件、公式参数、被动条件共用）。
- * 可为空表示不读取。
  */
 public enum SkillReadType {
 
@@ -38,22 +37,24 @@ public enum SkillReadType {
     ACCUM_SKILL_CAST("累计释放技能次数", 130, false, true, "释放技能"),
     ACCUM_SKILL_HIT("累计被技能命中次数", 140, false, true, "受到技能"),
 
-    /* ---- 角色/装备状态 ---- */
-    CHAR_ATTACK("角色攻击", 210, false, false, "角色属性"),
-    CHAR_MAX_HP("角色最大生命", 220, false, false, "角色属性"),
-    CHAR_DEFENSE("角色防御", 230, false, false, "角色属性"),
-    CHAR_CUR_ACTION("角色当前行动值", 240, false, false, "角色属性"),
-    CHAR_MAX_ACTION("角色最大行动值", 250, false, false, "角色属性"),
-    EQUIP_USES_LEFT("装备剩余使用次数", 260, false, false, "角色属性"),
-    WEAPON_DAMAGE_RATIO("当前武器伤害比（无武器=1）", 270, false, false, "角色属性");
+    /* ---- 角色属性 ---- */
+    CHAR_MAX_HP("角色最大血量", 210, false, false, "角色属性"),
+    CHAR_CUR_HP("角色当前血量", 211, false, false, "角色属性"),
+    CHAR_ATTACK("角色攻击力", 220, false, false, "角色属性"),
+    CHAR_DEFENSE("角色防御力", 230, false, false, "角色属性"),
+    CHAR_MAX_ACTION("角色最大行动值", 240, false, false, "角色属性"),
+    CHAR_CUR_ACTION("角色当前行动值", 250, false, false, "角色属性"),
+
+    /* ---- 武器 ---- */
+    WEAPON_ATTACK("武器攻击力", 310, false, false, "武器"),
+    WEAPON_DAMAGE_RATIO("武器伤害比例", 320, false, false, "武器"),
+    /** 兼容旧名 EQUIP_USES_LEFT */
+    EQUIP_USES_LEFT("武器剩余使用次数", 330, false, false, "武器");
 
     private final String label;
     private final int sort;
-    /** 事件瞬时输出，无事件上下文时可为空 */
     private final boolean eventScoped;
-    /** 需要技能范围过滤（任意/指定扳机等） */
     private final boolean needSkillFilter;
-    /** 下拉分组名 */
     private final String group;
 
     SkillReadType(String label, int sort, boolean eventScoped, boolean needSkillFilter, String group) {

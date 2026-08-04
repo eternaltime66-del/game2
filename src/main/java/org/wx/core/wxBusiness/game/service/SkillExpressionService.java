@@ -2,6 +2,7 @@ package org.wx.core.wxBusiness.game.service;
 
 import org.springframework.stereotype.Component;
 import org.wx.core.wxBusiness.game.entity.BattleUnit;
+import org.wx.core.wxBusiness.game.entity.enums.ConditionZoneMode;
 import org.wx.core.wxBusiness.game.entity.enums.SkillCompareOp;
 import org.wx.core.wxBusiness.game.entity.enums.SkillOperandKind;
 import org.wx.core.wxBusiness.game.entity.enums.SkillReadType;
@@ -9,6 +10,7 @@ import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionItemVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaTokenVo;
+import org.wx.core.wxBusiness.game.entity.skill.SkillPrerequisiteVo;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /** 条件判定 + 公式求值 */
 @Component
@@ -28,11 +31,16 @@ public class SkillExpressionService {
     }
 
     public boolean anyGroupMatch(List<SkillConditionGroupVo> groups, SkillValueReader reader) {
+        return anyGroupMatch(groups, reader, null);
+    }
+
+    public boolean anyGroupMatch(List<SkillConditionGroupVo> groups, SkillValueReader reader,
+                                 Predicate<SkillPrerequisiteVo> prerequisiteChecker) {
         if (groups == null || groups.isEmpty()) {
             return true;
         }
         for (SkillConditionGroupVo group : groups) {
-            if (groupMatch(group, reader)) {
+            if (groupMatch(group, reader, prerequisiteChecker)) {
                 return true;
             }
         }
@@ -40,15 +48,62 @@ public class SkillExpressionService {
     }
 
     public boolean groupMatch(SkillConditionGroupVo group, SkillValueReader reader) {
-        if (group == null || group.getItems() == null || group.getItems().isEmpty()) {
+        return groupMatch(group, reader, null);
+    }
+
+    public boolean groupMatch(SkillConditionGroupVo group, SkillValueReader reader,
+                              Predicate<SkillPrerequisiteVo> prerequisiteChecker) {
+        if (group == null) {
             return true;
         }
-        for (SkillConditionItemVo item : group.getItems()) {
-            if (!itemMatch(item, reader)) {
-                return false;
+        ConditionZoneMode numericMode = resolveNumericMode(group);
+        boolean numericOk = true;
+        if (numericMode == ConditionZoneMode.CONFIG
+                && group.getItems() != null
+                && !group.getItems().isEmpty()) {
+            for (SkillConditionItemVo item : group.getItems()) {
+                if (!itemMatch(item, reader)) {
+                    numericOk = false;
+                    break;
+                }
             }
         }
-        return true;
+
+        ConditionZoneMode prereqMode = resolvePrerequisiteMode(group);
+        boolean prereqOk = true;
+        if (prereqMode == ConditionZoneMode.CONFIG
+                && group.getPrerequisites() != null
+                && !group.getPrerequisites().isEmpty()) {
+            if (prerequisiteChecker == null) {
+                prereqOk = false;
+            } else {
+                for (SkillPrerequisiteVo p : group.getPrerequisites()) {
+                    if (p == null || !prerequisiteChecker.test(p)) {
+                        prereqOk = false;
+                        break;
+                    }
+                }
+            }
+        }
+        return numericOk && prereqOk;
+    }
+
+    private ConditionZoneMode resolveNumericMode(SkillConditionGroupVo group) {
+        if (group.getNumericMode() == null || group.getNumericMode().isBlank()) {
+            return (group.getItems() != null && !group.getItems().isEmpty())
+                    ? ConditionZoneMode.CONFIG
+                    : ConditionZoneMode.NONE;
+        }
+        return ConditionZoneMode.parse(group.getNumericMode());
+    }
+
+    private ConditionZoneMode resolvePrerequisiteMode(SkillConditionGroupVo group) {
+        if (group.getPrerequisiteMode() == null || group.getPrerequisiteMode().isBlank()) {
+            return (group.getPrerequisites() != null && !group.getPrerequisites().isEmpty())
+                    ? ConditionZoneMode.CONFIG
+                    : ConditionZoneMode.NONE;
+        }
+        return ConditionZoneMode.parse(group.getPrerequisiteMode());
     }
 
     public boolean itemMatch(SkillConditionItemVo item, SkillValueReader reader) {
@@ -130,15 +185,14 @@ public class SkillExpressionService {
             return switch (type) {
                 case CHAR_ATTACK -> BigDecimal.valueOf(unit.getAttack() != null ? unit.getAttack() : 0);
                 case CHAR_MAX_HP -> BigDecimal.valueOf(unit.getMaxHp() != null ? unit.getMaxHp() : 0);
+                case CHAR_CUR_HP -> BigDecimal.valueOf(unit.getHp() != null ? unit.getHp() : 0);
                 case CHAR_DEFENSE -> BigDecimal.valueOf(unit.getDefense() != null ? unit.getDefense() : 0);
                 case CHAR_CUR_ACTION -> BigDecimal.valueOf(unit.getActionBar() != null ? unit.getActionBar() : 0);
                 case CHAR_MAX_ACTION -> BigDecimal.valueOf(unit.getActionValue() != null ? unit.getActionValue() : 0);
-                case WEAPON_DAMAGE_RATIO -> {
-                    // 未装备武器时不乘比例：视为 1
-                    yield unit.getWeaponDamageRatio() != null
-                            ? unit.getWeaponDamageRatio()
-                            : BigDecimal.ONE;
-                }
+                case WEAPON_ATTACK -> BigDecimal.valueOf(unit.getWeaponAttack() != null ? unit.getWeaponAttack() : 0);
+                case WEAPON_DAMAGE_RATIO -> unit.getWeaponDamageRatio() != null
+                        ? unit.getWeaponDamageRatio()
+                        : BigDecimal.ONE;
                 case EQUIP_USES_LEFT -> BigDecimal.valueOf(9999);
                 default -> null;
             };

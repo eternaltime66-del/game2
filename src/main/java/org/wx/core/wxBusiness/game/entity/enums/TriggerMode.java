@@ -1,12 +1,12 @@
 package org.wx.core.wxBusiness.game.entity.enums;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/** 扳机槽模式 */
+/** 扳机槽模式（快捷扳机已下线，仅保留精准） */
 public enum TriggerMode {
     PRECISE("精准扳机"),
+    /** @deprecated 兼容旧数据；保存时一律转为 PRECISE */
+    @Deprecated
     QUICK("快捷扳机");
 
     private final String label;
@@ -31,6 +31,6 @@ public enum TriggerMode {
     }
 
     public static List<TriggerMode> all() {
-        return Arrays.stream(values()).collect(Collectors.toList());
+        return List.of(PRECISE);
     }
 }

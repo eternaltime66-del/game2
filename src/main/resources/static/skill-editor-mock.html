@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>技能开发模拟页</title>
+  <style>
+    :root {
+      --bg: #12141a;
+      --panel: #1a1d26;
+      --line: #2e3340;
+      --text: #e6e8ee;
+      --muted: #8b93a7;
+      --accent: #3d9cf0;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: 100%;
+      min-height: 0;
+    }
+    .main {
+      min-width: 0;
+      padding: 16px 20px 40px;
+      overflow: auto;
+    }
+    .main-top {
+      display: flex;
+      flex-direction: column;
+    }
+    .main-top > .line { order: 10; }
+    .main-top > .line.top-title { order: 0; }
+    .main-top > .line.top-kind { order: 1; }
+    .main-top > .line.top-anchor { order: 2; }
+    .main[data-mode="passive"] > .main-top > .line.top-anchor { order: 1; }
+    .main[data-mode="passive"] > .main-top > .line.top-kind { order: 2; }
+    .line {
+      margin-bottom: 12px;
+      color: #c8ccd8;
+    }
+    .line select,
+    .line input[type="number"],
+    .line input[type="text"] {
+      display: block;
+      width: min(720px, 100%);
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+    .line input[type="number"] { width: min(320px, 100%); }
+    .line select:focus,
+    .line input:focus { border-color: var(--accent); }
+    .line select option {
+      background: var(--panel);
+      color: var(--text);
+    }
+    .field-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .active-only.hidden,
+    .passive-only.hidden,
+    .hidden { display: none !important; }
+    .anchor-note {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: #e0b56a;
+      line-height: 1.45;
+    }
+    .read-chip {
+      padding: 7px 10px;
+      margin-bottom: 6px;
+      background: #171a22;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .read-chip.exclusive {
+      border-color: #5a4a2a;
+      background: rgba(240, 198, 116, 0.06);
+    }
+    .read-chip .tag {
+      display: inline-block;
+      font-size: 10px;
+      color: var(--accent);
+      border: 1px solid #355a7a;
+      border-radius: 999px;
+      padding: 1px 6px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .read-chip.exclusive .tag {
+      color: #f0c674;
+      border-color: #5a4a2a;
+    }
+    .block-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .block-hint {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .charge-list, .effect-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 920px;
+    }
+    .charge-row {
+      display: grid;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .charge-row.kind-actor {
+      grid-template-columns: 110px minmax(160px, 1.3fr) 90px 88px 88px auto;
+    }
+    .charge-row.kind-action {
+      grid-template-columns: 72px minmax(180px, 1.2fr) 120px 120px auto;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .kind-tag {
+      font-size: 11px;
+      color: var(--accent);
+      padding: 6px 0;
+    }
+    .charge-row select,
+    .charge-row input {
+      width: 100%;
+      padding: 8px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #171a22;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+    .charge-row select:focus,
+    .charge-row input:focus { border-color: var(--accent); }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: #4a5163; }
+    .btn-danger {
+      color: #e85d5d;
+      background: transparent;
+      border-color: transparent;
+      padding: 6px 8px;
+    }
+    .xy-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .xy-cell { display: flex; flex-direction: column; }
+
+    .effect-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+    .effect-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .effect-head-main {
+      display: grid;
+      grid-template-columns: 72px minmax(120px, 1fr) 110px 120px;
+      gap: 8px;
+      align-items: end;
+      flex: 1;
+      min-width: 0;
+    }
+    .effect-head .title {
+      font-size: 13px;
+      font-weight: 600;
+      padding-bottom: 8px;
+    }
+    .effect-head .xy-cell select,
+    .effect-head .xy-cell input {
+      width: 100%;
+      padding: 8px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #171a22;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+    .effect-head .xy-cell select:focus,
+    .effect-head .xy-cell input:focus { border-color: var(--accent); }
+    .calc {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #14171f;
+      overflow: hidden;
+      max-width: 520px;
+    }
+    .calc-screen {
+      min-height: 72px;
+      padding: 12px 14px;
+      background: #0e1016;
+      border-bottom: 1px solid var(--line);
+    }
+    .calc-screen-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .calc-tokens {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 28px;
+      align-items: center;
+    }
+    .calc-token {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      background: #1c2230;
+    }
+    .calc-token.read { color: #9fd0ff; border-color: #355a7a; }
+    .calc-token.num { color: #d8deea; }
+    .calc-token.op { color: #f0c674; border-color: #5a4a2a; }
+    .calc-token.placeholder { color: var(--muted); border-style: dashed; }
+    .calc-body { padding: 10px; }
+    .calc-section-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin: 4px 0 6px;
+    }
+    .calc-keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .calc-keys.ops {
+      grid-template-columns: repeat(6, 1fr);
+    }
+    .calc-key {
+      border: 1px solid var(--line);
+      background: #1a1d26;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 0;
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .calc-key:hover { border-color: #4a5163; background: #222633; }
+    .calc-key:disabled { opacity: 0.35; cursor: not-allowed; }
+    .calc-key.op { color: #f0c674; }
+    .calc-key.func { color: var(--muted); font-size: 12px; }
+    .calc-key.accent { color: #9fd0ff; }
+    .calc-reads {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .calc-read-btn {
+      border: 1px solid #355a7a;
+      background: rgba(61, 156, 240, 0.08);
+      color: #9fd0ff;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .calc-read-btn:hover { background: rgba(61, 156, 240, 0.16); }
+    .calc-read-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .calc-num-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .calc-num-bar input {
+      width: 100%;
+      padding: 8px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #0e1016;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+    .calc-num-bar input:focus { border-color: var(--accent); }
+
+    .side {
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .side-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .side-head h2 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .side-head p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .side-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 16px 20px;
+    }
+    .group { margin-bottom: 16px; }
+    .group-title {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+    .item {
+      padding: 7px 10px;
+      margin-bottom: 6px;
+      background: #171a22;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .item .sub {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .cascade {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .cascade-row {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 6px;
+      align-items: center;
+    }
+    .cascade-row span {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .cascade-row select {
+      width: 100%;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 12px;
+      color: var(--text);
+      background: #12141a;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      outline: none;
+    }
+    .calc-edit-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .calc-edit-row .calc-key {
+      padding: 8px 12px;
+      flex: 0 0 auto;
+    }
+    .calc-cascade-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #12141a;
+    }
+    .calc-cascade-box .title {
+      font-size: 12px;
+      color: #9fd0ff;
+      margin-bottom: 6px;
+    }
+    @media (max-width: 1100px) {
+      .charge-row.kind-actor,
+      .charge-row.kind-action { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="main" id="mainPanel" data-mode="active">
+      <div class="main-top">
+        <div class="line top-title">这是个技能开发模拟页</div>
+        <div class="line top-kind" id="skillKindLine">
+          <select id="skillKind">
+            <option value="active">达成条件 → 主动产生效果（完整主动技能）</option>
+            <option value="passive">被动触发锚点切入 → 触发被动效果（完整被动技能）</option>
+          </select>
+        </div>
+        <div class="line top-anchor passive-only" id="passiveAnchorBlock">
+          <label class="field-label" for="passiveAnchor">选择一个锚点</label>
+          <select id="passiveAnchor"></select>
+          <p class="anchor-note" id="passiveAnchorNote"></p>
+        </div>
+      </div>
+      <div class="line active-only" id="chargeBlock">
+        <label class="field-label" for="castCost">释放技能所需充能</label>
+        <input type="number" id="castCost" min="0" step="1" placeholder="例如 100" />
+      </div>
+      <div class="line active-only" id="chargeMaxBlock">
+        <label class="field-label" for="chargeMax">最大充能上限</label>
+        <input type="number" id="chargeMax" min="0" step="1" placeholder="例如 100" />
+      </div>
+      <div class="line active-only" id="chargeCondBlock">
+        <div class="block-title">充能条件</div>
+        <p class="block-hint">角色类：首位选角色，每触发 x 次增加 y 充能（「主动技能效果」≠ 完整主动技能）。行动值类：全局，每增加 x 点行动值增加 y 点充能。</p>
+        <div class="charge-list" id="chargeCondList"></div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="btnAddActionCond">+ 添加行动轴充能条件</button>
+          <button type="button" class="btn" id="btnAddActorCond">+ 添加角色充能条件</button>
+        </div>
+      </div>
+
+      <div class="line active-only" id="activeEffectBlock">
+        <div class="block-title">主动技能效果</div>
+        <p class="block-hint">效果列表；每个效果是一个模拟公式编辑器（最多 7 项）。点选读取 / 数字 / 运算符拼公式。</p>
+        <div class="effect-list" id="activeEffectList"></div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="btnAddActiveEffect">+ 增加效果</button>
+        </div>
+      </div>
+
+      <div class="line passive-only" id="passiveSkillFilterBlock">
+        <div class="block-title">锚定技能范围</div>
+        <p class="block-hint">对应文案里的「某技能」：指定某个 / 指定类型 / 全部（模拟选项）。普攻也视为技能。</p>
+        <div class="cascade" id="passiveSkillFilter"></div>
+      </div>
+      <div class="line passive-only" id="passiveEffectBlock">
+        <div class="block-title">被动效果</div>
+        <p class="block-hint">切入锚点后触发的效果（暂复用主动公式编辑器结构）。</p>
+        <div class="effect-list" id="passiveEffectList"></div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="btnAddPassiveEffect">+ 增加效果</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="side-head">
+        <h2 id="sideTitle">全局读取项</h2>
+        <p id="sideSub">四级联动 · 所有锚点可用 · 公式参数同源</p>
+      </div>
+      <div class="side-body">
+        <div id="sideActiveReads">
+          <section class="group">
+            <h3 class="group-title">联动选择</h3>
+            <div class="item">
+              <div class="cascade" id="sideReadCascade"></div>
+              <div class="sub" id="sideReadPreview" style="margin-top:8px"></div>
+            </div>
+          </section>
+          <section class="group">
+            <h3 class="group-title">结构一览</h3>
+            <div class="item">
+              角色属性
+              <span class="sub">自己 / 受击目标 → 最大血量 · 当前血量 · 攻击力</span>
+            </div>
+            <div class="item">
+              人数信息
+              <span class="sub">己方/敌方 · 存活 · 总人数 · 死亡人数</span>
+            </div>
+            <div class="item">
+              自身统计信息
+              <span class="sub">累计受到/造成伤害；累计释放/受到 → 指定效果 / 指定类型 / 全部 → 再选</span>
+            </div>
+          </section>
+        </div>
+        <div id="sidePassiveReads" class="hidden"></div>
+      </div>
+    </aside>
+  </div>
+  <script>
+    (function () {
+      var OP_OPTIONS = [
+        { v: "+", t: "+" },
+        { v: "-", t: "−" },
+        { v: "*", t: "×" },
+        { v: "/", t: "÷" },
+        { v: "(", t: "(" },
+        { v: ")", t: ")" }
+      ];
+      var SLOT_COUNT = 7;
+      var NONE = [{ v: "_", t: "—" }];
+      var SKILL_EFFECTS = [
+        { v: "FX_FIRE", t: "火球效果" },
+        { v: "FX_HEAL", t: "治疗术效果" },
+        { v: "FX_SLASH", t: "挥砍效果" }
+      ];
+      var SKILL_TYPES = [
+        { v: "TYPE_DMG", t: "伤害类" },
+        { v: "TYPE_HEAL", t: "治疗类" },
+        { v: "TYPE_CHARGE", t: "充能类" }
+      ];
+
+      /* 1级大类 → 2级 → 3级 → 4级（技能类再选） */
+      var READ_L1 = [
+        { v: "ATTR", t: "角色属性" },
+        { v: "COUNT", t: "人数信息" },
+        { v: "STAT", t: "自身统计信息" }
+      ];
+      var READ_TREE = {
+        ATTR: {
+          l2: [
+            { v: "SELF", t: "自己" },
+            { v: "HIT_TARGET", t: "受击目标" }
+          ],
+          l3: {
+            SELF: [
+              { v: "MAX_HP", t: "最大血量" },
+              { v: "CUR_HP", t: "当前血量" },
+              { v: "ATTACK", t: "攻击力" }
+            ],
+            HIT_TARGET: [
+              { v: "MAX_HP", t: "最大血量" },
+              { v: "CUR_HP", t: "当前血量" },
+              { v: "ATTACK", t: "攻击力" }
+            ]
+          },
+          l4: {}
+        },
+        COUNT: {
+          l2: [
+            { v: "ALLY_ALIVE", t: "己方存活人数" },
+            { v: "ENEMY_ALIVE", t: "敌方存活人数" },
+            { v: "ALLY_TOTAL", t: "己方总人数" },
+            { v: "ENEMY_TOTAL", t: "敌方总人数" },
+            { v: "ALLY_DEAD", t: "己方死亡人数" },
+            { v: "ENEMY_DEAD", t: "敌方死亡人数" }
+          ],
+          l3: {},
+          l4: {}
+        },
+        STAT: {
+          l2: [
+            { v: "ACCUM_TAKE_DAMAGE", t: "累计受到伤害" },
+            { v: "ACCUM_DEAL_DAMAGE", t: "累计造成伤害" },
+            { v: "ACCUM_CAST", t: "累计释放" },
+            { v: "ACCUM_HIT", t: "累计受到" }
+          ],
+          l3: {
+            ACCUM_CAST: [
+              { v: "ONE_EFFECT", t: "指定主动技能效果" },
+              { v: "TYPE_EFFECT", t: "指定类型主动技能效果" },
+              { v: "ALL_SKILL", t: "全部技能" }
+            ],
+            ACCUM_HIT: [
+              { v: "ONE_EFFECT", t: "指定主动技能效果" },
+              { v: "TYPE_EFFECT", t: "指定类型主动技能效果" },
+              { v: "ALL_SKILL", t: "全部技能" }
+            ]
+          },
+          l4: {
+            "ACCUM_CAST|ONE_EFFECT": SKILL_EFFECTS,
+            "ACCUM_CAST|TYPE_EFFECT": SKILL_TYPES,
+            "ACCUM_CAST|ALL_SKILL": [{ v: "ALL", t: "全部技能" }],
+            "ACCUM_HIT|ONE_EFFECT": SKILL_EFFECTS,
+            "ACCUM_HIT|TYPE_EFFECT": SKILL_TYPES,
+            "ACCUM_HIT|ALL_SKILL": [{ v: "ALL", t: "全部技能" }]
+          }
+        }
+      };
+
+      function fillSelect(sel, options, value) {
+        sel.innerHTML = "";
+        (options || []).forEach(function (o) {
+          var opt = document.createElement("option");
+          opt.value = o.v;
+          opt.textContent = o.t;
+          sel.appendChild(opt);
+        });
+        if (value && options && options.some(function (o) { return o.v === value; })) {
+          sel.value = value;
+        } else if (options && options.length) {
+          sel.value = options[0].v;
+        }
+      }
+
+      function optsL3(branch, l2) {
+        if (branch.l3 && branch.l3[l2]) return branch.l3[l2];
+        return NONE;
+      }
+
+      function optsL4(branch, l2, l3) {
+        var key = l2 + "|" + l3;
+        if (branch.l4 && branch.l4[key]) return branch.l4[key];
+        return NONE;
+      }
+
+      function writeState(state, s1, s2, s3, s4) {
+        state.l1 = s1.value;
+        state.l2 = s2.value;
+        state.l3 = s3.value;
+        state.l4 = s4.value;
+      }
+
+      function bindCascade(container, state, onChange) {
+        state = state || { l1: "ATTR", l2: "SELF", l3: "ATTACK", l4: "_" };
+        container.innerHTML = "";
+
+        function makeRow(label, sel) {
+          var row = document.createElement("div");
+          row.className = "cascade-row";
+          var lab = document.createElement("span");
+          lab.textContent = label;
+          row.appendChild(lab);
+          row.appendChild(sel);
+          container.appendChild(row);
+        }
+
+        var s1 = document.createElement("select");
+        var s2 = document.createElement("select");
+        var s3 = document.createElement("select");
+        var s4 = document.createElement("select");
+        makeRow("1级", s1);
+        makeRow("2级", s2);
+        makeRow("3级", s3);
+        makeRow("4级", s4);
+
+        function sync(keep) {
+          var branch = READ_TREE[s1.value] || READ_TREE.ATTR;
+          fillSelect(s2, branch.l2, keep ? state.l2 : null);
+          fillSelect(s3, optsL3(branch, s2.value), keep ? state.l3 : null);
+          fillSelect(s4, optsL4(branch, s2.value, s3.value), keep ? state.l4 : null);
+          writeState(state, s1, s2, s3, s4);
+          applyDisable();
+          if (onChange) onChange(state);
+        }
+
+        fillSelect(s1, READ_L1, state.l1);
+        s1.addEventListener("change", function () { sync(false); });
+        function applyDisable() {
+          var branch = READ_TREE[s1.value] || READ_TREE.ATTR;
+          var l3 = optsL3(branch, s2.value);
+          var l4 = optsL4(branch, s2.value, s3.value);
+          s3.disabled = !l3.length || (l3.length === 1 && l3[0].v === "_");
+          s4.disabled = !l4.length || (l4.length === 1 && l4[0].v === "_");
+        }
+
+        s2.addEventListener("change", function () {
+          var branch = READ_TREE[s1.value] || READ_TREE.ATTR;
+          fillSelect(s3, optsL3(branch, s2.value), null);
+          fillSelect(s4, optsL4(branch, s2.value, s3.value), null);
+          writeState(state, s1, s2, s3, s4);
+          applyDisable();
+          if (onChange) onChange(state);
+        });
+        s3.addEventListener("change", function () {
+          var branch = READ_TREE[s1.value] || READ_TREE.ATTR;
+          fillSelect(s4, optsL4(branch, s2.value, s3.value), null);
+          writeState(state, s1, s2, s3, s4);
+          applyDisable();
+          if (onChange) onChange(state);
+        });
+        s4.addEventListener("change", function () {
+          writeState(state, s1, s2, s3, s4);
+          if (onChange) onChange(state);
+        });
+        sync(true);
+        return state;
+      }
+
+      function findOpt(list, v) {
+        return (list || []).find(function (o) { return o.v === v; });
+      }
+
+      function cascadeLabel(state) {
+        if (!state) return "";
+        var l1 = findOpt(READ_L1, state.l1);
+        var branch = READ_TREE[state.l1] || READ_TREE.ATTR;
+        var l2 = findOpt(branch.l2, state.l2);
+        var l3 = findOpt(optsL3(branch, state.l2), state.l3);
+        var l4 = findOpt(optsL4(branch, state.l2, state.l3), state.l4);
+        return [l1, l2, l3, l4]
+          .map(function (o) { return o && o.v !== "_" ? o.t : null; })
+          .filter(Boolean)
+          .join(" / ");
+      }
+
+      var sidePreview = document.getElementById("sideReadPreview");
+      bindCascade(document.getElementById("sideReadCascade"), null, function (st) {
+        sidePreview.textContent = "当前：" + cascadeLabel(st);
+      });
+
+      var COMMON_CASTER = [
+        "施法者·最大血量", "施法者·当前血量", "施法者·攻击力",
+        "己方存活人数", "敌方存活人数", "己方总人数", "敌方总人数", "己方死亡人数", "敌方死亡人数"
+      ];
+      var COMMON_SELF = [
+        "自身·最大血量", "自身·当前血量", "自身·攻击力",
+        "己方存活人数", "敌方存活人数", "己方总人数", "敌方总人数", "己方死亡人数", "敌方死亡人数"
+      ];
+      var COMMON_DEALER = [
+        "输出方·最大血量", "输出方·当前血量", "输出方·攻击力",
+        "己方存活人数", "敌方存活人数", "己方总人数", "敌方总人数", "己方死亡人数", "敌方死亡人数"
+      ];
+      var COMMON_RECV = [
+        "接收方·最大血量", "接收方·当前血量", "接收方·攻击力",
+        "己方存活人数", "敌方存活人数", "己方总人数", "敌方总人数", "己方死亡人数", "敌方死亡人数"
+      ];
+
+      /**
+       * 12 被动锚点梳理
+       * common = 通用读取；exclusive = 本锚点专属读取
+       */
+      var PASSIVE_ANCHORS = [
+        {
+          group: "第一组·技能生命周期（普攻也视为技能）",
+          items: [
+            {
+              code: "BEFORE_CAST",
+              label: "释放某技能前（施法者侧）",
+              note: "本层锚点尚未生成伤害 / 治疗数值",
+              common: COMMON_CASTER,
+              exclusive: [
+                "来源技能·配置数据（技能ID/类型/效果配置）",
+                "已确定的目标列表",
+                "各目标·最大血量",
+                "各目标·当前血量",
+                "各目标·攻击力"
+              ]
+            },
+            {
+              code: "AFTER_CAST",
+              label: "释放某技能后（施法者侧）",
+              note: "本层锚点尚未生成伤害 / 治疗数值",
+              common: COMMON_CASTER,
+              exclusive: [
+                "来源技能·配置数据",
+                "目标列表"
+              ]
+            },
+            {
+              code: "BEFORE_HIT_BY_SKILL",
+              label: "被某技能攻击前（受击方侧）",
+              note: "本层锚点尚未生成伤害 / 治疗数值",
+              common: COMMON_SELF,
+              exclusive: [
+                "来源技能信息",
+                "施法者单位信息（最大血量/当前血量/攻击力）",
+                "技能目标列表"
+              ]
+            },
+            {
+              code: "AFTER_HIT_BY_SKILL",
+              label: "被某技能攻击后（受击方侧）",
+              note: "本层锚点尚未生成伤害 / 治疗数值",
+              common: COMMON_SELF,
+              exclusive: [
+                "来源技能信息",
+                "施法者单位信息"
+              ]
+            }
+          ]
+        },
+        {
+          group: "第二组·伤害类业务锚点",
+          items: [
+            {
+              code: "BEFORE_DEAL_DAMAGE",
+              label: "造成伤害前（输出方）",
+              note: "可修改待结算原始伤害值",
+              common: COMMON_DEALER,
+              exclusive: [
+                "来源技能",
+                "施法者单位",
+                "目标单位",
+                "待结算原始伤害值（可修改）"
+              ]
+            },
+            {
+              code: "AFTER_DEAL_DAMAGE",
+              label: "造成伤害后（输出方）",
+              note: "",
+              common: COMMON_DEALER,
+              exclusive: [
+                "来源技能",
+                "目标单位",
+                "最终实际伤害数值"
+              ]
+            },
+            {
+              code: "BEFORE_TAKE_DAMAGE",
+              label: "受到伤害前（接收方）",
+              note: "可修改即将受到的待结算伤害值",
+              common: COMMON_RECV,
+              exclusive: [
+                "伤害来源单位",
+                "来源技能",
+                "即将受到的待结算伤害值（可修改）"
+              ]
+            },
+            {
+              code: "AFTER_TAKE_DAMAGE",
+              label: "受到伤害后（接收方）",
+              note: "",
+              common: COMMON_RECV,
+              exclusive: [
+                "伤害来源",
+                "来源技能",
+                "实际扣减伤害",
+                "血量变化前快照",
+                "血量变化后快照"
+              ]
+            }
+          ]
+        },
+        {
+          group: "第三组·治疗类业务锚点",
+          items: [
+            {
+              code: "BEFORE_DEAL_HEAL",
+              label: "提供治疗前（输出方）",
+              note: "可修改待结算原始治疗量",
+              common: COMMON_DEALER,
+              exclusive: [
+                "来源技能",
+                "治疗目标",
+                "待结算原始治疗量（可修改）"
+              ]
+            },
+            {
+              code: "AFTER_DEAL_HEAL",
+              label: "提供治疗后（输出方）",
+              note: "",
+              common: COMMON_DEALER,
+              exclusive: [
+                "来源技能",
+                "治疗目标",
+                "实际生效治疗量"
+              ]
+            },
+            {
+              code: "BEFORE_TAKE_HEAL",
+              label: "受到治疗前（接收方）",
+              note: "可修改即将获得的待结算治疗量",
+              common: COMMON_RECV,
+              exclusive: [
+                "治疗来源单位",
+                "来源技能",
+                "即将获得的待结算治疗量（可修改）"
+              ]
+            },
+            {
+              code: "AFTER_TAKE_HEAL",
+              label: "受到治疗后（接收方）",
+              note: "",
+              common: COMMON_RECV,
+              exclusive: [
+                "治疗来源",
+                "来源技能",
+                "实际生效治疗数值",
+                "血量变化前快照",
+                "血量变化后快照"
+              ]
+            }
+          ]
+        }
+      ];
+
+      function flatAnchors() {
+        var list = [];
+        PASSIVE_ANCHORS.forEach(function (g) {
+          g.items.forEach(function (it) { list.push(it); });
+        });
+        return list;
+      }
+
+      function findAnchor(code) {
+        return flatAnchors().find(function (a) { return a.code === code; }) || flatAnchors()[0];
+      }
+
+      var kind = document.getElementById("skillKind");
+      var activeBlocks = document.querySelectorAll(".active-only");
+      var passiveBlocks = document.querySelectorAll(".passive-only");
+      var listEl = document.getElementById("chargeCondList");
+      var effectListEl = document.getElementById("activeEffectList");
+      var passiveEffectListEl = document.getElementById("passiveEffectList");
+      var conditions = [];
+      var effects = [];
+      var passiveEffects = [];
+      var currentEffectListEl = effectListEl;
+      var currentEffects = effects;
+
+      var anchorSel = document.getElementById("passiveAnchor");
+      var anchorNote = document.getElementById("passiveAnchorNote");
+      PASSIVE_ANCHORS.forEach(function (g) {
+        var og = document.createElement("optgroup");
+        og.label = g.group;
+        g.items.forEach(function (it) {
+          var opt = document.createElement("option");
+          opt.value = it.code;
+          opt.textContent = it.label;
+          og.appendChild(opt);
+        });
+        anchorSel.appendChild(og);
+      });
+
+      function renderPassiveReads() {
+        var a = findAnchor(anchorSel.value);
+        var box = document.getElementById("sidePassiveReads");
+        box.innerHTML = "";
+
+        var g2 = document.createElement("section");
+        g2.className = "group";
+        g2.innerHTML = "<h3 class=\"group-title\">专属读取列表</h3>";
+        if (!a.exclusive.length) {
+          var empty = document.createElement("div");
+          empty.className = "item";
+          empty.innerHTML = "<span class=\"sub\">本锚点无专属读取</span>";
+          g2.appendChild(empty);
+        } else {
+          a.exclusive.forEach(function (t) {
+            var d = document.createElement("div");
+            d.className = "read-chip exclusive";
+            d.innerHTML = "<span class=\"tag\">专属</span>" + t;
+            g2.appendChild(d);
+          });
+        }
+        box.appendChild(g2);
+      }
+
+      function syncKind() {
+        var isActive = kind.value === "active";
+        document.getElementById("mainPanel").setAttribute("data-mode", isActive ? "active" : "passive");
+        activeBlocks.forEach(function (el) {
+          el.classList.toggle("hidden", !isActive);
+        });
+        passiveBlocks.forEach(function (el) {
+          el.classList.toggle("hidden", isActive);
+        });
+        document.getElementById("sideActiveReads").classList.toggle("hidden", !isActive);
+        document.getElementById("sidePassiveReads").classList.toggle("hidden", isActive);
+        document.getElementById("sideTitle").textContent = isActive ? "全局读取项" : "专属读取";
+        document.getElementById("sideSub").textContent = isActive
+          ? "四级联动 · 所有锚点可用 · 公式参数同源"
+          : (findAnchor(anchorSel.value).label || "随锚点切换");
+        if (!isActive) {
+          anchorNote.textContent = findAnchor(anchorSel.value).note || "";
+          renderPassiveReads();
+        }
+      }
+
+      // 被动「某技能」范围：1级范围 → 2级再选
+      (function initPassiveSkillFilter() {
+        var box = document.getElementById("passiveSkillFilter");
+        var s1 = document.createElement("select");
+        var s2 = document.createElement("select");
+        function row(label, sel) {
+          var r = document.createElement("div");
+          r.className = "cascade-row";
+          var lab = document.createElement("span");
+          lab.textContent = label;
+          r.appendChild(lab);
+          r.appendChild(sel);
+          box.appendChild(r);
+        }
+        row("范围", s1);
+        row("再选", s2);
+        fillSelect(s1, [
+          { v: "ONE", t: "指定某个主动技能效果" },
+          { v: "TYPE", t: "指定类型主动技能效果" },
+          { v: "ALL", t: "全部技能" }
+        ], "ALL");
+        function syncFilter() {
+          if (s1.value === "ONE") fillSelect(s2, SKILL_EFFECTS, null);
+          else if (s1.value === "TYPE") fillSelect(s2, SKILL_TYPES, null);
+          else fillSelect(s2, [{ v: "ALL", t: "全部技能" }], null);
+          s2.disabled = s1.value === "ALL";
+        }
+        s1.addEventListener("change", syncFilter);
+        syncFilter();
+      })();
+
+      anchorSel.addEventListener("change", function () {
+        var a = findAnchor(anchorSel.value);
+        anchorNote.textContent = a.note || "";
+        document.getElementById("sideSub").textContent = a.label || "随锚点切换";
+        renderPassiveReads();
+        renderEffectList(passiveEffectListEl, passiveEffects);
+      });
+
+      var EFFECT_TARGETS = [
+        { v: "ALL_ALLIES", t: "全部己方" },
+        { v: "ALLY_LOWEST_HP", t: "生命值最低己方" },
+        { v: "ENEMY_HIGHEST_HP", t: "生命值最高敌方" },
+        { v: "ALL_ENEMIES", t: "全部敌方" },
+        { v: "RANDOM_ENEMY", t: "随机一个敌方" },
+        { v: "RANDOM_ALLY", t: "随机一个友方" },
+        { v: "ENEMY_FRONT", t: "敌方前排" },
+        { v: "ENEMY_BACK", t: "敌方后排" },
+        { v: "ENEMY_FIRST", t: "敌方首位" }
+      ];
+      var EFFECT_OUTCOMES = [
+        { v: "DAMAGE", t: "伤害" },
+        { v: "HEAL", t: "治疗" }
+      ];
+
+      function emptyEffect() {
+        return {
+          target: "ALL_ENEMIES",
+          outcome: "DAMAGE",
+          hitFrequency: 1,
+          tokens: []
+        };
+      }
+
+      function tokenLabel(tok) {
+        if (!tok) return "";
+        if (tok.kind === "READ") {
+          if (tok.label) return tok.label;
+          return cascadeLabel(tok.cascade || tok) || "读取项";
+        }
+        if (tok.kind === "NUM") return String(tok.v);
+        if (tok.kind === "OP") {
+          var op = OP_OPTIONS.find(function (o) { return o.v === tok.v; });
+          return op ? op.t : tok.v;
+        }
+        return "";
+      }
+
+      function renderEffects() {
+        renderEffectList(currentEffectListEl, currentEffects);
+      }
+
+      function renderEffectList(listRoot, effectArr) {
+        listRoot.innerHTML = "";
+        if (!effectArr.length) {
+          var empty = document.createElement("div");
+          empty.style.color = "var(--muted)";
+          empty.style.fontSize = "12px";
+          empty.textContent = "暂无效果";
+          listRoot.appendChild(empty);
+          return;
+        }
+
+        effectArr.forEach(function (effect, ei) {
+          if (!effect.tokens) effect.tokens = [];
+          if (!effect.target) effect.target = "ALL_ENEMIES";
+          if (!effect.outcome) effect.outcome = "DAMAGE";
+          if (effect.hitFrequency == null || effect.hitFrequency === "") effect.hitFrequency = 1;
+
+          var card = document.createElement("div");
+          card.className = "effect-card";
+
+          var head = document.createElement("div");
+          head.className = "effect-head";
+
+          var headMain = document.createElement("div");
+          headMain.className = "effect-head-main";
+
+          var title = document.createElement("div");
+          title.className = "title";
+          title.textContent = "效果 " + (ei + 1);
+
+          var targetCell = document.createElement("div");
+          targetCell.className = "xy-cell";
+          var targetLab = document.createElement("span");
+          targetLab.className = "xy-label";
+          targetLab.textContent = "目标选择";
+          var targetSel = document.createElement("select");
+          EFFECT_TARGETS.forEach(function (o) {
+            var opt = document.createElement("option");
+            opt.value = o.v;
+            opt.textContent = o.t;
+            targetSel.appendChild(opt);
+          });
+          targetSel.value = effect.target;
+          targetSel.addEventListener("change", function () {
+            effect.target = targetSel.value;
+          });
+          targetCell.appendChild(targetLab);
+          targetCell.appendChild(targetSel);
+
+          var outcomeCell = document.createElement("div");
+          outcomeCell.className = "xy-cell";
+          var outcomeLab = document.createElement("span");
+          outcomeLab.className = "xy-label";
+          outcomeLab.textContent = "效果类型";
+          var outcomeSel = document.createElement("select");
+          EFFECT_OUTCOMES.forEach(function (o) {
+            var opt = document.createElement("option");
+            opt.value = o.v;
+            opt.textContent = o.t;
+            outcomeSel.appendChild(opt);
+          });
+          outcomeSel.value = effect.outcome;
+          outcomeSel.addEventListener("change", function () {
+            effect.outcome = outcomeSel.value;
+          });
+          outcomeCell.appendChild(outcomeLab);
+          outcomeCell.appendChild(outcomeSel);
+
+          var freqCell = document.createElement("div");
+          freqCell.className = "xy-cell";
+          var freqLab = document.createElement("span");
+          freqLab.className = "xy-label";
+          freqLab.textContent = "伤害重复段数";
+          var freqIn = document.createElement("input");
+          freqIn.type = "number";
+          freqIn.min = "1";
+          freqIn.step = "1";
+          freqIn.value = effect.hitFrequency;
+          freqIn.addEventListener("input", function () {
+            var n = parseInt(freqIn.value, 10);
+            effect.hitFrequency = isNaN(n) || n < 1 ? 1 : n;
+          });
+          freqCell.appendChild(freqLab);
+          freqCell.appendChild(freqIn);
+
+          headMain.appendChild(title);
+          headMain.appendChild(targetCell);
+          headMain.appendChild(outcomeCell);
+          headMain.appendChild(freqCell);
+
+          var del = document.createElement("button");
+          del.type = "button";
+          del.className = "btn btn-danger";
+          del.textContent = "删";
+          del.addEventListener("click", function () {
+            effectArr.splice(ei, 1);
+            renderEffectList(listRoot, effectArr);
+          });
+
+          head.appendChild(headMain);
+          head.appendChild(del);
+
+          var calc = document.createElement("div");
+          calc.className = "calc";
+
+          var screen = document.createElement("div");
+          screen.className = "calc-screen";
+          var meta = document.createElement("div");
+          meta.className = "calc-screen-meta";
+          var metaLeft = document.createElement("span");
+          metaLeft.textContent = "公式编辑器";
+          var metaRight = document.createElement("span");
+          var tokensBox = document.createElement("div");
+          tokensBox.className = "calc-tokens";
+
+          function refreshScreen() {
+            metaRight.textContent = effect.tokens.length + " / " + SLOT_COUNT;
+            tokensBox.innerHTML = "";
+            if (!effect.tokens.length) {
+              var ph = document.createElement("span");
+              ph.className = "calc-token placeholder";
+              ph.textContent = "点击下方按钮编辑公式";
+              tokensBox.appendChild(ph);
+            } else {
+              effect.tokens.forEach(function (tok) {
+                var chip = document.createElement("span");
+                chip.className = "calc-token " + (tok.kind === "READ" ? "read" : tok.kind === "NUM" ? "num" : "op");
+                chip.textContent = tokenLabel(tok);
+                tokensBox.appendChild(chip);
+              });
+            }
+            var full = effect.tokens.length >= SLOT_COUNT;
+            calc.querySelectorAll("[data-need-slot]").forEach(function (btn) {
+              btn.disabled = full;
+            });
+          }
+
+          meta.appendChild(metaLeft);
+          meta.appendChild(metaRight);
+          screen.appendChild(meta);
+          screen.appendChild(tokensBox);
+
+          var body = document.createElement("div");
+          body.className = "calc-body";
+
+          function pushToken(tok) {
+            if (effect.tokens.length >= SLOT_COUNT) return;
+            effect.tokens.push(tok);
+            refreshScreen();
+          }
+
+          var opsLabel = document.createElement("div");
+          opsLabel.className = "calc-section-label";
+          opsLabel.textContent = "运算符";
+          var ops = document.createElement("div");
+          ops.className = "calc-keys ops";
+          OP_OPTIONS.forEach(function (o) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "calc-key op";
+            b.setAttribute("data-need-slot", "1");
+            b.textContent = o.t;
+            b.addEventListener("click", function () {
+              pushToken({ kind: "OP", v: o.v });
+            });
+            ops.appendChild(b);
+          });
+
+          var editLabel = document.createElement("div");
+          editLabel.className = "calc-section-label";
+          editLabel.textContent = "编辑";
+          var editRow = document.createElement("div");
+          editRow.className = "calc-edit-row";
+          var backBtn = document.createElement("button");
+          backBtn.type = "button";
+          backBtn.className = "calc-key func";
+          backBtn.textContent = "删除";
+          backBtn.addEventListener("click", function () {
+            effect.tokens.pop();
+            refreshScreen();
+          });
+          var clearBtn = document.createElement("button");
+          clearBtn.type = "button";
+          clearBtn.className = "calc-key func";
+          clearBtn.textContent = "清空";
+          clearBtn.addEventListener("click", function () {
+            effect.tokens = [];
+            refreshScreen();
+          });
+          editRow.appendChild(backBtn);
+          editRow.appendChild(clearBtn);
+
+          var numLabel = document.createElement("div");
+          numLabel.className = "calc-section-label";
+          numLabel.textContent = "数字（键盘输入）";
+          var numBar = document.createElement("div");
+          numBar.className = "calc-num-bar";
+          var numIn = document.createElement("input");
+          numIn.type = "text";
+          numIn.inputMode = "decimal";
+          numIn.placeholder = "用键盘输入数字后点插入";
+          var numBtn = document.createElement("button");
+          numBtn.type = "button";
+          numBtn.className = "calc-key accent";
+          numBtn.setAttribute("data-need-slot", "1");
+          numBtn.textContent = "插入数字";
+          numBtn.style.padding = "8px 12px";
+          function insertNum() {
+            var raw = String(numIn.value || "").trim();
+            if (!raw || isNaN(Number(raw))) return;
+            pushToken({ kind: "NUM", v: raw });
+            numIn.value = "";
+          }
+          numBtn.addEventListener("click", insertNum);
+          numIn.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              insertNum();
+            }
+          });
+          numBar.appendChild(numIn);
+          numBar.appendChild(numBtn);
+
+          var readLabel = document.createElement("div");
+          readLabel.className = "calc-section-label";
+          readLabel.textContent = "读取项（四级联动）";
+
+          var cascadeBox = document.createElement("div");
+          cascadeBox.className = "calc-cascade-box";
+          var cascadeTitle = document.createElement("div");
+          cascadeTitle.className = "title";
+          cascadeTitle.textContent = "选择读取路径";
+          var cascadeBody = document.createElement("div");
+          cascadeBody.className = "cascade";
+          var cascadeHint = document.createElement("div");
+          cascadeHint.className = "sub";
+          cascadeHint.style.margin = "6px 0 0";
+          var cascadeInsert = document.createElement("button");
+          cascadeInsert.type = "button";
+          cascadeInsert.className = "calc-key accent";
+          cascadeInsert.setAttribute("data-need-slot", "1");
+          cascadeInsert.textContent = "插入该读取";
+          cascadeInsert.style.marginTop = "8px";
+          cascadeInsert.style.width = "100%";
+          cascadeBox.appendChild(cascadeTitle);
+          cascadeBox.appendChild(cascadeBody);
+          cascadeBox.appendChild(cascadeHint);
+          cascadeBox.appendChild(cascadeInsert);
+
+          var pendingState = { l1: "ATTR", l2: "SELF", l3: "ATTACK", l4: "_" };
+          pendingState = bindCascade(cascadeBody, pendingState, function (st) {
+            pendingState = st;
+            cascadeHint.textContent = "当前：" + cascadeLabel(st);
+          });
+
+          cascadeInsert.addEventListener("click", function () {
+            pushToken({
+              kind: "READ",
+              cascade: {
+                l1: pendingState.l1,
+                l2: pendingState.l2,
+                l3: pendingState.l3,
+                l4: pendingState.l4
+              }
+            });
+          });
+
+          body.appendChild(opsLabel);
+          body.appendChild(ops);
+          body.appendChild(editLabel);
+          body.appendChild(editRow);
+          body.appendChild(numLabel);
+          body.appendChild(numBar);
+
+          if (listRoot === passiveEffectListEl) {
+            var a = findAnchor(anchorSel.value);
+            var exLabel = document.createElement("div");
+            exLabel.className = "calc-section-label";
+            exLabel.textContent = "本锚点专属读取（可点选插入）";
+            var exReads = document.createElement("div");
+            exReads.className = "calc-reads";
+            a.exclusive.forEach(function (t) {
+              var b = document.createElement("button");
+              b.type = "button";
+              b.className = "calc-read-btn";
+              b.setAttribute("data-need-slot", "1");
+              b.textContent = t;
+              b.addEventListener("click", function () {
+                pushToken({ kind: "READ", label: t });
+              });
+              exReads.appendChild(b);
+            });
+            var commonLabel = document.createElement("div");
+            commonLabel.className = "calc-section-label";
+            commonLabel.textContent = "本锚点通用读取";
+            var commonReads = document.createElement("div");
+            commonReads.className = "calc-reads";
+            a.common.forEach(function (t) {
+              var b = document.createElement("button");
+              b.type = "button";
+              b.className = "calc-read-btn";
+              b.setAttribute("data-need-slot", "1");
+              b.textContent = t;
+              b.addEventListener("click", function () {
+                pushToken({ kind: "READ", label: t });
+              });
+              commonReads.appendChild(b);
+            });
+            body.appendChild(exLabel);
+            body.appendChild(exReads);
+            body.appendChild(commonLabel);
+            body.appendChild(commonReads);
+          } else {
+            body.appendChild(readLabel);
+            body.appendChild(cascadeBox);
+          }
+
+          calc.appendChild(screen);
+          calc.appendChild(body);
+
+          card.appendChild(head);
+          card.appendChild(calc);
+          listRoot.appendChild(card);
+          refreshScreen();
+        });
+      }
+
+      function renderConditions() {
+        listEl.innerHTML = "";
+        if (!conditions.length) {
+          var empty = document.createElement("div");
+          empty.style.color = "var(--muted)";
+          empty.style.fontSize = "12px";
+          empty.textContent = "暂无充能条件";
+          listEl.appendChild(empty);
+          return;
+        }
+        conditions.forEach(function (row, i) {
+          var wrap = document.createElement("div");
+          wrap.className = "charge-row " + (row.kind === "ACTION" ? "kind-action" : "kind-actor");
+
+          function labeledSelect(labelText, options, value, onChange) {
+            var cell = document.createElement("div");
+            cell.className = "xy-cell";
+            var lab = document.createElement("span");
+            lab.className = "xy-label";
+            lab.textContent = labelText;
+            var sel = document.createElement("select");
+            options.forEach(function (o) {
+              var opt = document.createElement("option");
+              opt.value = o.v;
+              opt.textContent = o.t;
+              sel.appendChild(opt);
+            });
+            sel.value = value;
+            sel.addEventListener("change", onChange);
+            cell.appendChild(lab);
+            cell.appendChild(sel);
+            return { cell: cell, sel: sel };
+          }
+
+          function numCell(labelText, key, placeholder) {
+            var cell = document.createElement("div");
+            cell.className = "xy-cell";
+            var lab = document.createElement("span");
+            lab.className = "xy-label";
+            lab.textContent = labelText;
+            var input = document.createElement("input");
+            input.type = "number";
+            input.min = "0";
+            input.step = "1";
+            input.placeholder = placeholder;
+            input.value = row[key] != null ? row[key] : "";
+            input.addEventListener("input", function () {
+              row[key] = input.value;
+            });
+            cell.appendChild(lab);
+            cell.appendChild(input);
+            return cell;
+          }
+
+          var del = document.createElement("button");
+          del.type = "button";
+          del.className = "btn btn-danger";
+          del.textContent = "删";
+          del.addEventListener("click", function () {
+            conditions.splice(i, 1);
+            renderConditions();
+          });
+
+          if (row.kind === "ACTION") {
+            var tag = document.createElement("div");
+            tag.className = "kind-tag";
+            tag.textContent = "全局";
+
+            var desc = document.createElement("div");
+            desc.className = "xy-cell";
+            var dLab = document.createElement("span");
+            dLab.className = "xy-label";
+            dLab.textContent = "条件";
+            var dVal = document.createElement("div");
+            dVal.style.padding = "8px 0";
+            dVal.style.fontSize = "13px";
+            dVal.textContent = "每增加行动值";
+            desc.appendChild(dLab);
+            desc.appendChild(dVal);
+
+            wrap.appendChild(tag);
+            wrap.appendChild(desc);
+            wrap.appendChild(numCell("每增加 x 点行动值", "x", "x"));
+            wrap.appendChild(numCell("增加 y 点充能", "y", "y"));
+            wrap.appendChild(del);
+          } else {
+            function typeOptionsForActor(actorCode) {
+              var opts = [
+                { v: "CAST_ACTIVE_EFFECT", t: "每释放 · 主动技能效果" }
+              ];
+              if (actorCode === "SELF") {
+                opts.push({ v: "TAKE_ACTIVE_EFFECT", t: "每受到 · 主动技能效果" });
+              }
+              return opts;
+            }
+
+            function refillTypeSelect(sel, actorCode, currentType) {
+              var opts = typeOptionsForActor(actorCode);
+              sel.innerHTML = "";
+              opts.forEach(function (o) {
+                var opt = document.createElement("option");
+                opt.value = o.v;
+                opt.textContent = o.t;
+                sel.appendChild(opt);
+              });
+              var ok = opts.some(function (o) { return o.v === currentType; });
+              sel.value = ok ? currentType : opts[0].v;
+              row.type = sel.value;
+            }
+
+            var actor = labeledSelect(
+              "角色",
+              [
+                { v: "ALL_ALLIES", t: "所有己方" },
+                { v: "ALL_ENEMIES", t: "所有敌方" },
+                { v: "SELF", t: "自己" }
+              ],
+              row.actor || "SELF",
+              function () {
+                row.actor = actor.sel.value;
+                refillTypeSelect(type.sel, row.actor, row.type);
+              }
+            );
+
+            var type = labeledSelect(
+              "条件",
+              typeOptionsForActor(row.actor || "SELF"),
+              row.type || "CAST_ACTIVE_EFFECT",
+              function () { row.type = type.sel.value; }
+            );
+            refillTypeSelect(type.sel, row.actor || "SELF", row.type || "CAST_ACTIVE_EFFECT");
+
+            var scope = labeledSelect(
+              "范围",
+              [
+                { v: "ONE", t: "某个" },
+                { v: "SOME", t: "某些" },
+                { v: "ALL", t: "全部" }
+              ],
+              row.scope || "ALL",
+              function () { row.scope = scope.sel.value; }
+            );
+
+            wrap.appendChild(actor.cell);
+            wrap.appendChild(type.cell);
+            wrap.appendChild(scope.cell);
+            wrap.appendChild(numCell("每触发 x 次", "x", "x"));
+            wrap.appendChild(numCell("增加 y 充能", "y", "y"));
+            wrap.appendChild(del);
+          }
+
+          listEl.appendChild(wrap);
+        });
+      }
+
+      document.getElementById("btnAddActionCond").addEventListener("click", function () {
+        conditions.push({ kind: "ACTION", x: "", y: "" });
+        renderConditions();
+      });
+      document.getElementById("btnAddActorCond").addEventListener("click", function () {
+        conditions.push({
+          kind: "ACTOR",
+          actor: "SELF",
+          type: "CAST_ACTIVE_EFFECT",
+          scope: "ALL",
+          x: "",
+          y: ""
+        });
+        renderConditions();
+      });
+      document.getElementById("btnAddActiveEffect").addEventListener("click", function () {
+        effects.push(emptyEffect());
+        renderEffectList(effectListEl, effects);
+      });
+      document.getElementById("btnAddPassiveEffect").addEventListener("click", function () {
+        passiveEffects.push(emptyEffect());
+        renderEffectList(passiveEffectListEl, passiveEffects);
+      });
+
+      kind.addEventListener("change", function () {
+        syncKind();
+        if (kind.value === "active") {
+          currentEffectListEl = effectListEl;
+          currentEffects = effects;
+        } else {
+          currentEffectListEl = passiveEffectListEl;
+          currentEffects = passiveEffects;
+        }
+      });
+      syncKind();
+      renderConditions();
+      renderEffectList(effectListEl, effects);
+      renderEffectList(passiveEffectListEl, passiveEffects);
+    })();
+  </script>
+</body>
+</html>

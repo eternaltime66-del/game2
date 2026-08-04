@@ -55,10 +55,10 @@ public class SkillExpressionService {
         if (item == null || item.getOp() == null) {
             return true;
         }
-        BigDecimal left = resolveOperand(item.getLeftKind(), item.getLeftRead(), item.getLeftFilter(),
-                item.getLeftFilterRef(), item.getLeftConst(), reader);
-        BigDecimal right = resolveOperand(item.getRightKind(), item.getRightRead(), item.getRightFilter(),
-                item.getRightFilterRef(), item.getRightConst(), reader);
+        BigDecimal left = resolveConditionSide(item.getLeftTokens(), item.getLeftKind(), item.getLeftRead(),
+                item.getLeftFilter(), item.getLeftFilterRef(), item.getLeftConst(), reader);
+        BigDecimal right = resolveConditionSide(item.getRightTokens(), item.getRightKind(), item.getRightRead(),
+                item.getRightFilter(), item.getRightFilterRef(), item.getRightConst(), reader);
         if (left == null || right == null) {
             return false;
         }
@@ -75,6 +75,16 @@ public class SkillExpressionService {
             case MOD -> right.compareTo(BigDecimal.ZERO) != 0
                     && left.remainder(right).compareTo(BigDecimal.ZERO) == 0;
         };
+    }
+
+    /** 优先公式 token；无 token 时回退旧 READ/CONST */
+    private BigDecimal resolveConditionSide(List<SkillFormulaTokenVo> tokens, String kind, String read,
+                                            String filter, String filterRef, BigDecimal constant,
+                                            SkillValueReader reader) {
+        if (tokens != null && !tokens.isEmpty()) {
+            return evalTokens(tokens, reader);
+        }
+        return resolveOperand(kind, read, filter, filterRef, constant, reader);
     }
 
     public BigDecimal evalFormula(SkillFormulaGroupVo formula, SkillValueReader reader) {

@@ -1265,6 +1265,57 @@ body.admin-body .bg-glow {
   min-height: 0;
 }
 
+.condition-compare-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, 140px) 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.condition-formula-side .formula-sub-label {
+  margin-bottom: 6px;
+}
+
+.condition-op-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 22px;
+}
+
+.condition-op-col > label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.condition-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .condition-compare-row {
+    grid-template-columns: 1fr;
+  }
+  .condition-op-col {
+    padding-top: 0;
+  }
+}
+
+.admin-select-group {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
 .admin-select-option {
   width: 100%;
   display: flex;

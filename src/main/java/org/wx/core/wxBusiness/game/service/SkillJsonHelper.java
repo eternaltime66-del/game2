@@ -11,6 +11,7 @@ import org.wx.core.wxBusiness.game.entity.enums.TriggerQuickPreset;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillConditionItemVo;
 import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaGroupVo;
+import org.wx.core.wxBusiness.game.entity.skill.SkillFormulaTokenVo;
 import org.wx.core.wxBusiness.game.entity.skill.PassiveConditionVo;
 import org.wx.core.wxBusiness.game.entity.skill.PassiveEffectVo;
 
@@ -61,17 +62,36 @@ public class SkillJsonHelper {
             return defaultConditionGroups();
         }
         SkillConditionItemVo item = new SkillConditionItemVo();
+        item.setOp(preset == TriggerQuickPreset.ACTION_VALUE_FULL
+                ? SkillCompareOp.GTE.name()
+                : SkillCompareOp.MOD.name());
+
+        SkillFormulaTokenVo left = new SkillFormulaTokenVo();
+        left.setKind("READ");
+        left.setRead(preset.getReadType().name());
+        if (preset.getScopeFilter() != null) {
+            left.setFilter(preset.getScopeFilter().name());
+        }
+        item.setLeftTokens(List.of(left));
+        // 兼容旧读取路径
         item.setLeftKind(SkillOperandKind.READ.name());
         item.setLeftRead(preset.getReadType().name());
         if (preset.getScopeFilter() != null) {
             item.setLeftFilter(preset.getScopeFilter().name());
         }
+
         if (preset == TriggerQuickPreset.ACTION_VALUE_FULL) {
-            item.setOp(SkillCompareOp.GTE.name());
+            SkillFormulaTokenVo right = new SkillFormulaTokenVo();
+            right.setKind("READ");
+            right.setRead(SkillReadType.CHAR_MAX_ACTION.name());
+            item.setRightTokens(List.of(right));
             item.setRightKind(SkillOperandKind.READ.name());
             item.setRightRead(SkillReadType.CHAR_MAX_ACTION.name());
         } else {
-            item.setOp(SkillCompareOp.MOD.name());
+            SkillFormulaTokenVo right = new SkillFormulaTokenVo();
+            right.setKind("CONST");
+            right.setValue(BigDecimal.ONE);
+            item.setRightTokens(List.of(right));
             item.setRightKind(SkillOperandKind.CONST.name());
             item.setRightConst(BigDecimal.ONE);
         }

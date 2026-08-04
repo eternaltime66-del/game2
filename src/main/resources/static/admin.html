@@ -1172,45 +1172,7 @@
                       <span>条件组 {{ gi + 1 }}</span>
                       <button type="button" class="btn-mini danger" @click="removeConditionGroup(weaponUltimateForm, gi)">删组</button>
                     </div>
-                    <div class="form-grid" v-for="(it, ii) in g.items" :key="'ui'+ii">
-                      <div class="field"><label>左</label>
-                        <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
-                      </div>
-                      <template v-if="it.leftKind === 'READ'">
-                        <div class="field"><label>左·读取</label>
-                          <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
-                        </div>
-                        <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
-                          <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
-                        </div>
-                        <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
-                          <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                        </div>
-                      </template>
-                      <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
-                      <div class="field"><label>判定</label>
-                        <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
-                      </div>
-                      <div class="field"><label>右</label>
-                        <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
-                      </div>
-                      <template v-if="it.rightKind === 'READ'">
-                        <div class="field"><label>右·读取</label>
-                          <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
-                        </div>
-                        <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
-                          <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
-                        </div>
-                        <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
-                          <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                        </div>
-                      </template>
-                      <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
-                      <div class="field full" style="display:flex;gap:8px">
-                        <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                        <button type="button" class="btn-mini danger" @click="removeConditionItem(g, ii)">删条件</button>
-                      </div>
-                    </div>
+                    <condition-item-editor v-for="(it, ii) in g.items" :key="'ui'+ii" :item="it" :read-types="meta.readTypes" :compare-ops="meta.compareOps" :skill-scope-cast="meta.skillScopeCast" :skill-scope-hit="meta.skillScopeHit" :finished-skill-options="finishedSkillSelectOptions" @add="addConditionItem(g)" @remove="removeConditionItem(g, ii)" />
                   </div>
                 </div>
                 <div class="field full"><label>触发扳机技能</label>
@@ -1258,45 +1220,7 @@
                       <span>条件组 {{ gi + 1 }}</span>
                       <button type="button" class="btn-mini danger" @click="removeConditionGroup(triggerInlineForm, gi)">删组</button>
                     </div>
-                    <div class="form-grid" v-for="(it, ii) in g.items" :key="'ti'+ii">
-                      <div class="field"><label>左</label>
-                        <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
-                      </div>
-                      <template v-if="it.leftKind === 'READ'">
-                        <div class="field"><label>左·读取</label>
-                          <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
-                        </div>
-                        <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
-                          <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
-                        </div>
-                        <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
-                          <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                        </div>
-                      </template>
-                      <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
-                      <div class="field"><label>判定</label>
-                        <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
-                      </div>
-                      <div class="field"><label>右</label>
-                        <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
-                      </div>
-                      <template v-if="it.rightKind === 'READ'">
-                        <div class="field"><label>右·读取</label>
-                          <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
-                        </div>
-                        <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
-                          <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
-                        </div>
-                        <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
-                          <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                        </div>
-                      </template>
-                      <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
-                      <div class="field full" style="display:flex;gap:8px">
-                        <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                        <button type="button" class="btn-mini danger" @click="removeConditionItem(g, ii)">删条件</button>
-                      </div>
-                    </div>
+                    <condition-item-editor v-for="(it, ii) in g.items" :key="'ti'+ii" :item="it" :read-types="meta.readTypes" :compare-ops="meta.compareOps" :skill-scope-cast="meta.skillScopeCast" :skill-scope-hit="meta.skillScopeHit" :finished-skill-options="finishedSkillSelectOptions" @add="addConditionItem(g)" @remove="removeConditionItem(g, ii)" />
                   </div>
                 </div>
                 <div class="field full"><label>触发扳机技能</label>
@@ -1444,45 +1368,7 @@
                   <span>条件组 {{ gi + 1 }}</span>
                   <button type="button" class="btn-mini danger" @click="removeConditionGroup(finishedSkillForm, gi)">删组</button>
                 </div>
-                <div class="form-grid" v-for="(it, ii) in g.items" :key="'pfi'+ii">
-                  <div class="field"><label>左</label>
-                    <admin-select v-model="it.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'left', v)" />
-                  </div>
-                  <template v-if="it.leftKind === 'READ'">
-                    <div class="field"><label>左·读取</label>
-                      <admin-select v-model="it.leftRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'left', v)" />
-                    </div>
-                    <div class="field full" v-if="readNeedsSkillFilter(it.leftRead)"><label>左·技能范围</label>
-                      <admin-select v-model="it.leftFilter" :options="skillScopeOptionsForRead(it.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'left', v)" />
-                    </div>
-                    <div class="field full" v-if="scopeNeedsSkillRef(it.leftFilter)"><label>左·指定技能</label>
-                      <admin-select v-model="it.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                    </div>
-                  </template>
-                  <div class="field" v-else><label>左·定值</label><input v-model.number="it.leftConst" type="number" step="0.01"></div>
-                  <div class="field"><label>判定</label>
-                    <admin-select v-model="it.op" :options="meta.compareOps" value-key="code" label-key="label" />
-                  </div>
-                  <div class="field"><label>右</label>
-                    <admin-select v-model="it.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(it, 'right', v)" />
-                  </div>
-                  <template v-if="it.rightKind === 'READ'">
-                    <div class="field"><label>右·读取</label>
-                      <admin-select v-model="it.rightRead" :options="meta.readTypes" value-key="code" label-key="label" searchable @update:modelValue="(v) => onConditionReadChange(it, 'right', v)" />
-                    </div>
-                    <div class="field full" v-if="readNeedsSkillFilter(it.rightRead)"><label>右·技能范围</label>
-                      <admin-select v-model="it.rightFilter" :options="skillScopeOptionsForRead(it.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(it, 'right', v)" />
-                    </div>
-                    <div class="field full" v-if="scopeNeedsSkillRef(it.rightFilter)"><label>右·指定技能</label>
-                      <admin-select v-model="it.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                    </div>
-                  </template>
-                  <div class="field" v-else><label>右·定值</label><input v-model.number="it.rightConst" type="number" step="0.01"></div>
-                  <div class="field full" style="display:flex;gap:8px">
-                    <button type="button" class="btn-mini" @click="addConditionItem(g)">+ 条件</button>
-                    <button type="button" class="btn-mini danger" @click="removeConditionItem(g, ii)">删条件</button>
-                  </div>
-                </div>
+                <condition-item-editor v-for="(it, ii) in g.items" :key="'pfi'+ii" :item="it" :read-types="meta.readTypes" :compare-ops="meta.compareOps" :skill-scope-cast="meta.skillScopeCast" :skill-scope-hit="meta.skillScopeHit" :finished-skill-options="finishedSkillSelectOptions" @add="addConditionItem(g)" @remove="removeConditionItem(g, ii)" />
               </div>
             </div>
           </template>
@@ -1612,39 +1498,15 @@
                   <admin-select v-model="c.equipItemId" :options="itemSelectOptions" value-key="value" label-key="label" placeholder="选择装备" searchable />
                 </div>
                 <template v-if="c.type === 'COMPARE'">
-                  <div class="field"><label>左·类型</label>
-                    <admin-select v-model="c.leftKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(c, 'left', v)" />
-                  </div>
-                  <template v-if="c.leftKind === 'READ'">
-                    <div class="field"><label>左·读取</label>
-                      <admin-select v-model="c.leftRead" :options="meta.readTypes" value-key="code" label-key="label" @update:modelValue="(v) => onConditionReadChange(c, 'left', v)" />
-                    </div>
-                    <div class="field full" v-if="readNeedsSkillFilter(c.leftRead)"><label>左·技能范围</label>
-                      <admin-select v-model="c.leftFilter" :options="skillScopeOptionsForRead(c.leftRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(c, 'left', v)" />
-                    </div>
-                    <div class="field full" v-if="scopeNeedsSkillRef(c.leftFilter)"><label>左·指定技能</label>
-                      <admin-select v-model="c.leftFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                    </div>
-                  </template>
-                  <div class="field" v-else><label>左·定值</label><input v-model.number="c.leftConst" type="number" step="0.01"></div>
-                  <div class="field"><label>判定</label>
-                    <admin-select v-model="c.op" :options="meta.compareOps" value-key="code" label-key="label" />
-                  </div>
-                  <div class="field"><label>右·类型</label>
-                    <admin-select v-model="c.rightKind" :options="operandKindOptions" value-key="value" label-key="label" @update:modelValue="(v) => onConditionKindChange(c, 'right', v)" />
-                  </div>
-                  <template v-if="c.rightKind === 'READ'">
-                    <div class="field"><label>右·读取</label>
-                      <admin-select v-model="c.rightRead" :options="meta.readTypes" value-key="code" label-key="label" @update:modelValue="(v) => onConditionReadChange(c, 'right', v)" />
-                    </div>
-                    <div class="field full" v-if="readNeedsSkillFilter(c.rightRead)"><label>右·技能范围</label>
-                      <admin-select v-model="c.rightFilter" :options="skillScopeOptionsForRead(c.rightRead)" value-key="code" label-key="label" @update:modelValue="(v) => onConditionFilterChange(c, 'right', v)" />
-                    </div>
-                    <div class="field full" v-if="scopeNeedsSkillRef(c.rightFilter)"><label>右·指定技能</label>
-                      <admin-select v-model="c.rightFilterRef" :options="finishedSkillSelectOptions" value-key="value" label-key="label" searchable placeholder="选择技能" />
-                    </div>
-                  </template>
-                  <div class="field" v-else><label>右·定值</label><input v-model.number="c.rightConst" type="number" step="0.01"></div>
+                  <condition-item-editor
+                    :item="c"
+                    :read-types="meta.readTypes"
+                    :compare-ops="meta.compareOps"
+                    :skill-scope-cast="meta.skillScopeCast"
+                    :skill-scope-hit="meta.skillScopeHit"
+                    :finished-skill-options="finishedSkillSelectOptions"
+                    :hide-actions="true"
+                  />
                 </template>
               </div>
             </div>
@@ -2025,6 +1887,116 @@
   <script src="/js/admin-select.js"></script>
   <script src="/js/config.js"></script>
 <script src="/js/admin-api.js"></script>
+<script type="text/x-template" id="condition-item-editor-tpl">
+  <div class="condition-compare-row">
+    <div class="condition-formula-side">
+      <div class="formula-sub-label">左·公式</div>
+      <div class="formula-expr-box" @click.stop>
+        <template v-if="(left.tokens || []).length">
+          <button
+            v-for="(tk, ti) in left.tokens"
+            :key="'L'+ti"
+            type="button"
+            class="formula-token-chip"
+            :class="'kind-' + (tk.kind || '').toLowerCase()"
+            title="点击删除该项"
+            @click="removeToken(left, ti)"
+          >{{ tokenLabel(tk) }}</button>
+        </template>
+        <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
+      </div>
+      <div class="formula-keypad">
+        <button type="button" class="formula-key" @click="pushParen(left,'LPAREN')">(</button>
+        <button type="button" class="formula-key" @click="pushParen(left,'RPAREN')">)</button>
+        <button type="button" class="formula-key op" @click="pushOp(left,'+')">+</button>
+        <button type="button" class="formula-key op" @click="pushOp(left,'-')">−</button>
+        <button type="button" class="formula-key op" @click="pushOp(left,'*')">×</button>
+        <button type="button" class="formula-key op" @click="pushOp(left,'/')">÷</button>
+        <button type="button" class="formula-key danger" @click="popToken(left)">⌫</button>
+      </div>
+      <div class="formula-param-row">
+        <span class="formula-sub-label">参数</span>
+        <div class="formula-param-mode">
+          <button type="button" class="formula-pill" :class="{ active: left._paramMode !== 'READ' }" @click="left._paramMode = 'CONST'">定值</button>
+          <button type="button" class="formula-pill" :class="{ active: left._paramMode === 'READ' }" @click="left._paramMode = 'READ'">读取</button>
+        </div>
+        <div class="formula-param-input" v-if="left._paramMode !== 'READ'">
+          <input v-model.number="left._constDraft" type="number" step="0.01" placeholder="输入数值">
+          <button type="button" class="btn-mini formula-add-btn" @click="pushConst(left)">加入</button>
+        </div>
+        <div class="formula-param-input formula-param-input-stack" v-else>
+          <div class="formula-param-select">
+            <admin-select v-model="left._readDraft" :options="readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraft(left, v)" />
+          </div>
+          <div class="formula-param-select" v-if="needsFilter(left._readDraft)">
+            <admin-select v-model="left._filterDraft" :options="scopeOptions(left._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(left, v)" />
+          </div>
+          <div class="formula-param-select" v-if="needsSkillRef(left._filterDraft)">
+            <admin-select v-model="left._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+          </div>
+          <button type="button" class="btn-mini formula-add-btn" @click="pushRead(left)">加入</button>
+        </div>
+      </div>
+    </div>
+    <div class="condition-op-col">
+      <label>判定</label>
+      <admin-select v-model="item.op" :options="compareOps" value-key="code" label-key="label" />
+    </div>
+    <div class="condition-formula-side">
+      <div class="formula-sub-label">右·公式</div>
+      <div class="formula-expr-box" @click.stop>
+        <template v-if="(right.tokens || []).length">
+          <button
+            v-for="(tk, ti) in right.tokens"
+            :key="'R'+ti"
+            type="button"
+            class="formula-token-chip"
+            :class="'kind-' + (tk.kind || '').toLowerCase()"
+            title="点击删除该项"
+            @click="removeToken(right, ti)"
+          >{{ tokenLabel(tk) }}</button>
+        </template>
+        <span v-else class="formula-expr-placeholder">点击下方按键组合公式</span>
+      </div>
+      <div class="formula-keypad">
+        <button type="button" class="formula-key" @click="pushParen(right,'LPAREN')">(</button>
+        <button type="button" class="formula-key" @click="pushParen(right,'RPAREN')">)</button>
+        <button type="button" class="formula-key op" @click="pushOp(right,'+')">+</button>
+        <button type="button" class="formula-key op" @click="pushOp(right,'-')">−</button>
+        <button type="button" class="formula-key op" @click="pushOp(right,'*')">×</button>
+        <button type="button" class="formula-key op" @click="pushOp(right,'/')">÷</button>
+        <button type="button" class="formula-key danger" @click="popToken(right)">⌫</button>
+      </div>
+      <div class="formula-param-row">
+        <span class="formula-sub-label">参数</span>
+        <div class="formula-param-mode">
+          <button type="button" class="formula-pill" :class="{ active: right._paramMode !== 'READ' }" @click="right._paramMode = 'CONST'">定值</button>
+          <button type="button" class="formula-pill" :class="{ active: right._paramMode === 'READ' }" @click="right._paramMode = 'READ'">读取</button>
+        </div>
+        <div class="formula-param-input" v-if="right._paramMode !== 'READ'">
+          <input v-model.number="right._constDraft" type="number" step="0.01" placeholder="输入数值">
+          <button type="button" class="btn-mini formula-add-btn" @click="pushConst(right)">加入</button>
+        </div>
+        <div class="formula-param-input formula-param-input-stack" v-else>
+          <div class="formula-param-select">
+            <admin-select v-model="right._readDraft" :options="readTypes" value-key="code" label-key="label" placeholder="选择输出/读取值" searchable @update:modelValue="(v) => onReadDraft(right, v)" />
+          </div>
+          <div class="formula-param-select" v-if="needsFilter(right._readDraft)">
+            <admin-select v-model="right._filterDraft" :options="scopeOptions(right._readDraft)" value-key="code" label-key="label" placeholder="技能范围" @update:modelValue="(v) => onFilterDraft(right, v)" />
+          </div>
+          <div class="formula-param-select" v-if="needsSkillRef(right._filterDraft)">
+            <admin-select v-model="right._filterRefDraft" :options="finishedSkillOptions" value-key="value" label-key="label" searchable placeholder="指定技能" />
+          </div>
+          <button type="button" class="btn-mini formula-add-btn" @click="pushRead(right)">加入</button>
+        </div>
+      </div>
+    </div>
+    <div class="condition-actions" v-if="!hideActions">
+      <button type="button" class="btn-mini" @click="$emit('add')">+ 条件</button>
+      <button type="button" class="btn-mini danger" @click="$emit('remove')">删条件</button>
+    </div>
+  </div>
+</script>
 <script type="text/x-template" id="skill-custom-inline-tpl">
   <div class="skill-custom-panel">
     <div class="level-tree-compact">扳机技能 · {{ categoryText }} · 发动上限默认无限</div>
@@ -2171,6 +2143,158 @@
   </div>
 </script>
 <script>
+const ConditionItemEditor = {
+  name: 'ConditionItemEditor',
+  template: '#condition-item-editor-tpl',
+  components: { AdminSelect: window.AdminSelectComponent },
+  props: {
+    item: { type: Object, required: true },
+    readTypes: { type: Array, default: function () { return []; } },
+    compareOps: { type: Array, default: function () { return []; } },
+    skillScopeCast: { type: Array, default: function () { return []; } },
+    skillScopeHit: { type: Array, default: function () { return []; } },
+    finishedSkillOptions: { type: Array, default: function () { return []; } },
+    hideActions: { type: Boolean, default: false }
+  },
+  emits: ['add', 'remove'],
+  computed: {
+    left: function () {
+      this.ensureSides();
+      return this.item.leftFormula;
+    },
+    right: function () {
+      this.ensureSides();
+      return this.item.rightFormula;
+    }
+  },
+  created: function () {
+    this.ensureSides();
+  },
+  methods: {
+    ensureSides: function () {
+      var it = this.item;
+      if (!it) return;
+      if (!it.leftFormula) {
+        it.leftFormula = ConditionItemEditor.tokensToDraft(it.leftTokens || ConditionItemEditor.legacyToTokens('left', it));
+      }
+      if (!it.rightFormula) {
+        it.rightFormula = ConditionItemEditor.tokensToDraft(it.rightTokens || ConditionItemEditor.legacyToTokens('right', it));
+      }
+      if (!it.leftFormula.tokens) it.leftFormula.tokens = [];
+      if (!it.rightFormula.tokens) it.rightFormula.tokens = [];
+      it.leftTokens = it.leftFormula.tokens;
+      it.rightTokens = it.rightFormula.tokens;
+    },
+    needsFilter: function (code) {
+      return code === 'ACCUM_SKILL_CAST' || code === 'ACCUM_SKILL_HIT';
+    },
+    scopeOptions: function (code) {
+      if (code === 'ACCUM_SKILL_CAST') return this.skillScopeCast || [];
+      if (code === 'ACCUM_SKILL_HIT') return this.skillScopeHit || [];
+      return [];
+    },
+    needsSkillRef: function (filterCode) {
+      return !!(filterCode && String(filterCode).indexOf('SPECIFIC_') === 0);
+    },
+    onReadDraft: function (side, value) {
+      if (value !== undefined) side._readDraft = value;
+      if (this.needsFilter(side._readDraft)) {
+        var opts = this.scopeOptions(side._readDraft);
+        side._filterDraft = opts.length ? opts[0].code : '';
+      } else {
+        side._filterDraft = '';
+      }
+      side._filterRefDraft = '';
+    },
+    onFilterDraft: function (side, value) {
+      if (value !== undefined) side._filterDraft = value;
+      if (!this.needsSkillRef(side._filterDraft)) side._filterRefDraft = '';
+    },
+    tokenLabel: function (tk) {
+      if (!tk) return '';
+      if (tk.kind === 'CONST') return tk.value != null ? String(tk.value) : '0';
+      if (tk.kind === 'OP') return tk.op || '';
+      if (tk.kind === 'LPAREN') return '(';
+      if (tk.kind === 'RPAREN') return ')';
+      if (tk.kind === 'READ') {
+        var hit = (this.readTypes || []).find(function (x) { return x.code === tk.read; });
+        var label = hit ? hit.label : (tk.read || '?');
+        if (hit && hit.group) label = hit.group + '·' + label;
+        if (tk.filter) label += '[' + tk.filter + ']';
+        return label;
+      }
+      return tk.kind || '';
+    },
+    pushParen: function (side, kind) {
+      side.tokens.push({ kind: kind });
+      this.sync(side);
+    },
+    pushOp: function (side, op) {
+      side.tokens.push({ kind: 'OP', op: op });
+      this.sync(side);
+    },
+    pushConst: function (side) {
+      var v = side._constDraft;
+      if (v == null || v === '') return;
+      side.tokens.push({ kind: 'CONST', value: Number(v) });
+      side._constDraft = null;
+      this.sync(side);
+    },
+    pushRead: function (side) {
+      if (!side._readDraft) return;
+      if (this.needsFilter(side._readDraft) && !side._filterDraft) return;
+      if (this.needsSkillRef(side._filterDraft) && !side._filterRefDraft) return;
+      side.tokens.push({
+        kind: 'READ',
+        read: side._readDraft,
+        filter: side._filterDraft || null,
+        filterRef: side._filterRefDraft || null
+      });
+      this.sync(side);
+    },
+    popToken: function (side) {
+      if (side.tokens && side.tokens.length) side.tokens.pop();
+      this.sync(side);
+    },
+    removeToken: function (side, idx) {
+      side.tokens.splice(idx, 1);
+      this.sync(side);
+    },
+    sync: function (side) {
+      if (side === this.item.leftFormula) this.item.leftTokens = side.tokens;
+      if (side === this.item.rightFormula) this.item.rightTokens = side.tokens;
+    }
+  }
+};
+ConditionItemEditor.tokensToDraft = function (tokens) {
+  return {
+    tokens: Array.isArray(tokens) ? tokens.slice() : [],
+    _paramMode: 'CONST',
+    _constDraft: null,
+    _readDraft: '',
+    _filterDraft: '',
+    _filterRefDraft: ''
+  };
+};
+ConditionItemEditor.legacyToTokens = function (side, it) {
+  if (!it) return [];
+  var kind = side === 'right' ? it.rightKind : it.leftKind;
+  var read = side === 'right' ? it.rightRead : it.leftRead;
+  var filter = side === 'right' ? it.rightFilter : it.leftFilter;
+  var filterRef = side === 'right' ? it.rightFilterRef : it.leftFilterRef;
+  var cnst = side === 'right' ? it.rightConst : it.leftConst;
+  if (kind === 'READ' && read) {
+    return [{ kind: 'READ', read: read, filter: filter || null, filterRef: filterRef || null }];
+  }
+  if (cnst != null && cnst !== '') {
+    return [{ kind: 'CONST', value: Number(cnst) }];
+  }
+  if (side === 'right') {
+    return [{ kind: 'CONST', value: 0 }];
+  }
+  return [];
+};
+
 const SkillCustomInline = {
   name: 'SkillCustomInline',
   template: '#skill-custom-inline-tpl',
@@ -2390,7 +2514,8 @@ createApp({
   components: {
     AdminSelect: window.AdminSelectComponent,
     SkillCustomInline: SkillCustomInline,
-    SkillPickerPanel: SkillPickerPanel
+    SkillPickerPanel: SkillPickerPanel,
+    ConditionItemEditor: ConditionItemEditor
   },
   data() {
     return {
@@ -3816,7 +3941,7 @@ createApp({
         slotKind: 'ULTIMATE',
         triggerMode: form.triggerMode || 'PRECISE',
         quickPreset: form.triggerMode === 'QUICK' ? form.quickPreset : null,
-        conditionGroups: form.triggerMode === 'QUICK' ? null : self.normalizeConditionGroups(form.conditionGroups),
+        conditionGroups: form.triggerMode === 'QUICK' ? null : self.serializeConditionGroups(form.conditionGroups),
         finishedSkillId: form.finishedSkillId,
         enabled: form.enabled != null ? form.enabled : 1,
         remark: form.remark || '',
@@ -3986,10 +4111,35 @@ createApp({
     },
     emptyConditionItem() {
       return {
-        leftKind: 'READ', leftRead: '', leftFilter: '', leftFilterRef: '', leftConst: null,
         op: 'GTE',
-        rightKind: 'CONST', rightRead: '', rightFilter: '', rightFilterRef: '', rightConst: 0
+        leftTokens: [],
+        rightTokens: [{ kind: 'CONST', value: 0 }],
+        leftFormula: ConditionItemEditor.tokensToDraft([]),
+        rightFormula: ConditionItemEditor.tokensToDraft([{ kind: 'CONST', value: 0 }])
       };
+    },
+    normalizeConditionItem(it) {
+      var base = Object.assign({}, it || {});
+      if ((!base.leftTokens || !base.leftTokens.length) && (base.leftRead || base.leftConst != null || base.leftKind)) {
+        base.leftTokens = ConditionItemEditor.legacyToTokens('left', base);
+      }
+      if ((!base.rightTokens || !base.rightTokens.length) && (base.rightRead || base.rightConst != null || base.rightKind)) {
+        base.rightTokens = ConditionItemEditor.legacyToTokens('right', base);
+      }
+      if (!base.leftTokens) base.leftTokens = [];
+      if (!base.rightTokens || !base.rightTokens.length) {
+        base.rightTokens = [{ kind: 'CONST', value: 0 }];
+      }
+      if (!base.op) base.op = 'GTE';
+      base.leftFormula = ConditionItemEditor.tokensToDraft(base.leftTokens);
+      base.rightFormula = ConditionItemEditor.tokensToDraft(base.rightTokens);
+      return base;
+    },
+    serializeConditionItem(it) {
+      if (!it) return { op: 'GTE', leftTokens: [], rightTokens: [{ kind: 'CONST', value: 0 }] };
+      var leftTokens = (it.leftFormula && it.leftFormula.tokens) || it.leftTokens || [];
+      var rightTokens = (it.rightFormula && it.rightFormula.tokens) || it.rightTokens || [];
+      return { op: it.op || 'GTE', leftTokens: leftTokens, rightTokens: rightTokens };
     },
     readNeedsSkillFilter(code) {
       if (code === 'ACCUM_SKILL_CAST' || code === 'ACCUM_SKILL_HIT') return true;
@@ -4087,9 +4237,16 @@ createApp({
       return groups.map(function (g) {
         var items = (g && g.items && g.items.length) ? g.items : [self.emptyConditionItem()];
         return {
-          items: items.map(function (it) {
-            return Object.assign(self.emptyConditionItem(), it || {});
-          })
+          items: items.map(function (it) { return self.normalizeConditionItem(it); })
+        };
+      });
+    },
+    serializeConditionGroups(groups) {
+      var self = this;
+      if (!groups || !groups.length) return [];
+      return groups.map(function (g) {
+        return {
+          items: ((g && g.items) || []).map(function (it) { return self.serializeConditionItem(it); })
         };
       });
     },
@@ -4184,7 +4341,7 @@ createApp({
         id: form.id || '',
         triggerMode: form.triggerMode || 'PRECISE',
         quickPreset: form.triggerMode === 'QUICK' ? (form.quickPreset || null) : null,
-        conditionGroups: form.triggerMode === 'QUICK' ? null : this.normalizeConditionGroups(form.conditionGroups),
+        conditionGroups: form.triggerMode === 'QUICK' ? null : this.serializeConditionGroups(form.conditionGroups),
         finishedSkillId: form.finishedSkillId,
         sort: form.sort != null ? form.sort : 0,
         enabled: form.enabled != null ? form.enabled : 1,
@@ -5224,6 +5381,12 @@ createApp({
             };
         if (!this.passiveSkillForm.conditions || !this.passiveSkillForm.conditions.length) {
           this.passiveSkillForm.conditions = [{ type: 'NONE' }];
+        } else {
+          var self = this;
+          this.passiveSkillForm.conditions = this.passiveSkillForm.conditions.map(function (c) {
+            if (!c || c.type !== 'COMPARE') return c;
+            return Object.assign({ type: 'COMPARE' }, self.normalizeConditionItem(c));
+          });
         }
         if (!this.passiveSkillForm.effects) this.passiveSkillForm.effects = [];
         if (!row && this.tab === 'equipPassiveSkill') this.passiveSkillForm.catL2 = 'GENERAL';
@@ -5447,7 +5610,9 @@ createApp({
       if (form.catL1 === 'PERSON' && form.catL4 === 'ACTIVE') {
         payload.triggerMode = form.triggerMode || 'PRECISE';
         payload.quickPreset = form.quickPreset || 'ON_CAST_SKILL';
-        payload.conditionGroups = form.conditionGroups || [];
+        payload.conditionGroups = form.triggerMode === 'QUICK'
+          ? null
+          : this.serializeConditionGroups(form.conditionGroups || []);
         payload.skillItemId = form.skillItemId || '';
         payload.triggerSlotId = form.triggerSlotId || '';
       } else {
@@ -5460,9 +5625,25 @@ createApp({
       delete payload.maxCastLimited;
       return payload;
     },
+    normalizePassiveSkillPayload(form) {
+      var self = this;
+      var payload = Object.assign({}, form);
+      payload.conditions = (form.conditions || []).map(function (c) {
+        if (!c || c.type !== 'COMPARE') return c;
+        return Object.assign({ type: 'COMPARE' }, self.serializeConditionItem(c));
+      });
+      return payload;
+    },
     addPassiveCondition() {
       if (!this.passiveSkillForm.conditions) this.passiveSkillForm.conditions = [];
-      this.passiveSkillForm.conditions.push({ type: 'NONE', leftKind: 'CONST', rightKind: 'CONST', op: 'EQ' });
+      this.passiveSkillForm.conditions.push({
+        type: 'COMPARE',
+        op: 'EQ',
+        leftTokens: [{ kind: 'CONST', value: 0 }],
+        rightTokens: [{ kind: 'CONST', value: 0 }],
+        leftFormula: ConditionItemEditor.tokensToDraft([{ kind: 'CONST', value: 0 }]),
+        rightFormula: ConditionItemEditor.tokensToDraft([{ kind: 'CONST', value: 0 }])
+      });
     },
     removePassiveCondition(idx) {
       this.passiveSkillForm.conditions.splice(idx, 1);
@@ -5579,7 +5760,7 @@ createApp({
           this.passiveSkillForm.catL1 = 'EQUIP';
           this.passiveSkillForm.catL2 = 'GENERAL';
         }
-        p = AdminApi.savePassiveSkill(this.passiveSkillForm).then(() => {
+        p = AdminApi.savePassiveSkill(this.normalizePassiveSkillPayload(this.passiveSkillForm)).then(() => {
           if (this.isPersonSkillTab) this.loadPersonSkills();
           else if (this.tab === 'equipCustomPassiveSkill') this.loadCustomPassiveSkills();
           else if (this.tab === 'equipCustomSkill') this.loadCustomEquipSkills();

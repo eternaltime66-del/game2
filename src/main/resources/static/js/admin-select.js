@@ -32,19 +32,36 @@
         return (this.options || []).map(function (raw, idx) {
           if (raw == null) return null;
           if (typeof raw === 'string' || typeof raw === 'number') {
-            return { value: raw, label: String(raw), raw: raw };
+            return { value: raw, label: String(raw), group: '', raw: raw };
           }
           var val = raw[vk] != null ? raw[vk] : (raw.value != null ? raw.value : raw.code != null ? raw.code : raw.id);
           var lab = raw[lk] != null ? raw[lk] : (raw.label != null ? raw.label : raw.name != null ? raw.name : String(val));
-          return { value: val, label: lab, raw: raw };
+          var grp = raw.group != null ? raw.group : (raw.groupLabel != null ? raw.groupLabel : '');
+          return { value: val, label: lab, group: grp || '', raw: raw };
         }).filter(Boolean);
       },
       filtered: function () {
         var q = (this.query || '').trim().toLowerCase();
         if (!q) return this.normalized;
         return this.normalized.filter(function (o) {
-          return String(o.label).toLowerCase().indexOf(q) >= 0 || String(o.value).toLowerCase().indexOf(q) >= 0;
+          return String(o.label).toLowerCase().indexOf(q) >= 0
+            || String(o.value).toLowerCase().indexOf(q) >= 0
+            || String(o.group || '').toLowerCase().indexOf(q) >= 0;
         });
+      },
+      filteredGroups: function () {
+        var list = this.filtered;
+        var order = [];
+        var map = {};
+        list.forEach(function (o) {
+          var g = o.group || '';
+          if (!map[g]) {
+            map[g] = { label: g, options: [] };
+            order.push(map[g]);
+          }
+          map[g].options.push(o);
+        });
+        return order;
       },
       selected: function () {
         var mv = this.modelValue;
@@ -52,7 +69,9 @@
         return this.normalized.find(function (o) { return AdminSelect.sameValue(o.value, mv); }) || null;
       },
       displayLabel: function () {
-        return this.selected ? this.selected.label : '';
+        if (!this.selected) return '';
+        var g = this.selected.group;
+        return g ? (g + ' · ' + this.selected.label) : this.selected.label;
       },
       autoSearch: function () {
         return this.searchable || this.normalized.length > 8;
@@ -142,10 +161,13 @@
       + '        <input type="text" class="admin-select-search" v-model="query" placeholder="搜索…" @click.stop />'
       + '      </div>'
       + '      <div class="admin-select-list" role="listbox">'
-      + '        <button v-for="(opt, idx) in filtered" :key="opt.value + \'-\' + idx" type="button" class="admin-select-option" :class="{ active: sameValue(opt.value, modelValue) }" @click="pick(opt)">'
-      + '          <span class="admin-select-option-label">{{ opt.label }}</span>'
-      + '          <span v-if="sameValue(opt.value, modelValue)" class="admin-select-check">✓</span>'
-      + '        </button>'
+      + '        <template v-for="(g, gi) in filteredGroups" :key="\'g-\' + gi + \'-\' + (g.label || \'\')">'
+      + '          <div v-if="g.label" class="admin-select-group">{{ g.label }}</div>'
+      + '          <button v-for="(opt, idx) in g.options" :key="opt.value + \'-\' + idx" type="button" class="admin-select-option" :class="{ active: sameValue(opt.value, modelValue) }" @click="pick(opt)">'
+      + '            <span class="admin-select-option-label">{{ opt.label }}</span>'
+      + '            <span v-if="sameValue(opt.value, modelValue)" class="admin-select-check">✓</span>'
+      + '          </button>'
+      + '        </template>'
       + '        <div v-if="!filtered.length" class="admin-select-empty">无匹配项</div>'
       + '      </div>'
       + '    </div>'

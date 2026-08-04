@@ -15,4 +15,7 @@ public class TriggerOptionVo {
 
     /** 附加标记，如 FILTER / EVENT */
     private String flag;
+
+    /** 下拉分组，如 受到伤害 / 释放技能 */
+    private String group;
 }

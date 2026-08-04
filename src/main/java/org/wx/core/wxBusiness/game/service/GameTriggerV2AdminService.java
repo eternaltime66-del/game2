@@ -484,6 +484,7 @@ public class GameTriggerV2AdminService {
             vo.setSort(type.getSort());
             vo.setNeedParam(type.isNeedSkillFilter());
             vo.setFlag(type.isNeedSkillFilter() ? "FILTER" : (type.isEventScoped() ? "EVENT" : null));
+            vo.setGroup(type.getGroup());
             return vo;
         }).collect(Collectors.toList());
     }

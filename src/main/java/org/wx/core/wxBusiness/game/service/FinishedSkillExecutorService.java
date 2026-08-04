@@ -258,7 +258,7 @@ public class FinishedSkillExecutorService {
                 TriggerEventContext postCtx = copyCtx(preCtx, caster, target);
                 postCtx.setDamageAmount(amount);
                 logs.addAll(triggerSlotEngineService.fireAccumulated(state, caster, target, postCtx, amount, BigDecimal.ZERO));
-                triggerSlotEngineService.recordHit(target);
+                logs.addAll(triggerSlotEngineService.recordHit(state, target, skill.getId(), postCtx));
                 logs.addAll(triggerSlotEngineService.fireThreshold(state, TriggerSlotType.HIT_COUNT, target, postCtx));
             }
             case HEAL -> {
@@ -268,6 +268,11 @@ public class FinishedSkillExecutorService {
                 target.setHp(nextHp);
                 logs.add(BattleLog.skillHeal(caster.getName(), target.getName(),
                         BattleLog.buildSkillDisplayLabel(skill), String.valueOf(actualHeal)));
+                TriggerEventContext healCtx = copyCtx(ctx, caster, target);
+                healCtx.setHealAmount(BigDecimal.valueOf(actualHeal));
+                logs.addAll(triggerSlotEngineService.fireInstant(state, TriggerSlotType.ON_HEAL, target, healCtx));
+                logs.addAll(triggerSlotEngineService.fireAccumulated(state, caster, target, healCtx,
+                        BigDecimal.ZERO, BigDecimal.valueOf(actualHeal)));
             }
             case ACTION_INC -> {
                 int bar = target.getActionBar() != null ? target.getActionBar() : 0;
@@ -350,7 +355,7 @@ public class FinishedSkillExecutorService {
             TriggerEventContext postCtx = copyCtx(preCtx, caster, target);
             postCtx.setDamageAmount(amount);
             logs.addAll(triggerSlotEngineService.fireAccumulated(state, caster, target, postCtx, amount, BigDecimal.ZERO));
-            triggerSlotEngineService.recordHit(target);
+            logs.addAll(triggerSlotEngineService.recordHit(state, target, skill.getId(), postCtx));
             logs.addAll(triggerSlotEngineService.fireThreshold(state, TriggerSlotType.HIT_COUNT, target, postCtx));
         } else {
             int heal = amount.setScale(0, RoundingMode.CEILING).intValue();
@@ -526,6 +531,8 @@ public class FinishedSkillExecutorService {
         c.setVictim(src != null ? src.getVictim() : null);
         c.setFinishedSkillId(src != null ? src.getFinishedSkillId() : null);
         c.setFinishedSkillCasterSide(src != null ? src.getFinishedSkillCasterSide() : null);
+        c.setDamageAmount(src != null ? src.getDamageAmount() : BigDecimal.ZERO);
+        c.setHealAmount(src != null ? src.getHealAmount() : BigDecimal.ZERO);
         c.setDepth(src != null ? src.getDepth() : 0);
         return c;
     }

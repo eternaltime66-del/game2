@@ -32,6 +32,13 @@ public enum SkillReadType {
 
     /* ---- 受到治疗 ---- */
     ON_HEAL("单次受到治疗量", 50, true, false, "受到治疗"),
+    ACCUM_TAKE_HEAL("累计受到治疗量", 51, false, false, "受到治疗"),
+    ACCUM_TAKE_HEAL_COUNT("累计受到治疗次数", 52, false, false, "受到治疗"),
+
+    /* ---- 提供治疗 ---- */
+    ON_DEAL_HEAL("单次提供治疗量", 60, true, false, "提供治疗"),
+    ACCUM_DEAL_HEAL("累计提供治疗量", 61, false, false, "提供治疗"),
+    ACCUM_DEAL_HEAL_COUNT("累计提供治疗次数", 62, false, false, "提供治疗"),
 
     /* ---- 释放 / 受到技能 ---- */
     ACCUM_SKILL_CAST("累计释放技能次数", 130, false, true, "释放技能"),

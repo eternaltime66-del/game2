@@ -138,7 +138,7 @@ public class GameTriggerSlotEngineService {
 
     /** 条件扳机评估时机 */
     private enum ConditionHook {
-        CAST, HIT, ACTION_FULL, DAMAGE, HEAL, DEAL
+        CAST, HIT, ACTION_FULL, DAMAGE, HEAL, DEAL, PROVIDE_HEAL
     }
 
     public List<BattleLog> fireAccumulated(BattleState state, BattleUnit dealer, BattleUnit victim,
@@ -174,10 +174,21 @@ public class GameTriggerSlotEngineService {
             logs.addAll(fireThresholdWithAmount(state, victim, TriggerSlotType.ACCUMULATED_HEAL, total, ctx));
             counters.getAccumHpIncreaseCount().merge(victim.getUnitId(), 1, Integer::sum);
             counters.getAccumHpIncreaseAmount().merge(victim.getUnitId(), heal, BigDecimal::add);
-            Map<SkillReadType, BigDecimal> events = new java.util.HashMap<>();
-            events.put(SkillReadType.ON_HEAL, heal);
-            events.put(SkillReadType.ON_HP_INCREASE, heal);
-            logs.addAll(evaluateConditionBindings(state, victim, ctx, ConditionHook.HEAL, null, events));
+            counters.getAccumTakeHealCount().merge(victim.getUnitId(), 1, Integer::sum);
+            counters.getAccumTakeHealAmount().merge(victim.getUnitId(), heal, BigDecimal::add);
+            if (dealer != null) {
+                counters.getAccumDealHealCount().merge(dealer.getUnitId(), 1, Integer::sum);
+                counters.getAccumDealHealAmount().merge(dealer.getUnitId(), heal, BigDecimal::add);
+            }
+            Map<SkillReadType, BigDecimal> takeEvents = new java.util.HashMap<>();
+            takeEvents.put(SkillReadType.ON_HEAL, heal);
+            takeEvents.put(SkillReadType.ON_HP_INCREASE, heal);
+            logs.addAll(evaluateConditionBindings(state, victim, ctx, ConditionHook.HEAL, null, takeEvents));
+            if (dealer != null) {
+                Map<SkillReadType, BigDecimal> dealEvents = new java.util.HashMap<>();
+                dealEvents.put(SkillReadType.ON_DEAL_HEAL, heal);
+                logs.addAll(evaluateConditionBindings(state, dealer, ctx, ConditionHook.PROVIDE_HEAL, null, dealEvents));
+            }
         }
         return logs;
     }
@@ -227,14 +238,22 @@ public class GameTriggerSlotEngineService {
                     && relatedSkill.getId().equals(binding.getFinishedSkillId())) {
                 continue;
             }
-            List<SkillConditionGroupVo> groups = skillJsonHelper.resolveSlotConditions(
-                    binding.getTriggerMode(), binding.getQuickPreset(), binding.getConditionsJson());
-            if (!conditionRelevantTo(groups, hook, relatedSkill)) {
+            org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo slotConds =
+                    skillJsonHelper.resolveSlotConditions(
+                            binding.getTriggerMode(), binding.getQuickPreset(), binding.getConditionsJson());
+            if (!conditionRelevantTo(slotConds, hook, relatedSkill)) {
                 continue;
             }
             SkillExpressionService.SkillValueReader reader = battleReader(state, unit, eventValues);
-            if (skillExpressionService.anyGroupMatch(groups, reader, p ->
-                    skillPrerequisiteService.match(state, unit, p))) {
+            SkillExpressionService.SlotStepMatch step = skillExpressionService.slotStepMatch(slotConds, reader, p ->
+                    skillPrerequisiteService.match(state, unit, p));
+            if (!step.matched()) {
+                continue;
+            }
+            if (step.usesEvery()) {
+                logs.addAll(fireEveryConditionSteps(state, unit, binding, step.steps(),
+                        ctx != null ? ctx : new TriggerEventContext()));
+            } else {
                 logs.addAll(tryCastFromBinding(state, unit, binding, ctx != null ? ctx : new TriggerEventContext()));
             }
         }
@@ -245,32 +264,31 @@ public class GameTriggerSlotEngineService {
         return binding != null && binding.getTriggerMode() != null && !binding.getTriggerMode().isBlank();
     }
 
-    private boolean isEmptyOrAlways(List<SkillConditionGroupVo> groups) {
+    private boolean isEmptyOrAlways(org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo slot) {
+        if (slot == null) {
+            return true;
+        }
+        boolean prereqConfig = slot.getPrerequisiteMode() != null
+                && ConditionZoneMode.CONFIG.name().equalsIgnoreCase(slot.getPrerequisiteMode())
+                && slot.getPrerequisites() != null && !slot.getPrerequisites().isEmpty();
+        if (prereqConfig) {
+            return false;
+        }
+        if (slot.getPrerequisites() != null && !slot.getPrerequisites().isEmpty()) {
+            return false;
+        }
+        List<SkillConditionGroupVo> groups = slot.getConditionGroups();
         if (groups == null || groups.isEmpty()) {
             return true;
         }
         for (SkillConditionGroupVo group : groups) {
-            if (group == null) {
+            if (group == null || group.getItems() == null) {
                 continue;
             }
-            if (group.getItems() != null) {
-                for (SkillConditionItemVo item : group.getItems()) {
-                    if (item != null && hasConditionContent(item)) {
-                        return false;
-                    }
+            for (SkillConditionItemVo item : group.getItems()) {
+                if (item != null && hasConditionContent(item)) {
+                    return false;
                 }
-            }
-            if (group.getPrerequisites() != null && !group.getPrerequisites().isEmpty()) {
-                return false;
-            }
-            if (group.getNumericMode() != null && ConditionZoneMode.CONFIG.name().equalsIgnoreCase(group.getNumericMode())
-                    && group.getItems() != null && !group.getItems().isEmpty()) {
-                return false;
-            }
-            if (group.getPrerequisiteMode() != null
-                    && ConditionZoneMode.CONFIG.name().equalsIgnoreCase(group.getPrerequisiteMode())
-                    && group.getPrerequisites() != null && !group.getPrerequisites().isEmpty()) {
-                return false;
             }
         }
         return true;
@@ -300,22 +318,22 @@ public class GameTriggerSlotEngineService {
      * - 命中计数为 0 时 0%1==0 误触发
      * - 未变化的累计条件在其它事件上重复触发
      */
-    private boolean conditionRelevantTo(List<SkillConditionGroupVo> groups, ConditionHook hook,
-                                        GameFinishedSkill relatedSkill) {
-        if (isEmptyOrAlways(groups)) {
+    private boolean conditionRelevantTo(org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo slot,
+                                        ConditionHook hook, GameFinishedSkill relatedSkill) {
+        if (isEmptyOrAlways(slot)) {
             return hook == ConditionHook.CAST;
         }
         boolean hasRead = false;
         boolean readRelevant = false;
-        boolean hasPrerequisite = false;
+        boolean hasPrerequisite = slot.getPrerequisites() != null && !slot.getPrerequisites().isEmpty();
+        if (slot.getPrerequisiteMode() != null
+                && ConditionZoneMode.NONE.name().equalsIgnoreCase(slot.getPrerequisiteMode())) {
+            hasPrerequisite = false;
+        }
+        List<SkillConditionGroupVo> groups = slot.getConditionGroups() != null
+                ? slot.getConditionGroups() : List.of();
         for (SkillConditionGroupVo group : groups) {
-            if (group == null) {
-                continue;
-            }
-            if (isPrerequisiteConfigured(group)) {
-                hasPrerequisite = true;
-            }
-            if (group.getItems() == null) {
+            if (group == null || group.getItems() == null) {
                 continue;
             }
             for (SkillConditionItemVo item : group.getItems()) {
@@ -332,18 +350,9 @@ public class GameTriggerSlotEngineService {
             }
         }
         if (!hasRead) {
-            // 仅前置条件：任意事件钩子都可评估
             return hasPrerequisite || hook == ConditionHook.CAST;
         }
         return readRelevant;
-    }
-
-    private boolean isPrerequisiteConfigured(SkillConditionGroupVo group) {
-        if (group.getPrerequisiteMode() != null
-                && ConditionZoneMode.NONE.name().equalsIgnoreCase(group.getPrerequisiteMode())) {
-            return false;
-        }
-        return group.getPrerequisites() != null && !group.getPrerequisites().isEmpty();
     }
 
     private record SideScan(boolean hasRead, boolean relevant) {}
@@ -393,8 +402,11 @@ public class GameTriggerSlotEngineService {
             case ON_TAKE_DAMAGE, ACCUM_TAKE_DAMAGE, ACCUM_TAKE_DAMAGE_COUNT,
                     ON_HP_DECREASE, ACCUM_HP_DECREASE, ACCUM_HP_DECREASE_COUNT ->
                     hook == ConditionHook.DAMAGE;
-            case ON_HEAL, ON_HP_INCREASE, ACCUM_HP_INCREASE, ACCUM_HP_INCREASE_COUNT ->
+            case ON_HEAL, ACCUM_TAKE_HEAL, ACCUM_TAKE_HEAL_COUNT,
+                    ON_HP_INCREASE, ACCUM_HP_INCREASE, ACCUM_HP_INCREASE_COUNT ->
                     hook == ConditionHook.HEAL;
+            case ON_DEAL_HEAL, ACCUM_DEAL_HEAL, ACCUM_DEAL_HEAL_COUNT ->
+                    hook == ConditionHook.PROVIDE_HEAL;
             case ON_DEAL_DAMAGE, ACCUM_DEAL_DAMAGE, ACCUM_DEAL_DAMAGE_COUNT ->
                     hook == ConditionHook.DEAL;
             case CHAR_ATTACK, CHAR_MAX_HP, CHAR_CUR_HP, CHAR_DEFENSE,
@@ -438,6 +450,18 @@ public class GameTriggerSlotEngineService {
             }
             if (type == SkillReadType.ACCUM_HP_DECREASE_COUNT) {
                 return BigDecimal.valueOf(counters.getAccumHpDecreaseCount().getOrDefault(uid, 0));
+            }
+            if (type == SkillReadType.ACCUM_TAKE_HEAL) {
+                return counters.getAccumTakeHealAmount().getOrDefault(uid, BigDecimal.ZERO);
+            }
+            if (type == SkillReadType.ACCUM_TAKE_HEAL_COUNT) {
+                return BigDecimal.valueOf(counters.getAccumTakeHealCount().getOrDefault(uid, 0));
+            }
+            if (type == SkillReadType.ACCUM_DEAL_HEAL) {
+                return counters.getAccumDealHealAmount().getOrDefault(uid, BigDecimal.ZERO);
+            }
+            if (type == SkillReadType.ACCUM_DEAL_HEAL_COUNT) {
+                return BigDecimal.valueOf(counters.getAccumDealHealCount().getOrDefault(uid, 0));
             }
             if (type == SkillReadType.EQUIP_USES_LEFT) {
                 if (state.getWeaponUsesLeft() != null) {
@@ -635,6 +659,42 @@ public class GameTriggerSlotEngineService {
         }
         firedMap.put(slotKey, fired);
         return logs;
+    }
+
+    private List<BattleLog> fireEveryConditionSteps(BattleState state, BattleUnit unit, TriggerBinding binding,
+                                                      int steps, TriggerEventContext ctx) {
+        if (steps <= 0 || binding == null) {
+            return List.of();
+        }
+        String slotKey = everyConditionKey(binding);
+        BattleTriggerCounters counters = ensureCounters(state);
+        Map<String, Integer> firedMap = counters.getThresholdFiredCount()
+                .computeIfAbsent(unit.getUnitId(), k -> new java.util.HashMap<>());
+        int fired = firedMap.getOrDefault(slotKey, 0);
+        int canFire = steps - fired;
+        if (canFire <= 0) {
+            return List.of();
+        }
+        // 单次事件跨多档时连发；上限防止异常公式打出天文档数
+        if (canFire > 50) {
+            canFire = 50;
+        }
+        List<BattleLog> logs = new ArrayList<>();
+        for (int i = 0; i < canFire; i++) {
+            logs.addAll(tryCastFromBinding(state, unit, binding, ctx));
+            fired++;
+        }
+        firedMap.put(slotKey, fired);
+        return logs;
+    }
+
+    private String everyConditionKey(TriggerBinding binding) {
+        if (binding.getTriggerSlotId() != null && !binding.getTriggerSlotId().isBlank()) {
+            return "every:" + binding.getTriggerSlotId();
+        }
+        String skillId = binding.getFinishedSkillId() != null ? binding.getFinishedSkillId() : "unknown";
+        String kind = binding.getSlotKind() != null ? binding.getSlotKind() : "COND";
+        return "every:" + kind + ":" + skillId;
     }
 
     private List<BattleLog> tryCastFromBinding(BattleState state, BattleUnit unit, TriggerBinding binding,

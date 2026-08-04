@@ -4,7 +4,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** 判定条件：大于/小于/…/取模等于0（left % right == 0） */
+/**
+ * 判定条件。
+ * <p>
+ * {@link #MOD}：left % right == 0，适合整数次数（如每 3 次普攻）。
+ * {@link #EVERY}：每累计跨过一档 right 触发（⌊left/right⌋ 增加），适合小数伤害/百分比阈值。
+ */
 public enum SkillCompareOp {
 
     GT("大于", ">"),
@@ -12,7 +17,9 @@ public enum SkillCompareOp {
     GTE("大于等于", ">="),
     LTE("小于等于", "<="),
     EQ("等于", "=="),
-    MOD("取模等于0", "%==0");
+    MOD("取模等于0", "%==0"),
+    /** 每累计达到：20%、40%、60%…各触发一次（不要求卡死正好等于） */
+    EVERY("每累计达到", "每≥");
 
     private final String label;
     private final String symbol;

@@ -32,12 +32,13 @@
         return (this.options || []).map(function (raw, idx) {
           if (raw == null) return null;
           if (typeof raw === 'string' || typeof raw === 'number') {
-            return { value: raw, label: String(raw), group: '', raw: raw };
+            return { value: raw, label: String(raw), group: '', hint: '', raw: raw };
           }
           var val = raw[vk] != null ? raw[vk] : (raw.value != null ? raw.value : raw.code != null ? raw.code : raw.id);
           var lab = raw[lk] != null ? raw[lk] : (raw.label != null ? raw.label : raw.name != null ? raw.name : String(val));
           var grp = raw.group != null ? raw.group : (raw.groupLabel != null ? raw.groupLabel : '');
-          return { value: val, label: lab, group: grp || '', raw: raw };
+          var hint = raw.hint != null ? raw.hint : (raw.title != null ? raw.title : (raw.tooltip != null ? raw.tooltip : ''));
+          return { value: val, label: lab, group: grp || '', hint: hint || '', raw: raw };
         }).filter(Boolean);
       },
       filtered: function () {
@@ -148,7 +149,7 @@
     },
     template: ''
       + '<div class="admin-select" :class="{ open: open, disabled: disabled, \'has-value\': !!selected }" ref="root">'
-      + '  <div class="admin-select-trigger" :class="{ disabled: disabled }" tabindex="0" role="combobox" :aria-expanded="open" @click="toggle" @keydown.enter.prevent="toggle" @keydown.space.prevent="toggle">'
+      + '  <div class="admin-select-trigger" :class="{ disabled: disabled }" tabindex="0" role="combobox" :aria-expanded="open" :title="selected && selected.hint ? selected.hint : undefined" @click="toggle" @keydown.enter.prevent="toggle" @keydown.space.prevent="toggle">'
       + '    <span class="admin-select-value" :class="{ placeholder: !selected }">{{ selected ? displayLabel : placeholder }}</span>'
       + '    <span class="admin-select-icons">'
       + '      <span v-if="clearable && selected && !disabled" class="admin-select-clear" role="button" tabindex="-1" @click.stop="clear" title="清除"><i class="admin-select-clear-x" aria-hidden="true"></i></span>'
@@ -163,7 +164,7 @@
       + '      <div class="admin-select-list" role="listbox">'
       + '        <template v-for="(g, gi) in filteredGroups" :key="\'g-\' + gi + \'-\' + (g.label || \'\')">'
       + '          <div v-if="g.label" class="admin-select-group">{{ g.label }}</div>'
-      + '          <button v-for="(opt, idx) in g.options" :key="opt.value + \'-\' + idx" type="button" class="admin-select-option" :class="{ active: sameValue(opt.value, modelValue) }" @click="pick(opt)">'
+      + '          <button v-for="(opt, idx) in g.options" :key="opt.value + \'-\' + idx" type="button" class="admin-select-option" :class="{ active: sameValue(opt.value, modelValue) }" :title="opt.hint || undefined" @click="pick(opt)">'
       + '            <span class="admin-select-option-label">{{ opt.label }}</span>'
       + '            <span v-if="sameValue(opt.value, modelValue)" class="admin-select-check">✓</span>'
       + '          </button>'

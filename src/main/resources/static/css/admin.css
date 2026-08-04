@@ -2157,10 +2157,74 @@ body.admin-body .bg-glow {
   grid-column: 1 / -1;
 }
 
+.trigger-skill-split {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.tss-zone {
+  padding: 4px 0 8px;
+}
+
+.tss-zone-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.tss-zone-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #e9e4ff;
+}
+
+.tss-zone-hint {
+  flex: 1;
+  min-width: 120px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tss-divider {
+  height: 0;
+  margin: 14px 0 18px;
+  border: none;
+  border-top: 1px dashed rgba(196, 181, 253, 0.35);
+}
+
+.tss-skill .skill-picker-panel {
+  margin-top: 2px;
+}
+
+.tss-skill-body {
+  margin-top: -4px;
+}
 
 .read-type-cascade {
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+
+
+.tss-subzone {
+  padding: 4px 0 8px;
+}
+
+.tss-sub-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: #d6ccff;
+  letter-spacing: 0.04em;
+}
+
+.tss-divider-inner {
+  margin: 10px 0 12px;
+  border-top-color: rgba(196, 181, 253, 0.22);
 }

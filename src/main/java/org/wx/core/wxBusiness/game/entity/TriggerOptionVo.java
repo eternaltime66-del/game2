@@ -18,4 +18,7 @@ public class TriggerOptionVo {
 
     /** 下拉分组，如 受到伤害 / 释放技能 */
     private String group;
+
+    /** 悬停提示（如判定符号 %==0） */
+    private String hint;
 }

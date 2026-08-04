@@ -46,9 +46,17 @@ public class BattleTriggerCounters {
     private Map<String, BigDecimal> accumHpDecreaseAmount = new HashMap<>();
     private Map<String, Integer> accumHpDecreaseCount = new HashMap<>();
 
+    /** 累计受到治疗量 / 次数（条件读取，不消耗） */
+    private Map<String, BigDecimal> accumTakeHealAmount = new HashMap<>();
+    private Map<String, Integer> accumTakeHealCount = new HashMap<>();
+
+    /** 累计提供治疗量 / 次数（条件读取，不消耗） */
+    private Map<String, BigDecimal> accumDealHealAmount = new HashMap<>();
+    private Map<String, Integer> accumDealHealCount = new HashMap<>();
+
     /**
-     * 旧阈值扳机已触发次数（unitId -> slotKey -> times），
-     * 避免消耗 finishedSkillCastCount 导致累计释放计数失真。
+     * 旧阈值扳机 / 「每累计达到」条件已触发档数（unitId -> slotKey -> times），
+     * 避免消耗累计读取值，同时支持小数伤害跨档触发。
      */
     private Map<String, Map<String, Integer>> thresholdFiredCount = new HashMap<>();
 

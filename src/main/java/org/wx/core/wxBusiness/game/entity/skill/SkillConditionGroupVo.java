@@ -6,21 +6,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 条件组：数值区 AND 前置条件区；组间 OR。
- * 某区 mode=NONE(不限) 时该区视为 true。
+ * 数值条件组：组内条目且，组间或。
+ * （前置条件已提升到槽位级 {@link SkillSlotConditionsVo}，不再嵌套在组内）
  */
 @Data
 public class SkillConditionGroupVo {
 
-    /** NONE / CONFIG — 数值判定区 */
-    private String numericMode;
-
     /** 数值比较条目（组内且） */
     private List<SkillConditionItemVo> items = new ArrayList<>();
 
-    /** NONE / CONFIG — 前置条件区 */
+    /** @deprecated 兼容旧 JSON：组内前置；读取后会提升到槽位级 */
+    @Deprecated
+    private String numericMode;
+
+    /** @deprecated 兼容旧 JSON */
+    @Deprecated
     private String prerequisiteMode;
 
-    /** 前置持有条件（组内且） */
+    /** @deprecated 兼容旧 JSON */
+    @Deprecated
     private List<SkillPrerequisiteVo> prerequisites = new ArrayList<>();
 }

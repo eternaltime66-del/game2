@@ -71,4 +71,12 @@ public class AdminFinishedSkillVo {
     private String quickPreset;
 
     private List<SkillConditionGroupVo> conditionGroups = new ArrayList<>();
+
+    /** NONE / CONFIG — 前置条件区 */
+    private String prerequisiteMode;
+
+    private List<org.wx.core.wxBusiness.game.entity.skill.SkillPrerequisiteVo> prerequisites = new ArrayList<>();
+
+    /** NONE / CONFIG — 数值判定区 */
+    private String numericMode;
 }

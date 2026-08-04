@@ -161,13 +161,15 @@ public class GameTriggerV2AdminService {
 
     /** 人物主动 = 技能物品(SKILL) + 扳机槽 + 实体技能 */
     private void syncPersonActivePackage(GameFinishedSkill skill, AdminFinishedSkillVo vo) {
-        // 快捷扳机已下线：统一按精准条件组保存
-        List<org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo> groups =
-                vo.getConditionGroups() != null && !vo.getConditionGroups().isEmpty()
-                        ? vo.getConditionGroups()
-                        : skillJsonHelper.defaultConditionGroups();
-
+        // 快捷扳机已下线：统一按精准条件保存
+        AdminTriggerSlotVo slotVo = new AdminTriggerSlotVo();
+        slotVo.setId(vo.getTriggerSlotId() != null && !vo.getTriggerSlotId().isBlank()
+                ? vo.getTriggerSlotId()
+                : null);
         GameTriggerSlot existingSlot = findPersonActiveSlot(skill.getId());
+        if (slotVo.getId() == null && existingSlot != null) {
+            slotVo.setId(existingSlot.getId());
+        }
         String itemId = vo.getSkillItemId();
         if ((itemId == null || itemId.isBlank()) && existingSlot != null) {
             itemId = existingSlot.getItemId();
@@ -198,15 +200,14 @@ public class GameTriggerV2AdminService {
             gameItemService.updateById(item);
         }
 
-        AdminTriggerSlotVo slotVo = new AdminTriggerSlotVo();
-        slotVo.setId(vo.getTriggerSlotId() != null && !vo.getTriggerSlotId().isBlank()
-                ? vo.getTriggerSlotId()
-                : (existingSlot != null ? existingSlot.getId() : null));
         slotVo.setItemId(item.getId());
         slotVo.setSlotKind(TriggerSlotKind.TRAIT_ACTIVE.name());
         slotVo.setTriggerMode(TriggerMode.PRECISE.name());
         slotVo.setQuickPreset(null);
-        slotVo.setConditionGroups(groups);
+        slotVo.setPrerequisiteMode(vo.getPrerequisiteMode());
+        slotVo.setPrerequisites(vo.getPrerequisites());
+        slotVo.setNumericMode(vo.getNumericMode());
+        slotVo.setConditionGroups(vo.getConditionGroups());
         slotVo.setFinishedSkillId(skill.getId());
         slotVo.setSort(existingSlot != null && existingSlot.getSort() != null ? existingSlot.getSort() : 0);
         slotVo.setEnabled(skill.getEnabled() != null ? skill.getEnabled() : 1);
@@ -365,14 +366,17 @@ public class GameTriggerV2AdminService {
 
         TriggerMode incomingMode = TriggerMode.parse(vo.getTriggerMode());
         TriggerQuickPreset quickPreset = TriggerQuickPreset.parse(vo.getQuickPreset());
-        // 快捷扳机已下线：统一落库为精准；若仍收到旧 QUICK 载荷则展开为条件组
-        List<org.wx.core.wxBusiness.game.entity.skill.SkillConditionGroupVo> groups;
+        // 快捷扳机已下线：统一落库为精准；若仍收到旧 QUICK 载荷则展开为条件
+        org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo slotConds;
         if (incomingMode == TriggerMode.QUICK) {
-            groups = skillJsonHelper.expandQuickPreset(quickPreset);
-        } else if (vo.getConditionGroups() != null && !vo.getConditionGroups().isEmpty()) {
-            groups = vo.getConditionGroups();
+            slotConds = skillJsonHelper.expandQuickPresetAsSlot(quickPreset);
         } else {
-            groups = skillJsonHelper.defaultConditionGroups();
+            slotConds = new org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo();
+            slotConds.setPrerequisiteMode(vo.getPrerequisiteMode());
+            slotConds.setPrerequisites(vo.getPrerequisites());
+            slotConds.setNumericMode(vo.getNumericMode());
+            slotConds.setConditionGroups(vo.getConditionGroups());
+            slotConds = skillJsonHelper.normalizeSlot(slotConds);
         }
 
         TriggerSlotKind slotKind = TriggerSlotKind.parse(vo.getSlotKind());
@@ -386,9 +390,9 @@ public class GameTriggerV2AdminService {
                 ensureSingleBasicAttackSlotForMonster(vo.getMonsterId(), vo.getId());
             }
             if (incomingMode == TriggerMode.QUICK
-                    || vo.getConditionGroups() == null
-                    || vo.getConditionGroups().isEmpty()) {
-                groups = skillJsonHelper.expandQuickPreset(TriggerQuickPreset.ACTION_VALUE_FULL);
+                    || slotConds.getConditionGroups() == null
+                    || slotConds.getConditionGroups().isEmpty()) {
+                slotConds = skillJsonHelper.expandQuickPresetAsSlot(TriggerQuickPreset.ACTION_VALUE_FULL);
             }
         } else if (slotKind == TriggerSlotKind.ULTIMATE) {
             if (bindItem) {
@@ -408,7 +412,7 @@ public class GameTriggerV2AdminService {
         entity.setSlotKind(slotKind.name());
         entity.setTriggerMode(TriggerMode.PRECISE.name());
         entity.setQuickPreset(null);
-        entity.setConditionsJson(skillJsonHelper.writeConditionGroups(groups));
+        entity.setConditionsJson(skillJsonHelper.writeSlotConditions(slotConds));
         entity.setTriggerSlotType(null);
         entity.setTriggerParam(null);
         entity.setTriggerRefId(null);
@@ -496,7 +500,8 @@ public class GameTriggerV2AdminService {
         return SkillCompareOp.all().stream().map(type -> {
             TriggerOptionVo vo = new TriggerOptionVo();
             vo.setCode(type.name());
-            vo.setLabel(type.getLabel() + " (" + type.getSymbol() + ")");
+            vo.setLabel(type.getLabel());
+            vo.setHint(type.getSymbol());
             return vo;
         }).collect(Collectors.toList());
     }
@@ -744,14 +749,26 @@ public class GameTriggerV2AdminService {
             if (slot != null) {
                 vo.setSkillItemId(slot.getItemId());
                 vo.setTriggerSlotId(slot.getId());
-                vo.setTriggerMode(slot.getTriggerMode() != null ? slot.getTriggerMode() : TriggerMode.PRECISE.name());
-                vo.setQuickPreset(slot.getQuickPreset());
-                vo.setConditionGroups(skillJsonHelper.resolveSlotConditions(
-                        slot.getTriggerMode(), slot.getQuickPreset(), slot.getConditionsJson()));
+                vo.setTriggerMode(TriggerMode.PRECISE.name());
+                vo.setQuickPreset(null);
+                org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo slotConds =
+                        skillJsonHelper.resolveSlotConditions(
+                                slot.getTriggerMode(), slot.getQuickPreset(), slot.getConditionsJson());
+                vo.setPrerequisiteMode(slotConds.getPrerequisiteMode());
+                vo.setPrerequisites(slotConds.getPrerequisites());
+                vo.setNumericMode(slotConds.getNumericMode());
+                vo.setConditionGroups(slotConds.getConditionGroups());
             } else {
                 vo.setTriggerMode(TriggerMode.PRECISE.name());
-                vo.setQuickPreset(TriggerQuickPreset.ON_CAST_SKILL.name());
-                vo.setConditionGroups(skillJsonHelper.defaultConditionGroups());
+                vo.setQuickPreset(null);
+                org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo empty =
+                        skillJsonHelper.defaultSlotConditions();
+                empty.setNumericMode(ConditionZoneMode.CONFIG.name());
+                empty.setConditionGroups(skillJsonHelper.defaultConditionGroups());
+                vo.setPrerequisiteMode(empty.getPrerequisiteMode());
+                vo.setPrerequisites(empty.getPrerequisites());
+                vo.setNumericMode(empty.getNumericMode());
+                vo.setConditionGroups(empty.getConditionGroups());
             }
         }
         return vo;
@@ -832,13 +849,18 @@ public class GameTriggerV2AdminService {
                 : TriggerSlotKind.TRAIT_ACTIVE;
         vo.setSlotKind(kind.name());
         vo.setSlotKindLabel(kind.getLabel());
-        // 后台编辑统一按精准展示；旧 QUICK 数据已通过 resolveSlotConditions 展开为条件组
+        // 后台编辑统一按精准展示；旧数据经 resolveSlotConditions 迁移为槽位级双区
         vo.setTriggerMode(TriggerMode.PRECISE.name());
         vo.setTriggerModeLabel(TriggerMode.PRECISE.getLabel());
         vo.setQuickPreset(null);
         vo.setQuickPresetLabel(null);
-        vo.setConditionGroups(skillJsonHelper.resolveSlotConditions(
-                entity.getTriggerMode(), entity.getQuickPreset(), entity.getConditionsJson()));
+        org.wx.core.wxBusiness.game.entity.skill.SkillSlotConditionsVo slotConds =
+                skillJsonHelper.resolveSlotConditions(
+                        entity.getTriggerMode(), entity.getQuickPreset(), entity.getConditionsJson());
+        vo.setPrerequisiteMode(slotConds.getPrerequisiteMode());
+        vo.setPrerequisites(slotConds.getPrerequisites());
+        vo.setNumericMode(slotConds.getNumericMode());
+        vo.setConditionGroups(slotConds.getConditionGroups());
         vo.setTriggerSlotType(entity.getTriggerSlotType());
         TriggerSlotType st = TriggerSlotType.parse(entity.getTriggerSlotType());
         if (st != null) {
